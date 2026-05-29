@@ -27,7 +27,7 @@ export default function RewardsPage() {
             href="/history"
             className="inline-block px-4 py-1.5 bg-white rounded-lg text-sm font-medium text-[#154212] hover:bg-[#f5f5f5] transition-colors"
           >
-            ประวัติการสะสมคะแนน2
+            ประวัติการสะสมคะแนน
           </Link>
         </div>
 

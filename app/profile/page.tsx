@@ -28,7 +28,7 @@ export default function ProfilePage() {
   
   // Use LINE profile if available, otherwise use demo data
   const user = {
-    name: 'สมหวัง คนดี222', // Demo name - can be updated from user settings
+    name: 'สมหวัง คนดี222333', // Demo name - can be updated from user settings
     lineUsername: liffProfile?.displayName || userProfile?.displayName || 'ผู้ใช้ทดสอบ',
     gender: 'หญิง',
     age: '21-40 ปี',

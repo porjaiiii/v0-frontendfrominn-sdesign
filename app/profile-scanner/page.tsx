@@ -42,10 +42,16 @@ export default function ProfileScannerPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0)
   
-  const { scanCode, isInClient } = useLiffContext()
+  const { scanCode, isInClient, isReady } = useLiffContext()
 
   const handleScanQR = async () => {
     try {
+      // Check if LIFF is ready first
+      if (!isReady) {
+        setError('LIFF ยังไม่พร้อม โปรดรอสักครู่...')
+        return
+      }
+      
       setIsScanning(true)
       setError(null)
       setScannedProfile(null)
@@ -124,20 +130,31 @@ export default function ProfileScannerPage() {
             </div>
 
             {isInClient ? (
-              <Button
-                onClick={handleScanQR}
-                disabled={isScanning || isLoading}
-                className="w-full bg-[#154212] hover:bg-[#154212]/90 text-white h-14 rounded-lg text-base font-semibold"
-              >
-                {isScanning || isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    {isLoading ? 'กำลังโหลดข้อมูล...' : 'กำลังเปิดกล้อง...'}
-                  </>
+              <>
+                {!isReady ? (
+                  <div className="bg-[#fff3cd] border border-[#ffc107] rounded-lg p-4">
+                    <div className="flex gap-3 items-center">
+                      <Loader2 className="w-5 h-5 text-[#ff9800] animate-spin flex-shrink-0" />
+                      <p className="text-sm text-[#666666]">LIFF กำลังโหลด โปรดรอสักครู่...</p>
+                    </div>
+                  </div>
                 ) : (
-                  'สแกน QR Code'
+                  <Button
+                    onClick={handleScanQR}
+                    disabled={isScanning || isLoading}
+                    className="w-full bg-[#154212] hover:bg-[#154212]/90 text-white h-14 rounded-lg text-base font-semibold"
+                  >
+                    {isScanning || isLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        {isLoading ? 'กำลังโหลดข้อมูล...' : 'กำลังเปิดกล้อง...'}
+                      </>
+                    ) : (
+                      'สแกน QR Code'
+                    )}
+                  </Button>
                 )}
-              </Button>
+              </>
             ) : (
               <div className="bg-[#fef3cd] border border-[#ffc107] rounded-lg p-4">
                 <div className="flex gap-3">

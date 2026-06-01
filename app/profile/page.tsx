@@ -30,10 +30,14 @@ export default function ProfilePage() {
   const { isReady, isLoggedIn, profile: liffProfile, scanCode, openExternalBrowser, isInClient } = useLiffContext()
   const { userProfile } = useApp()
   
-  // Generate QR code when userId is available
+  // Generate QR code with full URL when userId is available
   useEffect(() => {
     if (liffProfile?.userId) {
-      QRCode.toDataURL(liffProfile.userId, {
+      // Create full URL for profile-view page
+      const domain = typeof window !== 'undefined' ? window.location.origin : 'https://example.com'
+      const profileViewUrl = `${domain}/profile-view/${encodeURIComponent(liffProfile.userId)}`
+      
+      QRCode.toDataURL(profileViewUrl, {
         errorCorrectionLevel: 'H',
         type: 'image/jpeg',
         quality: 0.95,

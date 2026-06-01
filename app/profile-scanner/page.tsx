@@ -51,14 +51,20 @@ export default function ProfileScannerPage() {
       setScannedProfile(null)
       setScannedLineId(null)
       
+      console.log('[v0] Starting scan...')
       const result = await scanCode()
+      
       if (result.value) {
+        console.log('[v0] Scan successful, LINE ID:', result.value)
         setScannedLineId(result.value)
         await fetchProfileByLineId(result.value)
+      } else {
+        setError('ไม่สามารถอ่าน QR Code ได้ โปรดลองใหม่อีกครั้ง')
       }
     } catch (err) {
-      console.error('[v0] Scan failed:', err)
-      setError('ไม่สามารถเปิดกล้องสแกน QR Code ได้')
+      console.error('[v0] Scan error:', err)
+      const errorMsg = err instanceof Error ? err.message : 'ไม่สามารถเปิดกล้องสแกน QR Code ได้'
+      setError(errorMsg)
     } finally {
       setIsScanning(false)
     }
@@ -142,10 +148,25 @@ export default function ProfileScannerPage() {
             )}
 
             {error && (
-              <div className="bg-[#ffebee] border border-[#f44336] rounded-lg p-4">
-                <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-[#f44336] flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-[#c62828]">{error}</p>
+              <div className="space-y-3">
+                <div className="bg-[#ffebee] border border-[#f44336] rounded-lg p-4">
+                  <div className="flex gap-3">
+                    <AlertCircle className="w-5 h-5 text-[#f44336] flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-[#c62828] mb-1">เกิดข้อผิดพลาด</p>
+                      <p className="text-sm text-[#c62828]">{error}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-[#e3f2fd] border border-[#2196f3] rounded-lg p-3 text-sm space-y-2">
+                  <p className="font-semibold text-[#1565c0]">วิธีแก้ไข:</p>
+                  <ul className="list-disc list-inside text-[#1565c0] space-y-1">
+                    <li>เปิดใช้งานสแกนใน LINE app เท่านั้น</li>
+                    <li>ให้สิทธิ์เข้าถึงกล้องเมื่อระบบขอ</li>
+                    <li>ตรวจสอบเวอร์ชัน LINE ให้เป็นเวอร์ชันล่าสุด</li>
+                    <li>ลองปิดและเปิดแอป LINE ใหม่</li>
+                  </ul>
                 </div>
               </div>
             )}

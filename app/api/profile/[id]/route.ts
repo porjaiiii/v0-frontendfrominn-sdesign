@@ -14,11 +14,10 @@ export async function GET(
       )
     }
 
-    const apiKey = process.env.GOOGLE_SHEETS_API_KEY
     const sheetId = process.env.GOOGLE_SHEETS_ID
 
-    if (!apiKey || !sheetId) {
-      console.error('[v0] Google Sheets config missing')
+    if (!sheetId) {
+      console.error('[v0] Google Sheets ID missing')
       return NextResponse.json(
         { error: 'Server configuration missing' },
         { status: 500 }
@@ -27,27 +26,23 @@ export async function GET(
 
     console.log('[v0] API: Fetching profile for LINE ID:', lineId)
 
-    // Fetch data from Google Sheets
-    const sheetName = 'Sheet1'
-    const range = `${sheetName}!A:Z`
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`
-
-    const response = await fetch(url)
+    // Fetch data from Google Sheets using export URL
+    // This works with publicly shared sheets without API key restrictions
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`
+    
+    const response = await fetch(csvUrl)
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('[v0] Google Sheets API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText
-      })
+      console.error('[v0] Failed to fetch sheet:', response.statusText)
       return NextResponse.json(
-        { error: 'Failed to fetch from Google Sheets', details: errorText },
+        { error: 'Failed to fetch from Google Sheets' },
         { status: 500 }
       )
     }
 
-    const data = await response.json()
-    const rows = data.values || []
+    const csvText = await response.text()
+    const rows = csvText.split('\n').map(line => 
+      line.split(',').map(cell => cell.trim().replace(/^"(.*)"$/, '$1'))
+    )
 
     if (rows.length === 0) {
       return NextResponse.json(

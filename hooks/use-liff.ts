@@ -149,23 +149,34 @@ export function useLiff(liffId?: string): UseLiffReturn {
   const scanCode = useCallback(async (): Promise<ScanCodeResult> => {
     try {
       if (!liff.isReady) {
-        throw new Error('LIFF is not ready')
+        throw new Error('LIFF ยังไม่พร้อม โปรดรอสักครู่')
       }
+      
+      if (!liff.isInClient()) {
+        throw new Error('ฟีเจอร์สแกน QR Code ใช้งานได้เฉพาะในแอป LINE เท่านั้น')
+      }
+      
+      console.log('[LIFF] Starting QR scan...')
       
       // Check if scanCodeV2 is available (requires LIFF 2.15.0+)
       if (liff.scanCodeV2) {
+        console.log('[LIFF] Using scanCodeV2')
         const result = await liff.scanCodeV2()
+        console.log('[LIFF] Scan result:', result.value)
         return { value: result.value || null }
       } else if (liff.scanCode) {
         // Fallback to legacy scanCode
+        console.log('[LIFF] Using legacy scanCode')
         const result = await liff.scanCode()
+        console.log('[LIFF] Scan result:', result.value)
         return { value: result.value || null }
       } else {
-        throw new Error('QR Scanner is not available')
+        throw new Error('ไม่พบฟีเจอร์สแกน QR Code ในเวอร์ชันนี้ของ LINE')
       }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'ไม่สามารถเปิดกล้องสแกน QR Code ได้'
       console.error('[LIFF] Failed to scan code:', err)
-      throw err
+      throw new Error(errorMessage)
     }
   }, [])
 

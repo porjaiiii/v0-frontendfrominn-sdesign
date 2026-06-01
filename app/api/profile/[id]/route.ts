@@ -34,9 +34,14 @@ export async function GET(
 
     const response = await fetch(url)
     if (!response.ok) {
-      console.error('[v0] Google Sheets API error:', response.statusText)
+      const errorText = await response.text()
+      console.error('[v0] Google Sheets API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      })
       return NextResponse.json(
-        { error: 'Failed to fetch from Google Sheets' },
+        { error: 'Failed to fetch from Google Sheets', details: errorText },
         { status: 500 }
       )
     }

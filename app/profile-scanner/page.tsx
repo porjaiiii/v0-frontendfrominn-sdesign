@@ -3,15 +3,12 @@
 import Image from 'next/image'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
-import { Award, TreePine, ChevronLeft, ChevronRight, QrCode, ExternalLink, Copy, Check } from 'lucide-react'
+import { Award, TreePine, ChevronLeft, ChevronRight, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLiffContext } from '@/lib/liff-context'
-import { useApp } from '@/lib/app-context'
 import { Button } from '@/components/ui/button'
-import dynamic from 'next/dynamic'
-
-const QRCode = dynamic(() => import('next-qrcode').then(mod => mod.QRCode), { ssr: false })
+import Link from 'next/link'
 
 // Badge levels data with gradient colors
 const BADGE_LEVELS = [
@@ -21,51 +18,75 @@ const BADGE_LEVELS = [
   { id: 4, name: 'นักอนุรักษ์ระดับผู้เชี่ยวชาญ', min: 500, max: 999, gradient: 'from-[#f5c4c4] to-[#c06161]', iconColor: 'text-[#e74c3c]', active: false },
 ]
 
-export default function ProfilePage() {
-  const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0)
-  const [scanResult, setScanResult] = useState<string | null>(null)
+interface ScannedUserProfile {
+  name: string
+  lineUsername: string
+  gender: string
+  age: string
+  type: string
+  subdistrict: string
+  occupation: string
+  avatar: string
+  co2Reduced: number
+  treesPlanted: number
+  totalRecycled: number
+  recycleData: Array<{ name: string; value: number; color: string }>
+  co2Data: Array<{ name: string; value: number; color: string }>
+}
+
+export default function ProfileScannerPage() {
   const [isScanning, setIsScanning] = useState(false)
-  const [copiedLineId, setCopiedLineId] = useState(false)
+  const [scannedLineId, setScannedLineId] = useState<string | null>(null)
+  const [scannedProfile, setScannedProfile] = useState<ScannedUserProfile | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0)
   
-  const { isReady, isLoggedIn, profile: liffProfile, scanCode, openExternalBrowser, isInClient } = useLiffContext()
-  const { userProfile } = useApp()
-  
-  // Use LINE profile if available, otherwise use demo data
-  const user = {
-    name: 'สมหวัง คนดี222', // Demo name - can be updated from user settings
-    lineUsername: liffProfile?.displayName || userProfile?.displayName || 'ผู้ใช้ทดสอบ',
-    gender: 'หญิง',
-    age: '21-40 ปี',
-    type: 'ชาวบางกระเจ้า',
-    subdistrict: 'บางกอบัว',
-    occupation: 'เกษตรกร',
-    avatar: liffProfile?.pictureUrl || userProfile?.pictureUrl || '/placeholder-user.jpg',
+  const { scanCode, isInClient } = useLiffContext()
+
+  const handleScanQR = async () => {
+    try {
+      setIsScanning(true)
+      setError(null)
+      setScannedProfile(null)
+      setScannedLineId(null)
+      
+      const result = await scanCode()
+      if (result.value) {
+        setScannedLineId(result.value)
+        await fetchProfileByLineId(result.value)
+      }
+    } catch (err) {
+      console.error('[v0] Scan failed:', err)
+      setError('ไม่สามารถเปิดกล้องสแกน QR Code ได้')
+    } finally {
+      setIsScanning(false)
+    }
   }
 
-  const stats = {
-    co2Reduced: 100,
-    treesPlanted: 6,
-    totalRecycled: 49.50,
+  const fetchProfileByLineId = async (lineId: string) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      console.log('[v0] Fetching profile for LINE ID:', lineId)
+      
+      const response = await fetch(`/api/profile/${encodeURIComponent(lineId)}`)
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      setScannedProfile(data)
+      setCurrentBadgeIndex(0)
+    } catch (err) {
+      console.error('[v0] Failed to fetch profile:', err)
+      setError('ไม่พบข้อมูลโปรไฟล์นี้')
+    } finally {
+      setIsLoading(false)
+    }
   }
-
-  const recycleData = [
-    { name: 'พลาสติก', value: 30.5, color: '#6fc061' },
-    { name: 'แก้ว', value: 10, color: '#c06161' },
-    { name: 'กระดาษ', value: 5, color: '#d7ce56' },
-    { name: 'อลูมิเนียม', value: 8, color: '#606dc0' },
-    { name: 'น้ำมันเก่า', value: 0, color: '#60c098' },
-  ]
-
-  const co2Data = [
-    { name: 'พลาสติก', value: 67.42, color: '#6fc061' },
-    { name: 'แก้ว', value: 22.15, color: '#c06161' },
-    { name: 'กระดาษ', value: 6.26, color: '#d7ce56' },
-    { name: 'อลูมิเนียม', value: 4.2, color: '#606dc0' },
-    { name: 'น้ำมันเก่า', value: 0, color: '#60c098' },
-  ]
-
-  const currentBadge = BADGE_LEVELS[currentBadgeIndex]
-  const badgeProgress = (stats.totalRecycled / currentBadge.max) * 100
 
   const handlePrevBadge = () => {
     if (currentBadgeIndex > 0) {
@@ -79,56 +100,94 @@ export default function ProfilePage() {
     }
   }
 
-  const handleCopyLineId = async () => {
-    if (liffProfile?.userId) {
-      try {
-        await navigator.clipboard.writeText(liffProfile.userId)
-        setCopiedLineId(true)
-        setTimeout(() => setCopiedLineId(false), 2000)
-      } catch (err) {
-        console.error('Failed to copy:', err)
-      }
-    }
+  if (!scannedProfile) {
+    return (
+      <div className="min-h-screen bg-white pb-24">
+        <PageHeader />
+
+        <main className="max-w-md mx-auto px-4 py-4">
+          <Link href="/profile" className="inline-flex items-center gap-2 text-[#154212] hover:text-[#154212]/80 mb-4">
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">กลับ</span>
+          </Link>
+
+          <div className="space-y-4">
+            <div className="bg-gradient-to-br from-[#c7e3ff] to-[#b6ebad] rounded-xl p-6">
+              <h1 className="text-2xl font-bold text-[#154212] mb-2">ดูโปรไฟล์ผู้อื่น</h1>
+              <p className="text-sm text-[#154212]/80">สแกน QR Code เพื่อดูข้อมูลโปรไฟล์และสถิติการรีไซเคิลของผู้อื่น</p>
+            </div>
+
+            {isInClient ? (
+              <Button
+                onClick={handleScanQR}
+                disabled={isScanning || isLoading}
+                className="w-full bg-[#154212] hover:bg-[#154212]/90 text-white h-14 rounded-lg text-base font-semibold"
+              >
+                {isScanning || isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    {isLoading ? 'กำลังโหลดข้อมูล...' : 'กำลังเปิดกล้อง...'}
+                  </>
+                ) : (
+                  'สแกน QR Code'
+                )}
+              </Button>
+            ) : (
+              <div className="bg-[#fef3cd] border border-[#ffc107] rounded-lg p-4">
+                <div className="flex gap-3">
+                  <AlertCircle className="w-5 h-5 text-[#ff9800] flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-[#666666]">ฟีเจอร์สแกน QR Code ใช้งานได้เฉพาะในแอป LINE เท่านั้น</p>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="bg-[#ffebee] border border-[#f44336] rounded-lg p-4">
+                <div className="flex gap-3">
+                  <AlertCircle className="w-5 h-5 text-[#f44336] flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-[#c62828]">{error}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+
+        <BottomNav />
+      </div>
+    )
   }
 
-  const handleScanQR = async () => {
-    try {
-      setIsScanning(true)
-      setScanResult(null)
-      const result = await scanCode()
-      if (result.value) {
-        setScanResult(result.value)
-      }
-    } catch (err) {
-      console.error('Scan failed:', err)
-      alert('ไม่สามารถเปิดกล้องสแกน QR Code ได้')
-    } finally {
-      setIsScanning(false)
-    }
+  // Show scanned profile
+  const stats = {
+    co2Reduced: scannedProfile.co2Reduced,
+    treesPlanted: scannedProfile.treesPlanted,
+    totalRecycled: scannedProfile.totalRecycled,
   }
 
-  const handleOpenExternal = (url: string) => {
-    openExternalBrowser(url)
-  }
-
-  // Note: We no longer block on isReady to avoid infinite loading
-  // The page will show demo data if LIFF is not available
+  const currentBadge = BADGE_LEVELS[currentBadgeIndex]
+  const badgeProgress = (stats.totalRecycled / currentBadge.max) * 100
 
   return (
     <div className="min-h-screen bg-white pb-24">
       <PageHeader />
 
       <main className="max-w-md mx-auto px-4 py-4">
+        <Link href="/profile-scanner" className="inline-flex items-center gap-2 text-[#154212] hover:text-[#154212]/80 mb-4">
+          <ArrowLeft className="w-5 h-5" />
+          <span className="text-sm">สแกนอีกครั้ง</span>
+        </Link>
+
         {/* Profile Card with overlapping avatar */}
         <div className="relative mt-12 mb-6">
           {/* Avatar - positioned to overlap top of card */}
           <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-10">
             <div className="relative w-[90px] h-[90px] rounded-full overflow-hidden border-4 border-white shadow-lg">
               <Image
-                src={user.avatar}
-                alt={user.name}
+                src={scannedProfile.avatar}
+                alt={scannedProfile.name}
                 fill
                 className="object-cover"
+                unoptimized
               />
             </div>
           </div>
@@ -141,11 +200,11 @@ export default function ProfilePage() {
               <div className="flex">
                 <div className="flex-1">
                   <span className="text-[#666666]">ชื่อ-นามสกุล</span>
-                  <span className="ml-4 text-[#154212] font-medium">{user.name}</span>
+                  <span className="ml-4 text-[#154212] font-medium">{scannedProfile.name}</span>
                 </div>
                 <div>
                   <span className="text-[#666666]">เพศ</span>
-                  <span className="ml-2 text-[#154212] font-medium">{user.gender}</span>
+                  <span className="ml-2 text-[#154212] font-medium">{scannedProfile.gender}</span>
                 </div>
               </div>
 
@@ -153,7 +212,7 @@ export default function ProfilePage() {
               <div className="flex">
                 <div className="flex-1">
                   <span className="text-[#666666]">LINE Username</span>
-                  <span className="ml-4 text-[#154212] font-medium">{user.lineUsername}</span>
+                  <span className="ml-4 text-[#154212] font-medium">{scannedProfile.lineUsername}</span>
                 </div>
               </div>
 
@@ -161,11 +220,11 @@ export default function ProfilePage() {
               <div className="flex">
                 <div className="flex-1">
                   <span className="text-[#666666]">อายุ</span>
-                  <span className="ml-4 text-[#154212] font-medium">{user.age}</span>
+                  <span className="ml-4 text-[#154212] font-medium">{scannedProfile.age}</span>
                 </div>
                 <div>
                   <span className="text-[#666666]">ประเภท</span>
-                  <span className="ml-2 text-[#154212] font-medium">{user.type}</span>
+                  <span className="ml-2 text-[#154212] font-medium">{scannedProfile.type}</span>
                 </div>
               </div>
 
@@ -173,66 +232,14 @@ export default function ProfilePage() {
               <div className="flex">
                 <div className="flex-1">
                   <span className="text-[#666666]">ตำบล</span>
-                  <span className="ml-4 text-[#154212] font-medium">{user.subdistrict}</span>
+                  <span className="ml-4 text-[#154212] font-medium">{scannedProfile.subdistrict}</span>
                 </div>
                 <div>
                   <span className="text-[#666666]">อาชีพ</span>
-                  <span className="ml-2 text-[#154212] font-medium">{user.occupation}</span>
+                  <span className="ml-2 text-[#154212] font-medium">{scannedProfile.occupation}</span>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* QR Code Section */}
-        <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
-          <p className="text-sm font-semibold text-[#154212] mb-3">ขอดูโปรไฟล์ (QR Code)</p>
-          
-          <div className="flex flex-col items-center gap-4">
-            {/* QR Code Display */}
-            {liffProfile?.userId && (
-              <div className="bg-white p-4 rounded-lg border border-[#e5e5e5]">
-                <QRCode
-                  value={liffProfile.userId}
-                  size={200}
-                  level="H"
-                  includeMargin={true}
-                  variant="image"
-                  fgColor="#000000"
-                  bgColor="#ffffff"
-                />
-              </div>
-            )}
-            
-            {/* LINE ID Display and Copy */}
-            <div className="w-full">
-              <p className="text-xs text-[#666666] mb-1">LINE User ID</p>
-              <div className="flex items-center gap-2 bg-[#f5f5f5] rounded-lg p-3">
-                <code className="text-sm font-mono text-[#154212] flex-1 break-all">
-                  {liffProfile?.userId || 'ไม่พบ User ID'}
-                </code>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleCopyLineId}
-                  disabled={!liffProfile?.userId}
-                  className="flex-shrink-0"
-                >
-                  {copiedLineId ? (
-                    <Check className="w-4 h-4 text-green-600" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-[#154212]" />
-                  )}
-                </Button>
-              </div>
-              {copiedLineId && (
-                <p className="text-xs text-green-600 mt-1">คัดลอกสำเร็จ</p>
-              )}
-            </div>
-            
-            <p className="text-xs text-[#999999] text-center">
-              แชร์ QR Code นี้เพื่อให้ผู้อื่นเห็นโปรไฟล์ของคุณ
-            </p>
           </div>
         </div>
 
@@ -265,48 +272,6 @@ export default function ProfilePage() {
             <span className="text-4xl font-bold text-[#154212]">{stats.totalRecycled.toFixed(2)}</span>
             <span className="text-lg text-[#154212]">Kg</span>
           </div>
-        </div>
-
-        {/* LIFF Features Section */}
-        <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
-          <p className="text-sm font-semibold text-[#154212] mb-3">LINE LIFF Features</p>
-          <div className="grid grid-cols-2 gap-3">
-            {/* Scan QR Code */}
-            <Button
-              variant="outline"
-              className="flex flex-col items-center gap-2 h-auto py-4 border-[#154212] text-[#154212] hover:bg-[#154212]/5"
-              onClick={handleScanQR}
-              disabled={isScanning || !isInClient}
-            >
-              <QrCode className="w-6 h-6" />
-              <span className="text-xs">{isScanning ? 'กำลังสแกน...' : 'สแกน QR Code'}</span>
-            </Button>
-
-            {/* Open External Browser */}
-            <Button
-              variant="outline"
-              className="flex flex-col items-center gap-2 h-auto py-4 border-[#154212] text-[#154212] hover:bg-[#154212]/5"
-              onClick={() => handleOpenExternal('https://lin.ee/')}
-            >
-              <ExternalLink className="w-6 h-6" />
-              <span className="text-xs">เปิดเบราว์เซอร์</span>
-            </Button>
-          </div>
-
-          {/* QR Scan Result */}
-          {scanResult && (
-            <div className="mt-4 p-3 bg-[#f0f9f0] rounded-lg border border-[#6fc061]">
-              <p className="text-xs text-[#666666] mb-1">ผลลัพธ์จากการสแกน:</p>
-              <p className="text-sm font-medium text-[#154212] break-all">{scanResult}</p>
-            </div>
-          )}
-
-          {/* LIFF Info */}
-          {!isInClient && (
-            <p className="mt-3 text-xs text-[#999999] text-center">
-              บางฟีเจอร์ใช้งานได้เฉพาะในแอป LINE เท่านั้น
-            </p>
-          )}
         </div>
 
         {/* Badge Section with Navigation */}
@@ -377,14 +342,14 @@ export default function ProfilePage() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={recycleData}
+                    data={scannedProfile.recycleData}
                     cx="50%"
                     cy="50%"
                     innerRadius={25}
                     outerRadius={50}
                     dataKey="value"
                   >
-                    {recycleData.map((entry, index) => (
+                    {scannedProfile.recycleData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -394,7 +359,7 @@ export default function ProfilePage() {
             
             {/* Legend */}
             <div className="flex-1 space-y-1">
-              {recycleData.map((item) => (
+              {scannedProfile.recycleData.map((item) => (
                 <div key={item.name} className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                   <span className="text-[#666666]">{item.name}</span>
@@ -405,7 +370,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Pie Chart - CO2 Breakdown (changed from bar to pie) */}
+        {/* Pie Chart - CO2 Breakdown */}
         <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
           <p className="text-sm font-semibold text-[#154212] mb-3">การทำการสะสมของ Recycle เป็น Co2 ของคุณ</p>
           
@@ -414,14 +379,14 @@ export default function ProfilePage() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={co2Data}
+                    data={scannedProfile.co2Data}
                     cx="50%"
                     cy="50%"
                     innerRadius={25}
                     outerRadius={50}
                     dataKey="value"
                   >
-                    {co2Data.map((entry, index) => (
+                    {scannedProfile.co2Data.map((entry, index) => (
                       <Cell key={`cell-co2-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -431,7 +396,7 @@ export default function ProfilePage() {
             
             {/* Legend */}
             <div className="flex-1 space-y-1">
-              {co2Data.map((item) => (
+              {scannedProfile.co2Data.map((item) => (
                 <div key={item.name} className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                   <span className="text-[#666666]">{item.name}</span>

@@ -1,6 +1,6 @@
 'use client'
 
-import { X, Award, Trash2, BarChart3, Gift, BookOpen, Info } from 'lucide-react'
+import { X, Award, Trash2, BarChart3, Gift, BookOpen, Info, QrCode } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -61,6 +61,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
               <Link href="/profile" className="block text-xs font-semibold text-[#154212] text-center mt-1 hover:underline" onClick={onClose}>
                 ดูโปรไฟล์
+              </Link>
+              <Link href="/profile-scanner" className="block text-xs font-semibold text-[#154212] text-center mt-1 hover:underline" onClick={onClose}>
+                สแกน QR Code
               </Link>
             </div>
           </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { useEffect } from 'react'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { Award, TreePine, ChevronLeft, ChevronRight, QrCode, ExternalLink, Copy, Check } from 'lucide-react'
@@ -9,9 +10,7 @@ import { useState } from 'react'
 import { useLiffContext } from '@/lib/liff-context'
 import { useApp } from '@/lib/app-context'
 import { Button } from '@/components/ui/button'
-import dynamic from 'next/dynamic'
-
-const QRCode = dynamic(() => import('next-qrcode').then(mod => mod.QRCode), { ssr: false })
+import QRCode from 'qrcode'
 
 // Badge levels data with gradient colors
 const BADGE_LEVELS = [
@@ -26,9 +25,29 @@ export default function ProfilePage() {
   const [scanResult, setScanResult] = useState<string | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [copiedLineId, setCopiedLineId] = useState(false)
+  const [qrDataUrl, setQrDataUrl] = useState<string>('')
   
   const { isReady, isLoggedIn, profile: liffProfile, scanCode, openExternalBrowser, isInClient } = useLiffContext()
   const { userProfile } = useApp()
+  
+  // Generate QR code when userId is available
+  useEffect(() => {
+    if (liffProfile?.userId) {
+      QRCode.toDataURL(liffProfile.userId, {
+        errorCorrectionLevel: 'H',
+        type: 'image/jpeg',
+        quality: 0.95,
+        margin: 1,
+        width: 200,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        }
+      })
+        .then(url => setQrDataUrl(url))
+        .catch(err => console.error('QR Code generation failed:', err))
+    }
+  }, [liffProfile?.userId])
   
   // Use LINE profile if available, otherwise use demo data
   const user = {
@@ -190,16 +209,14 @@ export default function ProfilePage() {
           
           <div className="flex flex-col items-center gap-4">
             {/* QR Code Display */}
-            {liffProfile?.userId && (
-              <div className="bg-white p-4 rounded-lg border border-[#e5e5e5]">
-                <QRCode
-                  value={liffProfile.userId}
-                  size={200}
-                  level="H"
-                  includeMargin={true}
-                  variant="image"
-                  fgColor="#000000"
-                  bgColor="#ffffff"
+            {liffProfile?.userId && qrDataUrl && (
+              <div className="bg-white p-4 rounded-lg border border-[#e5e5e5] flex justify-center">
+                <img
+                  src={qrDataUrl}
+                  alt="QR Code for LINE User ID"
+                  width={200}
+                  height={200}
+                  className="rounded"
                 />
               </div>
             )}

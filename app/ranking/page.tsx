@@ -175,5 +175,6 @@ export default function RankingPage() {
 
       <BottomNav />
     </div>
+    // test
   )
 }

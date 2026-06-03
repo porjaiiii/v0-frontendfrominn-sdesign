@@ -31,7 +31,8 @@ export default function RankingPage() {
     rank: 5,
     name: 'สมชาย มั่นคงผล',
     carbon: 100,
-    avatar: '/placeholder-user.jpg'
+    avatar: '/placeholder-user.jpg',
+    location: ''
   }
 
   const getRankBadge = (rank: number) => {
@@ -46,6 +47,40 @@ export default function RankingPage() {
     if (rank === 2) return 'bg-[#e5e5e5] border-l-4 border-l-[#c1c1c1]'
     if (rank === 3) return 'bg-[#f5c4c4] border-l-4 border-l-[#c06161]'
     return 'bg-white border border-[#e5e5e5]'
+  }
+
+  const obfuscateName = (name: string, isCurrentUser = false) => {
+    if (isCurrentUser) return name
+    const parts = name.trim().split(/\s+/)
+    const showLastN = (s: string, n = 2) => {
+      if (s.length <= n + 1) return s
+      return '...' + s.slice(-n)
+    }
+    const showFirstN = (s: string, n = 2) => {
+      if (s.length <= n + 1) return s
+      return s.slice(0, n) + '...'
+    }
+
+    if (parts.length === 1) {
+      const p = parts[0]
+      const first = showFirstN(p, 2)
+      const last = showLastN(p, 2)
+      // If name is very short, just return a shortened version
+      if (p.length <= 4) return p
+      return `${first} ${last}`
+    }
+
+    // For multiple parts (e.g., first + last), show start of first and end of last
+    const firstPart = parts[0]
+    const lastPart = parts[parts.length - 1]
+    return `${showFirstN(firstPart, 2)} ${showLastN(lastPart, 2)}`
+  }
+
+  const getStarFilter = (rank: number) => {
+    if (rank === 1) return 'sepia(1) saturate(6) hue-rotate(20deg) brightness(1)'
+    if (rank === 2) return 'grayscale(1) brightness(0.9) contrast(1.2)'
+    if (rank === 3) return 'sepia(1) saturate(5) hue-rotate(-10deg) brightness(0.95)'
+    return 'none'
   }
 
   return (
@@ -70,6 +105,7 @@ export default function RankingPage() {
               />
             </div>
             <div className="flex-1">
+              <p className="text-sm text-white/90 mb-1">{currentUser.name}</p>
               <p className="text-sm text-white/80 mb-1">ยอดสะสมของคุณ</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-bold text-white">{currentUser.carbon}</span>
@@ -99,76 +135,131 @@ export default function RankingPage() {
             </h2>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-2 border-b border-[#e5e5e5] pb-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'px-3 py-1 text-sm font-medium rounded-full transition-colors',
-                  activeTab === tab.id
-                    ? 'bg-[#154212] text-white'
-                    : 'text-[#666666] hover:bg-[#f5f5f5]'
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Leaderboard List */}
-          <div className="space-y-2">
-            {LEADERBOARD.map((user) => {
-              const rankBadge = getRankBadge(user.rank)
-              const cardBg = getRankCardBg(user.rank)
+          {/* Podium for Top 3 */}
+          <div className="flex items-end justify-center gap-4 mb-2">
+            {[LEADERBOARD[1], LEADERBOARD[0], LEADERBOARD[2]].map((u) => {
+              if (!u) return null
+              const podiumHeight = u.rank === 1 ? 150 : 110
+              const gradient = u.rank === 1
+                ? 'linear-gradient(180deg,#fff7c9,#ffd24d)'
+                : u.rank === 2
+                ? 'linear-gradient(180deg,#eef6ff,#bcd7ff)'
+                : 'linear-gradient(180deg,#ffe9e9,#ff9a9a)'
+              const starFilter = getStarFilter(u.rank)
               return (
-                <div
-                  key={user.rank}
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-xl',
-                    cardBg
-                  )}
-                >
-                  {/* Rank Star Icon */}
-                  <div className={cn('text-xl', rankBadge.icon)}>
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
+                <div key={u.rank} className="flex flex-col items-center relative">
+                  {/* profile (avatar) above podium */}
+                  <div className="w-16 h-16 rounded-full bg-[#0f3b14] overflow-hidden relative mb-2 shadow-md">
+                    <Image src={u.avatar} alt={u.name} fill className="object-cover" />
                   </div>
-                  
-                  {/* Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-[#d9d9d9] overflow-hidden relative flex-shrink-0">
-                    <Image
-                      src={user.avatar}
-                      alt={user.name}
-                      fill
-                      className="object-cover"
-                    />
+                  {/* user name */}
+                  <div className="text-sm font-medium text-[#154212] mb-2 text-center">
+                    {obfuscateName(u.name, u.rank === currentUser.rank || u.name === currentUser.name)}
                   </div>
-                  
-                  {/* Name & Location */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#444444] truncate">
-                      {user.name}
-                    </p>
-                    {user.location && (
-                      <p className="text-xs text-[#666666] flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {user.location}
-                      </p>
-                    )}
-                  </div>
-                  
-                  {/* Carbon Score */}
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-semibold text-[#154212]">
-                      {user.carbon} <span className="text-xs text-[#666666]">kgCO2</span>
-                    </p>
+
+                  {/* podium block (top, star, carbon) */}
+                  <div
+                    className="w-24 rounded-t-lg flex flex-col items-center justify-start gap-1 shadow-inner"
+                    style={{ height: podiumHeight, background: gradient, paddingTop: '10%' }}
+                  >
+                    <div className="w-8 h-8 flex items-center justify-center">
+                      <Image
+                        src="/images/icon/Michelin-Star--Streamline-Tabler.svg"
+                        alt={`star-${u.rank}`}
+                        width={20}
+                        height={20}
+                        className="object-contain"
+                        style={{ filter: starFilter }}
+                      />
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="text-lg font-semibold text-[#154212]">{u.carbon}</div>
+                      <div className="text-xs text-[#154212]">kgCO2</div>
+                    </div>
                   </div>
                 </div>
               )
             })}
+          </div>
+
+          {/* Tabs */}
+          <div className="w-full max-w-sm mx-auto mb-2">
+            <div className="bg-[#e7f6ea] p-1 rounded-2xl shadow-sm">
+              <div className="flex">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      'flex-1 text-center py-2 px-3 rounded-xl text-sm font-medium transition-all',
+                      activeTab === tab.id
+                        ? 'bg-[#154212] text-white shadow-md'
+                        : 'text-[#154212]/90 bg-transparent hover:bg-white/60'
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Leaderboard List */}
+          <div className="rounded-3xl overflow-hidden">
+            <div className="bg-gradient-to-b from-[#2a6e25] via-[#f7fbf7] to-white p-2">
+              <div className="space-y-2">
+                {LEADERBOARD.map((user) => {
+                  if (user.rank < 4) return null;
+                  const displayUser = user.rank === currentUser.rank ? currentUser : user
+                  const cardBg = getRankCardBg(displayUser.rank)
+                  return (
+                    <div
+                      key={displayUser.rank}
+                      className={cn(
+                        'flex items-center gap-3 p-3 rounded-xl',
+                        cardBg
+                      )}
+                    >
+                      {/* Rank Number */}
+                      <div className="w-8 h-8 rounded-full bg-[#f5f5f5] flex items-center justify-center text-sm font-semibold text-[#154212]">
+                        {displayUser.rank}
+                      </div>
+                      
+                      {/* Avatar */}
+                      <div className="w-10 h-10 rounded-full bg-[#d9d9d9] overflow-hidden relative flex-shrink-0">
+                        <Image
+                          src={displayUser.avatar}
+                          alt={displayUser.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      
+                      {/* Name & Location */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[#444444] truncate">
+                          {obfuscateName(displayUser.name, displayUser.rank === currentUser.rank || displayUser.name === currentUser.name)}
+                        </p>
+                        {displayUser.location && (
+                          <p className="text-xs text-[#666666] flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {displayUser.location}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Carbon Score */}
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-semibold text-[#154212]">
+                          {displayUser.carbon} <span className="text-xs text-[#666666]">kgCO2</span>
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </main>

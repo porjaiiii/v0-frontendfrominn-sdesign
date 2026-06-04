@@ -89,62 +89,77 @@ export default function ProfileViewPage() {
       <PageHeader title="ดูโปรไฟล์" />
       
       <main className="max-w-sm mx-auto px-4 py-6 space-y-4">
+        {/* Header Title */}
+        <h2 className="text-base font-bold text-[#154212]">ข้อมูลการแสลน</h2>
+
         {/* Profile Card */}
-        <div className="bg-white rounded-xl border border-[#e5e5e5] p-6 shadow-sm text-center space-y-3">
-          {profile.avatar && (
-            <div className="w-24 h-24 rounded-full overflow-hidden mx-auto border-4 border-[#154212]">
-              <Image
-                src={profile.avatar}
-                alt={profile.name}
-                width={96}
-                height={96}
-                className="w-full h-full object-cover"
-              />
+        <div className="bg-white rounded-xl border border-[#999999] p-5 shadow-sm">
+          <div className="flex gap-4 mb-4">
+            {profile.avatar && (
+              <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border-2 border-[#154212]">
+                <Image
+                  src={profile.avatar}
+                  alt={profile.name}
+                  width={80}
+                  height={80}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+            
+            <div className="flex-1">
+              <h1 className="text-base font-bold text-[#154212]">{profile.name}</h1>
+              <p className="text-xs text-[#666666] mb-2">
+                {profile.age && `${profile.age} | `}
+                {profile.gender || 'ไม่ระบุ'}
+              </p>
+              
+              {profile.phone && (
+                <div className="flex items-center gap-1 text-xs text-[#154212] mb-1">
+                  <Phone size={12} />
+                  <p>{profile.phone}</p>
+                </div>
+              )}
+              
+              {profile.subdistrict && (
+                <p className="text-xs text-[#999999]">{profile.subdistrict}</p>
+              )}
+              
+              {profile.occupation && (
+                <p className="text-xs font-semibold text-[#154212] mt-1">{profile.occupation}</p>
+              )}
             </div>
-          )}
-          
-          <div>
-            <h1 className="text-lg font-bold text-[#154212]">{profile.name}</h1>
-            <p className="text-sm text-[#666666]">
-              {profile.age && `${profile.age} | `}
-              {profile.gender || 'ไม่ระบุ'}
-            </p>
           </div>
-          
-          {profile.phone && (
-            <div className="flex items-center justify-center gap-2 text-sm text-[#154212]">
-              <Phone size={16} />
-              <p>{profile.phone}</p>
+
+          {/* Info Grid */}
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="border-t border-[#e5e5e5] pt-2">
+              <p className="text-[#666666] mb-1">อายุ</p>
+              <p className="font-bold text-[#154212]">{profile.age || '-'} ปี</p>
             </div>
-          )}
-          
-          {profile.subdistrict && (
-            <p className="text-sm text-[#999999]">{profile.subdistrict}</p>
-          )}
-          
-          {profile.occupation && (
-            <p className="text-sm font-semibold text-[#154212]">{profile.occupation}</p>
-          )}
+            <div className="border-t border-[#e5e5e5] pt-2">
+              <p className="text-[#666666] mb-1">เพศ</p>
+              <p className="font-bold text-[#154212]">{profile.gender || '-'}</p>
+            </div>
+            <div className="border-t border-[#e5e5e5] pt-2">
+              <p className="text-[#666666] mb-1">สำนัก</p>
+              <p className="font-bold text-[#154212]">{profile.subdistrict || '-'}</p>
+            </div>
+            <div className="border-t border-[#e5e5e5] pt-2">
+              <p className="text-[#666666] mb-1">อาชีพ</p>
+              <p className="font-bold text-[#154212]">{profile.occupation || '-'}</p>
+            </div>
+          </div>
         </div>
 
-        {/* Stats Cards Row - Hidden */}
-        {/* 
-        <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 shadow-sm">
-          <p className="text-sm font-semibold text-[#154212] mb-3">น้ำหนักรวม</p>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-[#666666]">จากการรีไซเคิล</span>
-              <span className="text-lg font-bold text-[#154212]">{totalWeight.toFixed(2)} kg</span>
-            </div>
-            <div className="w-full bg-[#e5e5e5] rounded-full h-2">
-              <div 
-                className="bg-[#6fc061] h-2 rounded-full"
-                style={{ width: totalWeight > 0 ? '45%' : '0%' }}
-              ></div>
-            </div>
+        {/* Total Weight Summary */}
+        {totalWeight > 0 && (
+          <div className="bg-[#154212] text-white rounded-xl p-4">
+            <h3 className="text-xs font-bold mb-2">รายการระะ</h3>
+            <p className="text-2xl font-bold">{totalWeight.toFixed(2)}</p>
+            <p className="text-xs text-gray-200">น้ำหนักรวม</p>
           </div>
-        </div>
-        */}
+        )}
 
         {/* Waste Cart Section */}
         <div>

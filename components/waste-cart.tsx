@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { Leaf, Trash2 } from 'lucide-react'
+import { Leaf, Trash2, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { WasteDetailModal } from './waste-detail-modal'
 
 interface WasteRecord {
   timestamp: string
@@ -36,6 +37,9 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [totalWeight, setTotalWeight] = useState(0)
+  const [selectedRecord, setSelectedRecord] = useState<WasteRecord | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isConfirming, setIsConfirming] = useState(false)
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -97,6 +101,46 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
     }
   }, [userId])
 
+  const handleConfirmRecord = async (record: WasteRecord) => {
+    try {
+      setIsConfirming(true)
+      console.log('[v0] Confirming waste record:', record)
+      
+      // Remove the record from the list
+      setRecords(records.filter(r => 
+        !(r.timestamp === record.timestamp && r.user_id === record.user_id)
+      ))
+      
+      // Recalculate total weight
+      const newRecords = records.filter(r => 
+        !(r.timestamp === record.timestamp && r.user_id === record.user_id)
+      )
+      const newTotal = newRecords.reduce((sum, r) => sum + r.weight_kg, 0)
+      setTotalWeight(newTotal)
+      if (onTotalWeightChange) {
+        onTotalWeightChange(newTotal)
+      }
+      
+      // Close modal
+      setIsModalOpen(false)
+      setSelectedRecord(null)
+    } catch (err) {
+      console.error('[v0] Error confirming record:', err)
+    } finally {
+      setIsConfirming(false)
+    }
+  }
+
+  const handleOpenDetails = (record: WasteRecord) => {
+    setSelectedRecord(record)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedRecord(null)
+  }
+
   if (loading) {
     return (
       <div className="p-4 bg-white rounded-2xl">
@@ -115,6 +159,15 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
 
   return (
     <div className="space-y-4">
+      {/* Detail Modal */}
+      <WasteDetailModal
+        record={selectedRecord}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmRecord}
+        isConfirming={isConfirming}
+      />
+
       {/* Stats Summary */}
       {stats && (
         <div className="grid grid-cols-2 gap-3">
@@ -191,7 +244,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 mb-2">
+                <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 mb-4">
                   <div>
                     <p className="text-gray-500">น้ำหนัก</p>
                     <p className="font-semibold text-gray-800">
@@ -217,6 +270,15 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
                     </p>
                   </div>
                 </div>
+
+                {/* Action Button */}
+                <button
+                  onClick={() => handleOpenDetails(record)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-green-50 text-green-700 font-semibold rounded-lg hover:bg-green-100 transition-colors border border-green-200"
+                >
+                  <span>ดูรายละเอียด</span>
+                  <ChevronRight size={20} />
+                </button>
               </div>
             ))}
           </div>

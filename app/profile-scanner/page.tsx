@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
+import { WasteCart } from '@/components/waste-cart'
 import { Award, TreePine, ChevronLeft, ChevronRight, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { useState, useEffect } from 'react'
@@ -358,7 +359,7 @@ export default function ProfileScannerPage() {
           
           {/* Progress Bar */}
           <div className="mb-2">
-            <p className="text-xs text-[#666666] mb-1">ความคืบหน้า</p>
+            <p className="text-xs text-[#666666] mb-1">ความคื��หน้า</p>
             <div className="w-full h-2 bg-[#e5e5e5] rounded-full overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-[#91c1e7] to-[#9fcba5] rounded-full"
@@ -443,6 +444,11 @@ export default function ProfileScannerPage() {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Waste Cart Section */}
+        <div className="mt-6">
+          <WasteCart userId={scannedLineId || ''} />
         </div>
       </main>
 

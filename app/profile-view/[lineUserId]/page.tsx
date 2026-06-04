@@ -92,39 +92,69 @@ export default function ProfileViewPage() {
         {/* Header Title */}
         <h2 className="text-base font-bold text-[#154212]">ข้อมูลการแสลน</h2>
 
-        {/* Profile Card - Compact with Avatar Circle */}
-        <div className="bg-white rounded-xl border border-[#999999] p-5 shadow-sm flex items-center justify-between gap-4">
-          {/* Avatar Circle */}
-          <div className="flex-shrink-0">
-            {profile.avatar ? (
-              <div className="w-24 h-24 rounded-full overflow-hidden border-3 border-[#154212]">
-                <Image
-                  src={profile.avatar}
-                  alt={profile.name}
-                  width={96}
-                  height={96}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-24 h-24 rounded-full border-3 border-[#154212] bg-[#f0f7f0] flex items-center justify-center">
-                <div className="w-16 h-16 rounded-full bg-[#e0ead8] flex items-center justify-center">
+        {/* Profile Card - Avatar Left + Info + Total Weight Right */}
+        <div className="bg-white rounded-xl border border-[#999999] p-5 shadow-sm">
+          <div className="flex gap-4 mb-4 items-start">
+            {/* Avatar Circle */}
+            <div className="flex-shrink-0">
+              {profile.avatar ? (
+                <div className="w-20 h-20 rounded-full overflow-hidden border-3 border-[#154212]">
+                  <Image
+                    src={profile.avatar}
+                    alt={profile.name}
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-20 h-20 rounded-full border-3 border-[#154212] bg-[#f0f7f0] flex items-center justify-center">
                   <svg className="w-10 h-10 text-[#154212]" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                   </svg>
                 </div>
+              )}
+            </div>
+
+            {/* User Info Center */}
+            <div className="flex-1">
+             
+          
+              
+            
+              
+             
+            </div>
+
+            {/* Total Weight Right */}
+            {totalWeight > 0 && (
+              <div className="bg-[#154212] text-white rounded-xl p-3 flex-shrink-0 text-right">
+                <p className="text-xs text-gray-200 mb-1">รายการระะ</p>
+                <p className="text-2xl font-bold">{totalWeight.toFixed(2)}</p>
+                <p className="text-xs text-gray-200">น้ำหนักรวม</p>
               </div>
             )}
           </div>
 
-          {/* Total Weight Summary - Right Side */}
-          {totalWeight > 0 && (
-            <div className="bg-[#154212] text-white rounded-xl p-4 flex-1">
-              <h3 className="text-xs font-bold mb-2">รายการระะ</h3>
-              <p className="text-3xl font-bold">{totalWeight.toFixed(2)}</p>
-              <p className="text-xs text-gray-200">น้ำหนักรวม</p>
+          {/* Info Grid */}
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="border-t border-[#e5e5e5] pt-2">
+              <p className="text-[#666666] mb-1">อายุ</p>
+              <p className="font-bold text-[#154212]">{profile.age || '-'} ปี</p>
             </div>
-          )}
+            <div className="border-t border-[#e5e5e5] pt-2">
+              <p className="text-[#666666] mb-1">เพศ</p>
+              <p className="font-bold text-[#154212]">{profile.gender || '-'}</p>
+            </div>
+            <div className="border-t border-[#e5e5e5] pt-2">
+              <p className="text-[#666666] mb-1">สำนัก</p>
+              <p className="font-bold text-[#154212]">{profile.subdistrict || '-'}</p>
+            </div>
+            <div className="border-t border-[#e5e5e5] pt-2">
+              <p className="text-[#666666] mb-1">อาชีพ</p>
+              <p className="font-bold text-[#154212]">{profile.occupation || '-'}</p>
+            </div>
+          </div>
         </div>
 
         {/* Waste Cart Section */}

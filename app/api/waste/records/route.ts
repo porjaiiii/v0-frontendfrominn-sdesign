@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        action: 'getrecord',
+        action: 'getRecords',
         user_id: userId,
       }),
     })

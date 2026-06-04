@@ -55,7 +55,13 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json()
-    console.log('[v0] Image uploaded successfully:', result)
+    console.log('[v0] Image uploaded successfully - Full response:', JSON.stringify(result, null, 2))
+    console.log('[v0] imageUrl value:', result.imageUrl)
+    console.log('[v0] Returning to client:', {
+      success: true,
+      imageUrl: result.imageUrl,
+      fileName: result.fileName,
+    })
 
     return NextResponse.json({
       success: true,

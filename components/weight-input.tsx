@@ -140,16 +140,21 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
 
           const result = await response.json()
           
+          console.log('[v0] Full API response from upload:', JSON.stringify(result, null, 2))
+          console.log('[v0] Has imageUrl?', !!result.imageUrl)
+          
           if (result.success && result.imageUrl) {
             console.log('[v0] Image uploaded to Google Drive:', result.imageUrl)
             onImageChange(result.imageUrl) // เก็บ Google Drive URL แทน local URL
           } else {
             const errorMsg = result.details || result.error || 'ไม่สามารถอัพโหลดรูปได้'
-            console.error('[v0] Upload response error:', {
+            console.error('[v0] Upload response error - no imageUrl:', {
               success: result.success,
               error: result.error,
               details: result.details,
-              status: response.status
+              hasImageUrl: !!result.imageUrl,
+              status: response.status,
+              fullResponse: result
             })
             setError(errorMsg)
             // fallback ไปใช้ local URL ถ้าอัพโหลดล้มเหลว

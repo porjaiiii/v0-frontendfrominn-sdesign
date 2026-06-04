@@ -5,7 +5,6 @@ import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { WasteCart } from '@/components/waste-cart'
 import { Award, TreePine, ChevronLeft, ChevronRight, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { useState, useEffect } from 'react'
 import { useLiffContext } from '@/lib/liff-context'
 import { Button } from '@/components/ui/button'
@@ -372,79 +371,6 @@ export default function ProfileScannerPage() {
           </p>
         </div>
 
-        {/* Pie Chart - Recycle Breakdown */}
-        <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
-          <p className="text-sm font-semibold text-[#154212] mb-3">การทำการสะสมของ Recycle ของคุณ</p>
-          
-          <div className="flex items-center gap-4">
-            <div className="w-32 h-32">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={scannedProfile.recycleData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={25}
-                    outerRadius={50}
-                    dataKey="value"
-                  >
-                    {scannedProfile.recycleData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            
-            {/* Legend */}
-            <div className="flex-1 space-y-1">
-              {scannedProfile.recycleData.map((item) => (
-                <div key={item.name} className="flex items-center gap-2 text-xs">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-[#666666]">{item.name}</span>
-                  <span className="ml-auto font-medium text-[#154212]">{item.value} KG</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Pie Chart - CO2 Breakdown */}
-        <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
-          <p className="text-sm font-semibold text-[#154212] mb-3">การทำการสะสมของ Recycle เป็น Co2 ของคุณ</p>
-          
-          <div className="flex items-center gap-4">
-            <div className="w-32 h-32">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={scannedProfile.co2Data}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={25}
-                    outerRadius={50}
-                    dataKey="value"
-                  >
-                    {scannedProfile.co2Data.map((entry, index) => (
-                      <Cell key={`cell-co2-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            
-            {/* Legend */}
-            <div className="flex-1 space-y-1">
-              {scannedProfile.co2Data.map((item) => (
-                <div key={item.name} className="flex items-center gap-2 text-xs">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-[#666666]">{item.name}</span>
-                  <span className="ml-auto font-medium text-[#154212]">{item.value} kgCO2</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
         {/* Waste Cart Section */}
         <div className="mt-6">

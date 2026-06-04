@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       [timestamp, user_id, waste_type, waste_subtype, weight_kg, image_url || '', carbonReduction, pointsEarned, 'pending', notes || '']
     ]
 
-    const apiKey = process.env.GOOGLE_SHEETS_API_KEY
+    const apiKey = process.env.GCP_API_KEY
     if (!apiKey) {
       return NextResponse.json(
         { error: 'Google API key not configured' },

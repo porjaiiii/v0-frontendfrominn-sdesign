@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('user_id')
 
-    const apiKey = process.env.GOOGLE_SHEETS_API_KEY
+    const apiKey = process.env.GCP_API_KEY
     if (!apiKey) {
       return NextResponse.json(
         { error: 'Google API key not configured' },

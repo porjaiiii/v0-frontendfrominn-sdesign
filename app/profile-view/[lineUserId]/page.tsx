@@ -118,19 +118,12 @@ export default function ProfileViewPage() {
 
             {/* User Info Center */}
             <div className="flex-1">
-              <h1 className="text-base font-bold text-[#154212]">{profile.name}</h1>
-              <p className="text-xs text-[#666666] mb-2">
-                {profile.age && `${profile.age} | `}
-                {profile.gender || 'ไม่ระบุ'}
-              </p>
+             
+          
               
-              {profile.subdistrict && (
-                <p className="text-xs text-[#999999] mb-1">{profile.subdistrict}</p>
-              )}
+            
               
-              {profile.occupation && (
-                <p className="text-xs font-semibold text-[#154212]">{profile.occupation}</p>
-              )}
+             
             </div>
 
             {/* Total Weight Right */}

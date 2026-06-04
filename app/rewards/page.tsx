@@ -143,21 +143,10 @@ export default function RewardsPage() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2">
-                      <Link
-                        href="/cart"
-                        className={cn(
-                          'flex-[7] py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center',
-                          canRedeem
-                            ? 'bg-white border border-[#154212] text-[#154212] hover:bg-[#f5f5f5]'
-                            : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
-                        )}
-                      >
-                        <ShoppingCart size={16} />
-                      </Link>
                       <button
                         disabled={!canRedeem}
                         className={cn(
-                          'flex-[3] py-2 rounded-lg text-sm font-medium transition-colors',
+                          'flex-[7] py-2 rounded-lg text-sm font-medium transition-colors',
                           canRedeem
                             ? 'bg-[#154212] text-white hover:bg-[#0d3308]'
                             : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
@@ -165,6 +154,17 @@ export default function RewardsPage() {
                       >
                         แลกเลย
                       </button>
+                      <Link
+                        href="/cart"
+                        className={cn(
+                          'flex-[3] py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center',
+                          canRedeem
+                            ? 'bg-white border border-[#154212] text-[#154212] hover:bg-[#f5f5f5]'
+                            : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+                        )}
+                      >
+                        <ShoppingCart size={16} />
+                      </Link>
                     </div>
                   </div>
                 </div>

@@ -74,8 +74,16 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const error = await response.text()
-      console.error('[v0] Google Sheets API error:', error)
-      throw new Error(`Google Sheets API error: ${response.statusText}`)
+      console.error('[v0] Google Sheets API error response:', error)
+      return NextResponse.json(
+        { 
+          error: 'Google Sheets API failed',
+          details: error,
+          status: response.status,
+          statusText: response.statusText
+        },
+        { status: response.status }
+      )
     }
 
     console.log('[v0] Data submitted successfully')

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzM6QqXb6UrEGaePQ1AL6WczNIO3f1u0XVKakDYu0Y/dev'
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwl2YXGleJ8Yy3EOZN5QCZ3G_je8G86fPuMdoTmRbKyLXBidMYULZOvsV15wchusqPP/exec'
 const CARBON_FACTORS = {
   plastic: 2.5,
   paper: 1.8,
@@ -68,14 +68,18 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const error = await response.text()
-      console.error('[v0] Google Apps Script error:', error)
+      console.error('[v0] Google Apps Script error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: error.substring(0, 500)
+      })
       return NextResponse.json(
         { 
           error: 'Failed to save to Google Sheet',
-          details: error,
+          details: error.substring(0, 200),
           status: response.status,
         },
-        { status: response.status }
+        { status: 500 }
       )
     }
 

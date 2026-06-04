@@ -213,7 +213,7 @@ export default function RewardsPage() {
         </div>
       </main>
 
-      <BottomNav />
+      {/* <BottomNav /> */}
     </div>
   )
 }

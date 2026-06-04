@@ -464,7 +464,7 @@ export default function ProfilePage() {
         </div>
       </main>
 
-      <BottomNav />
+      {/* <BottomNav /> */}
     </div>
   )
 }

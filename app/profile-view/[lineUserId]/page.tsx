@@ -220,7 +220,7 @@ export default function ProfileViewPage() {
         )}
       </main>
 
-      <BottomNav />
+      {/* <BottomNav /> */}
     </div>
   )
 }

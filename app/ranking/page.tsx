@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { cn } from '@/lib/utils'
 import { Leaf, MapPin } from 'lucide-react'
@@ -19,6 +18,8 @@ type LeaderboardEntry = {
   avatar: string
 }
 
+const MOCK_CURRENT_USER_ID = 'mock-current-user'
+
 // Sub-districts of บางกะเจ้า (คลองสาน, พระประแดง)
 const BANGKACHAO_SUBDISTRICTS = [
   'บางกะเจ้า',
@@ -27,6 +28,7 @@ const BANGKACHAO_SUBDISTRICTS = [
   'บางกระสอบ',
   'บางยอ',
   'ทรงคะนอง',
+  'ทรงคนอง', // alternate spelling found in profile sheet data
 ]
 
 function isBangkachaoSubdistrict(location: string): boolean {
@@ -38,10 +40,11 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
   { rank: 1, name: 'สมชาย ใจดี', carbon: 256.5, location: 'ตำบลบางกะเจ้า', avatar: '/placeholder.svg?height=40&width=40&query=thai man avatar' },
   { rank: 2, name: 'สมหญิง รักษ์โลก', carbon: 234.3, location: 'ตำบลบางน้ำผึ้ง', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar' },
   { rank: 3, name: 'มนัส เกื้อกูล', carbon: 112.4, location: 'ตำบลบางกอบัว', avatar: '/placeholder.svg?height=40&width=40&query=thai person avatar' },
-  { rank: 4, name: 'กมลา ตาวุดีมี', carbon: 89, location: '', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 2' },
-  { rank: 5, name: 'สมหญิง รักษ์โลก', carbon: 78, location: 'ตำบลบางกระสอบ', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 3' },
-  { rank: 6, name: 'วรรณา เจริญสุข', carbon: 76, location: 'ตำบลบางยอ', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 4' },
-  { rank: 7, name: 'ประยุทธ รุ่งเรือง', carbon: 74, location: 'ตำบลทรงคะนอง', avatar: '/placeholder.svg?height=40&width=40&query=thai man avatar 2' },
+  { rank: 4, lineUserId: MOCK_CURRENT_USER_ID, name: 'สมชาย มั่นคงผล', carbon: 100, location: '', avatar: '/placeholder-user.jpg' },
+  { rank: 5, name: 'กมลา ตาวุดีมี', carbon: 89, location: '', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 2' },
+  { rank: 6, name: 'สมหญิง รักษ์โลก', carbon: 78, location: 'ตำบลบางกระสอบ', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 3' },
+  { rank: 7, name: 'วรรณา เจริญสุข', carbon: 76, location: 'ตำบลบางยอ', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 4' },
+  { rank: 8, name: 'ประยุทธ รุ่งเรือง', carbon: 74, location: 'ตำบลทรงคะนอง', avatar: '/placeholder.svg?height=40&width=40&query=thai man avatar 2' },
 ]
 
 const tabs = [
@@ -59,26 +62,16 @@ export default function RankingPage() {
 
   const { profile: liffProfile } = useLiffContext()
 
-  const currentUserEntry = dataMode === 'real' && liffProfile
-    ? realLeaderboard.find(u => u.lineUserId === liffProfile.userId)
-    : undefined
-
-  const currentUser = dataMode === 'mock'
-    ? { rank: 5, name: 'สมชาย มั่นคงผล', carbon: 100, avatar: '/placeholder-user.jpg', location: '' }
-    : {
-        rank: currentUserEntry?.rank ?? 0,
-        name: liffProfile?.displayName ?? 'ผู้ใช้',
-        carbon: currentUserEntry?.carbon ?? 0,
-        avatar: liffProfile?.pictureUrl ?? '/placeholder-user.jpg',
-        location: currentUserEntry?.location ?? '',
-      }
-
   useEffect(() => {
     if (dataMode !== 'real') return
     const controller = new AbortController()
     setIsLoading(true)
     setFetchError(null)
-    fetch('/api/ranking', { signal: controller.signal })
+    const params = new URLSearchParams()
+    if (liffProfile?.userId) params.set('userId', liffProfile.userId)
+    if (liffProfile?.displayName) params.set('name', liffProfile.displayName)
+    const url = `/api/ranking${params.toString() ? `?${params}` : ''}`
+    fetch(url, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         if (data.error) {
@@ -102,14 +95,45 @@ export default function RankingPage() {
       })
       .finally(() => setIsLoading(false))
     return () => controller.abort()
-  }, [dataMode])
+  }, [dataMode, liffProfile?.userId])
 
-  const leaderboard = dataMode === 'mock' ? MOCK_LEADERBOARD : realLeaderboard
+  const baseLeaderboard = dataMode === 'mock' ? MOCK_LEADERBOARD : realLeaderboard
 
-  // For district tab, filter to entries from the 6 บางกะเจ้า sub-districts
+  // Patch the logged-in user's name/avatar from LIFF (API falls back to ผู้ใช้ X when profile sheet lacks the entry)
+  const leaderboard = dataMode === 'real' && liffProfile
+    ? baseLeaderboard.map(e =>
+        e.lineUserId === liffProfile.userId
+          ? { ...e, name: liffProfile.displayName, avatar: liffProfile.pictureUrl ?? e.avatar }
+          : e
+      )
+    : baseLeaderboard
+
+  const currentUserEntry = dataMode === 'real' && liffProfile
+    ? baseLeaderboard.find(u => u.lineUserId === liffProfile.userId)
+    : undefined
+
+  const currentUser = dataMode === 'mock'
+    ? { rank: 8, name: 'สมชาย มั่นคงผล', carbon: 3, avatar: '/placeholder-user.jpg', location: '' }
+    : {
+        rank: currentUserEntry?.rank ?? 0,
+        name: liffProfile?.displayName ?? 'ผู้ใช้',
+        carbon: currentUserEntry?.carbon ?? 0,
+        avatar: liffProfile?.pictureUrl ?? '/placeholder-user.jpg',
+        location: currentUserEntry?.location ?? '',
+      }
+
+  // For district tab, filter to entries from the 6 บางกะเจ้า sub-districts and re-rank from 1
   const displayLeaderboard = activeTab === 'district'
-    ? leaderboard.filter(u => u.location && isBangkachaoSubdistrict(u.location))
+    ? leaderboard
+        .filter(u => u.location && isBangkachaoSubdistrict(u.location))
+        .map((u, i) => ({ ...u, rank: i + 1 }))
     : leaderboard
+
+  const isCurrentUserVisible = displayLeaderboard.some(e =>
+    dataMode === 'mock'
+      ? e.lineUserId === MOCK_CURRENT_USER_ID
+      : liffProfile != null && e.lineUserId === liffProfile.userId
+  )
 
   const getRankBadge = (rank: number) => {
     if (rank === 1) return { bg: 'bg-[#ffc818]', icon: 'text-[#ffc818]' }
@@ -276,7 +300,7 @@ export default function RankingPage() {
                         <Image src={u.avatar} alt={u.name} fill className="object-cover" />
                       </div>
                       <div className="text-sm font-medium text-[#154212] mb-2 text-center">
-                        {obfuscateName(u.name, u.rank === currentUser.rank || u.name === currentUser.name)}
+                        {obfuscateName(u.name, u.rank === currentUser.rank || u.name === currentUser.name || u.lineUserId === liffProfile?.userId)}
                       </div>
                       <div
                         className="w-24 rounded-t-lg flex flex-col items-center justify-start gap-1 shadow-inner"
@@ -302,31 +326,31 @@ export default function RankingPage() {
                 })}
               </div>
 
-              {/* Tabs */}
-              <div className="w-full max-w-sm mx-auto mb-2">
-                <div className="bg-[#e7f6ea] p-1 rounded-2xl shadow-sm">
-                  <div className="flex">
-                    {tabs.map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={cn(
-                          'flex-1 text-center py-2 px-3 rounded-xl text-sm font-medium transition-all',
-                          activeTab === tab.id
-                            ? 'bg-[#154212] text-white shadow-md'
-                            : 'text-[#154212]/90 bg-transparent hover:bg-white/60'
-                        )}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
 
               {/* Leaderboard List */}
               <div className="rounded-3xl overflow-hidden">
                 <div className="bg-gradient-to-b from-[#2a6e25] via-[#f7fbf7] to-white p-2">
+                  {/* Tabs */}
+                  <div className="w-full max-w-sm mx-auto mb-2">
+                    <div className="bg-[#e7f6ea] p-1 rounded-2xl shadow-sm">
+                      <div className="flex">
+                        {tabs.map((tab) => (
+                          <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={cn(
+                              'flex-1 text-center py-2 px-3 rounded-xl text-sm font-medium transition-all',
+                              activeTab === tab.id
+                                ? 'bg-[#154212] text-white shadow-md'
+                                : 'text-[#154212]/90 bg-transparent hover:bg-white/60'
+                            )}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                   {listEntries.length === 0 ? (
                     <p className="text-center text-sm text-[#999] py-4">ไม่มีข้อมูล</p>
                   ) : (
@@ -355,7 +379,7 @@ export default function RankingPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-[#444444] truncate">
-                                {obfuscateName(displayUser.name, displayUser.rank === currentUser.rank || displayUser.name === currentUser.name)}
+                                {obfuscateName(displayUser.name, displayUser.rank === currentUser.rank || displayUser.name === currentUser.name || user.lineUserId === liffProfile?.userId)}
                               </p>
                               {displayUser.location && (
                                 <p className="text-xs text-[#666666] flex items-center gap-1">
@@ -381,7 +405,21 @@ export default function RankingPage() {
         </div>
       </main>
 
-      <BottomNav />
+      {/* Sticky placement card — shown when current user is not visible in the leaderboard */}
+      {currentUser.rank > 0 && !isCurrentUserVisible && (
+        <div className="fixed bottom-20 left-0 right-0 max-w-md mx-auto px-4 z-50">
+          <div className="bg-[#d4edda] border border-[#a8d5b5] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg">
+            <span className="text-sm font-bold text-[#154212] w-8 text-center">#{currentUser.rank}</span>
+            <div className="w-10 h-10 rounded-full overflow-hidden relative flex-shrink-0">
+              <Image src={currentUser.avatar} alt="คุณ" fill className="object-cover" />
+            </div>
+            <p className="text-sm font-semibold text-[#154212] flex-1">คุณ</p>
+            <p className="text-sm font-semibold text-[#154212]">
+              {currentUser.carbon} <span className="text-xs text-[#666666]">kgCO2</span>
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

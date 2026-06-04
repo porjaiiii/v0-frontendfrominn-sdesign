@@ -180,7 +180,7 @@ export default function FavoritesPage() {
         )}
       </main>
 
-      <BottomNav />
+      {/* <BottomNav /> */}
     </div>
   )
 }

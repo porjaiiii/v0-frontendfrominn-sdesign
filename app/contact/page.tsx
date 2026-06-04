@@ -47,10 +47,10 @@ export default function ContactPage() {
           <div className="relative z-10">
             <div className="w-20 h-20 mx-auto mb-4 relative">
               <Image
-                src="/placeholder.svg?height=80&width=80&query=C-vitt green leaf logo brand"
-                alt="C-vitt Logo"
+                src="/images/icon/logo.png"
+                alt="Logo"
                 fill
-                className="object-contain"
+                className="object-contain rounded-lg"
               />
             </div>
             <h1 className="text-xl font-bold text-[#154212] text-center mb-1">
@@ -118,7 +118,7 @@ export default function ContactPage() {
         </div>
       </main>
 
-      <BottomNav />
+      {/* <BottomNav /> */}
     </div>
     // test2
   )

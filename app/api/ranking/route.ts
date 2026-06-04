@@ -42,7 +42,11 @@ export type RankingResponse =
   | { ranking: RankingEntry[]; isSample: boolean }
   | { error: string }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const callerUserId = searchParams.get('userId')?.trim() || ''
+  const callerName   = searchParams.get('name')?.trim() || ''
+
   const sheetId = process.env.GOOGLE_SHEETS_ID
   const apiKey = process.env.GOOGLE_SHEETS_API_KEY
 
@@ -111,15 +115,19 @@ export async function GET() {
         const profileRows = parseCSV(await profileRes.text())
         if (profileRows.length > 1) {
           const ph = profileRows[0]
-          const pLineIdx   = findColumnIndex(ph, ['line user id', 'lineuserid', 'line_user_id'])
-          const pNameIdx   = findColumnIndex(ph, ['ชื่อ', 'name'])
-          const pAvatarIdx = findColumnIndex(ph, ['ภาพ', 'picture', 'avatar'])
-          const pLocIdx    = findColumnIndex(ph, ['ตำบล', 'subdistrict'])
+          const pLineIdx      = findColumnIndex(ph, ['line user id', 'lineuserid', 'line_user_id'])
+          // Primary: Thai full-name column; fallback: LINE display name / nickname columns
+          const pNameIdx      = findColumnIndex(ph, ['ชื่อ-นามสกุล', 'fullname', 'full name'])
+          const pAltNameIdx   = findColumnIndex(ph, ['ชื่อ', 'name', 'ชื่อไลน์', 'ชื่อที่แสดง', 'displayname', 'display name', 'ชื่อเล่น'])
+          const pAvatarIdx    = findColumnIndex(ph, ['ภาพ', 'picture', 'avatar'])
+          const pLocIdx       = findColumnIndex(ph, ['ตำบล', 'subdistrict'])
           profileRows.slice(1).forEach(row => {
             const lid = pLineIdx >= 0 ? row[pLineIdx]?.trim() : ''
             if (lid) {
+              const primaryName = pNameIdx    >= 0 ? row[pNameIdx]?.trim()    || '' : ''
+              const altName     = pAltNameIdx >= 0 ? row[pAltNameIdx]?.trim() || '' : ''
               nameMap[lid] = {
-                name:     pNameIdx   >= 0 ? row[pNameIdx]?.trim()   || '' : '',
+                name:     primaryName || altName,
                 avatar:   pAvatarIdx >= 0 && row[pAvatarIdx]?.trim()
                             ? row[pAvatarIdx].trim()
                             : '/placeholder.svg?height=40&width=40',
@@ -135,15 +143,19 @@ export async function GET() {
 
     const ranking: RankingEntry[] = entries
       .sort((a, b) => b.carbon - a.carbon)
-      .map((entry, i) => ({
-        rank:       i + 1,
-        lineUserId: entry.lineUserId,
-        name:       nameMap[entry.lineUserId]?.name   || `ผู้ใช้ ${i + 1}`,
-        carbon:     entry.carbon,
-        points:     entry.points,
-        avatar:     nameMap[entry.lineUserId]?.avatar || '/placeholder.svg?height=40&width=40',
-        location:   nameMap[entry.lineUserId]?.location || '',
-      }))
+      .map((entry, i) => {
+        const info = nameMap[entry.lineUserId]
+        const isCallerEntry = callerUserId && entry.lineUserId === callerUserId
+        return {
+          rank:       i + 1,
+          lineUserId: entry.lineUserId,
+          name:       isCallerEntry && callerName ? callerName : info?.name || `ผู้ใช้ ${i + 1}`,
+          carbon:     entry.carbon,
+          points:     entry.points,
+          avatar:     info?.avatar || '/placeholder.svg?height=40&width=40',
+          location:   info?.location || '',
+        }
+      })
 
     return NextResponse.json({ ranking, isSample: false })
   } catch (error) {

@@ -59,19 +59,19 @@ export default function HowToUsePage() {
           {/* Content */}
           <div className="text-center relative z-0">
             {/* Logo/Icon */}
-            <div className="w-24 h-24 mx-auto mb-4 bg-white/30 rounded-2xl flex items-center justify-center">
+            {/* <div className="w-24 h-24 mx-auto mb-4 bg-white/30 rounded-2xl flex items-center justify-center">
               <div className="w-12 h-12 bg-white rounded-lg" />
-            </div>
+            </div> */}
 
             {/* Title */}
             <h2 className="text-2xl font-bold text-[#154212] mb-1">
-              ยินดีต้อนรับสู่ C-vitt
+              วิดีโอแนะนำการใช้งาน
             </h2>
 
             {/* Description */}
-            <p className="text-sm text-[#154212]/80">
+            {/* <p className="text-sm text-[#154212]/80">
               แอปพลิเคชันรีไซเคิลขยะ ช่วยลดคาร์บอน รักษ์โลก
-            </p>
+            </p> */}
           </div>
         </div>
 
@@ -105,7 +105,7 @@ export default function HowToUsePage() {
         </div>
       </main>
 
-      <BottomNav />
+      {/* <BottomNav /> */}
     </div>
   )
 }

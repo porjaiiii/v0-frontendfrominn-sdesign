@@ -168,37 +168,6 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
         isConfirming={isConfirming}
       />
 
-      {/* Stats Summary */}
-      {stats && (
-        <div className="bg-white rounded-2xl overflow-hidden border border-[#e5e5e5]">
-          <div className="grid grid-cols-2">
-            {/* CO2 Card */}
-            <div className="p-5 border-r border-[#e5e5e5] flex flex-col items-center justify-center text-center">
-              <div className="flex justify-center mb-2">
-                <Leaf size={20} className="text-[#154212]" />
-              </div>
-              <p className="text-xs text-[#666666] font-medium mb-2">คำนวณแอลจี</p>
-              <p className="text-2xl font-bold text-[#154212]">
-                {stats.total_carbon?.toFixed(1) || 0}
-              </p>
-              <p className="text-xs text-[#666666] mt-1">kg CO2</p>
-            </div>
-
-            {/* Weight Card */}
-            <div className="p-5 flex flex-col items-center justify-center text-center">
-              <div className="flex justify-center mb-2">
-                <Trash2 size={20} className="text-[#154212]" />
-              </div>
-              <p className="text-xs text-[#666666] font-medium mb-2">น้ำหนักรวม</p>
-              <p className="text-2xl font-bold text-[#154212]">
-                {stats.total_weight?.toFixed(1) || 0}
-              </p>
-              <p className="text-xs text-[#666666] mt-1">kg</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Records List */}
       <div className="bg-white rounded-2xl overflow-hidden border border-[#e5e5e5]">
         <div className="p-4 border-b border-[#e5e5e5]">
@@ -212,89 +181,136 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
             <p className="text-[#999999]">ยังไม่มีการบันทึกขยะ</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#e5e5e5]">
-            {records.map((record, index) => (
-              <div key={index} className="p-4">
-                {record.image_url && (
-                  <div className="mb-3 rounded-lg overflow-hidden h-32 bg-gray-100 flex items-center justify-center border-2 border-[#154212]">
-                    <Image
-                      src={record.image_url}
-                      alt={`${record.waste_type} - ${record.waste_subtype}`}
-                      width={300}
-                      height={200}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const img = e.target as HTMLImageElement
-                        img.style.display = 'none'
-                        const parent = img.parentElement
-                        if (parent) {
-                          const placeholder = document.createElement('div')
-                          placeholder.className = 'flex flex-col items-center justify-center gap-2'
-                          placeholder.innerHTML = '<svg class="w-12 h-12 text-[#154212]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
-                          parent.appendChild(placeholder)
-                        }
-                      }}
-                    />
-                  </div>
-                )}
+          <>
+            <div className="divide-y divide-[#e5e5e5]">
+              {records.map((record, index) => (
+                <div key={index} className="p-4">
+                  {record.image_url && (
+                    <div className="mb-3 rounded-lg overflow-hidden h-32 bg-gray-100 flex items-center justify-center border-2 border-[#154212]">
+                      <Image
+                        src={record.image_url}
+                        alt={`${record.waste_type} - ${record.waste_subtype}`}
+                        width={300}
+                        height={200}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement
+                          img.style.display = 'none'
+                          const parent = img.parentElement
+                          if (parent) {
+                            const placeholder = document.createElement('div')
+                            placeholder.className = 'flex flex-col items-center justify-center gap-2'
+                            placeholder.innerHTML = '<svg class="w-12 h-12 text-[#154212]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
+                            parent.appendChild(placeholder)
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
 
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <span
-                      className={cn(
-                        'inline-block px-3 py-1 rounded-full text-xs font-semibold',
-                        WASTE_TYPE_COLORS[record.waste_type] ||
-                          'bg-[#f0f0f0] text-[#666666]'
-                      )}
-                    >
-                      {record.waste_type}
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <span
+                        className={cn(
+                          'inline-block px-3 py-1 rounded-full text-xs font-semibold',
+                          WASTE_TYPE_COLORS[record.waste_type] ||
+                            'bg-[#f0f0f0] text-[#666666]'
+                        )}
+                      >
+                        {record.waste_type}
+                      </span>
+                    </div>
+                    <span className="text-sm font-bold text-[#154212]">
+                      +{record.points_earned} คะแนน
                     </span>
                   </div>
-                  <span className="text-sm font-bold text-[#154212]">
-                    +{record.points_earned} คะแนน
-                  </span>
-                </div>
 
-                <div className="grid grid-cols-3 gap-2 text-xs text-[#666666] mb-4">
-                  <div>
-                    <p className="text-[#999999]">น้ำหนัก</p>
-                    <p className="font-semibold text-[#154212]">
-                      {record.weight_kg} kg
-                    </p>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-[#666666] mb-4">
+                    <div>
+                      <p className="text-[#999999]">น้ำหนัก</p>
+                      <p className="font-semibold text-[#154212]">
+                        {record.weight_kg} kg
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[#999999]">คาร์บอน</p>
+                      <p className="font-semibold text-[#154212]">
+                        {(record.carbon_reduction ?? 0).toFixed(1)} kg
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[#999999]">วันเวลา</p>
+                      <p className="font-semibold text-[#154212] text-xs">
+                        {new Date(record.timestamp).toLocaleDateString('th-TH', {
+                          month: 'short',
+                          day: 'numeric',
+                        })} {new Date(record.timestamp).toLocaleTimeString('th-TH', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[#999999]">คาร์บอน</p>
-                    <p className="font-semibold text-[#154212]">
-                      {(record.carbon_reduction ?? 0).toFixed(1)} kg
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[#999999]">วันเวลา</p>
-                    <p className="font-semibold text-[#154212] text-xs">
-                      {new Date(record.timestamp).toLocaleDateString('th-TH', {
-                        month: 'short',
-                        day: 'numeric',
-                      })} {new Date(record.timestamp).toLocaleTimeString('th-TH', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </div>
-                </div>
 
-                {/* Action Button */}
-                <button
-                  onClick={() => handleOpenDetails(record)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-white text-[#154212] font-semibold rounded-lg hover:bg-[#f0f9e8] transition-colors border-2 border-[#154212]"
-                >
-                  <span>ดูรายละเอียด</span>
-                  <ChevronRight size={20} />
-                </button>
+                  {/* Action Button */}
+                  <button
+                    onClick={() => handleOpenDetails(record)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-white text-[#154212] font-semibold rounded-lg hover:bg-[#f0f9e8] transition-colors border-2 border-[#154212]"
+                  >
+                    <span>ดูรายละเอียด</span>
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Distribution Progress Bar */}
+            {totalWeight > 0 && (
+              <div className="p-4 border-t border-[#e5e5e5]">
+                <p className="text-xs font-semibold text-[#666666] mb-3">สัดส่วนของแต่ละรายการ</p>
+                <div className="flex h-6 rounded-lg overflow-hidden border border-[#e5e5e5]">
+                  {records.map((record, index) => {
+                    const percentage = (record.weight_kg / totalWeight) * 100
+                    const colors = ['bg-[#6fc061]', 'bg-[#4a9c3a]', 'bg-[#2d7e1a]', 'bg-[#1a5c0f]', 'bg-[#0d3a08]']
+                    const color = colors[index % colors.length]
+                    return (
+                      <div
+                        key={index}
+                        className={`${color} transition-all`}
+                        style={{ width: `${percentage}%` }}
+                        title={`${record.waste_type}: ${record.weight_kg} kg (${percentage.toFixed(1)}%)`}
+                      />
+                    )
+                  })}
+                </div>
+                <div className="flex justify-between mt-2 text-xs text-[#666666]">
+                  {records.map((record, index) => (
+                    <span key={index} className="font-semibold">
+                      {index + 1}
+                    </span>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
+
+      {/* Stats Card - Total Weight */}
+      {records.length > 0 && (
+        <div className="bg-white rounded-2xl overflow-hidden border-2 border-[#154212] p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-[#666666] font-medium mb-1">น้ำหนักรวมทั้งสิ้น</p>
+              <p className="text-3xl font-bold text-[#154212]">{totalWeight.toFixed(2)}</p>
+              <p className="text-xs text-[#666666] mt-1">kg</p>
+            </div>
+            <div className="flex items-center justify-center">
+              <Trash2 size={32} className="text-[#154212]" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

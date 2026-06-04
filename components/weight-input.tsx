@@ -144,8 +144,13 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
             console.log('[v0] Image uploaded to Google Drive:', result.imageUrl)
             onImageChange(result.imageUrl) // เก็บ Google Drive URL แทน local URL
           } else {
-            const errorMsg = result.error || 'ไม่สามารถอัพโหลดรูปได้'
-            console.error('[v0] Upload error:', errorMsg)
+            const errorMsg = result.details || result.error || 'ไม่สามารถอัพโหลดรูปได้'
+            console.error('[v0] Upload response error:', {
+              success: result.success,
+              error: result.error,
+              details: result.details,
+              status: response.status
+            })
             setError(errorMsg)
             // fallback ไปใช้ local URL ถ้าอัพโหลดล้มเหลว
             const localUrl = URL.createObjectURL(file)
@@ -153,7 +158,11 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
           }
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด'
-          console.error('[v0] Upload request failed:', err)
+          console.error('[v0] Upload request failed:', {
+            error: errorMsg,
+            type: err instanceof Error ? err.constructor.name : typeof err,
+            fullError: err
+          })
           setError(errorMsg)
           // fallback ไปใช้ local URL
           const localUrl = URL.createObjectURL(file)

@@ -48,7 +48,30 @@ export function WasteCart({ userId }: WasteCartProps) {
 
         const data = await response.json()
         console.log('[v0] Waste records data received:', data)
-        setRecords(data.records || [])
+        
+        // Filter records สำหรับ user นี้เท่านั้น
+        const filteredRecords = (data.records || []).filter(
+          (record: any) => record[1] === userId  // Index 1 คือ user_id จากชีท
+        )
+        
+        console.log('[v0] Filtered records count:', filteredRecords.length)
+        console.log('[v0] Original records count:', data.records?.length)
+        
+        // Map records จาก array format ใน Google Sheet
+        const mappedRecords = filteredRecords.map((record: any) => ({
+          timestamp: record[0],
+          user_id: record[1],
+          waste_type: record[2],
+          waste_subtype: record[3],
+          weight_kg: parseFloat(record[4]) || 0,
+          image_url: record[5],
+          carbon_reduction: parseFloat(record[6]) || 0,
+          points_earned: parseFloat(record[7]) || 0,
+          status: record[8],
+          notes: record[9],
+        }))
+        
+        setRecords(mappedRecords)
         setStats(data.stats || null)
       } catch (err) {
         console.error('[v0] Error fetching waste records:', err)

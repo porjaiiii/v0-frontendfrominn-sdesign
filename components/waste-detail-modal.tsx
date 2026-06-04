@@ -129,7 +129,7 @@ export function WasteDetailModal({
             <div>
               <p className="text-xs text-[#666666] font-medium mb-2">สถานะ</p>
               <div className="w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold capitalize">
-                {record.status === 'pending' ? 'จำนวนคืนเดือน' : record.status}
+                {record.status === 'pending' ? 'ยื่นคำร้อง กำลังรอการเก็บ' : record.status}
               </div>
             </div>
           </div>

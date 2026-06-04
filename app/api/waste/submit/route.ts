@@ -1,12 +1,27 @@
-import { submitWasteRecord } from '@/lib/google-sheets'
 import { NextRequest, NextResponse } from 'next/server'
+
+const SHEET_ID = '1SK_Nat8jb3iQWt-Gs_YUimycxMTcubV5ViD_QtqkO78'
+const SHEET_NAME = 'submissions'
+
+const CARBON_FACTORS = {
+  plastic: 2.5,
+  paper: 1.8,
+  glass: 0.8,
+  aluminum: 4.0,
+  oil: 3.0,
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-
-    // ตรวจสอบฟิลด์ที่จำเป็น
-    const { user_id, waste_type, waste_subtype, weight_kg, carbon_reduction, points_earned, image_url, notes } = body
+    const {
+      user_id,
+      waste_type,
+      waste_subtype,
+      weight_kg,
+      image_url,
+      notes,
+    } = body
 
     if (!user_id || !waste_type || !waste_subtype || !weight_kg) {
       return NextResponse.json(
@@ -15,27 +30,58 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // บันทึกข้อมูลไปยัง Google Sheet
-    const result = await submitWasteRecord({
-      timestamp: new Date().toISOString(),
-      user_id,
-      waste_type,
-      waste_subtype,
-      weight_kg: parseFloat(weight_kg),
-      image_url,
-      carbon_reduction: parseFloat(carbon_reduction),
-      points_earned: parseFloat(points_earned),
-      status: 'verified',
-      notes,
-    })
+    // คำนวณ carbon reduction
+    const carbonFactor = CARBON_FACTORS[waste_type as keyof typeof CARBON_FACTORS] || 2.0
+    const carbonReduction = weight_kg * carbonFactor
+    const pointsEarned = Math.round(carbonReduction * 10)
+
+    // บันทึก timestamp
+    const timestamp = new Date().toISOString()
+
+    // ส่งข้อมูลไปยัง Google Sheet ผ่าน Append API
+    const range = `${SHEET_NAME}!A:J`
+    const values = [
+      [timestamp, user_id, waste_type, waste_subtype, weight_kg, image_url || '', carbonReduction, pointsEarned, 'pending', notes || '']
+    ]
+
+    const apiKey = process.env.GOOGLE_SHEETS_API_KEY
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'Google API key not configured' },
+        { status: 500 }
+      )
+    }
+
+    const response = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}:append?valueInputOption=USER_ENTERED&key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values }),
+      }
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('[v0] Google Sheets API error:', error)
+      throw new Error(`Google Sheets API error: ${response.statusText}`)
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Waste record submitted successfully',
-      data: result,
+      data: {
+        timestamp,
+        user_id,
+        waste_type,
+        weight_kg,
+        carbon_reduction: carbonReduction,
+        points_earned: pointsEarned,
+      },
     })
   } catch (error) {
-    console.error('[v0] API error:', error)
+    console.error('[v0] Error submitting waste record:', error)
     return NextResponse.json(
       { error: 'Failed to submit waste record' },
       { status: 500 }

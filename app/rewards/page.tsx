@@ -69,7 +69,7 @@ export default function RewardsPage() {
             <div className="relative">
               <Link
                 href="/cart"
-                className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
+                className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors flex items-center justify-center"
                 title="ดูตะกร้า"
               >
                 <ShoppingCart size={20} />
@@ -78,7 +78,7 @@ export default function RewardsPage() {
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
+                  className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
                 >
                   {cartCount}
                 </motion.div>
@@ -88,7 +88,7 @@ export default function RewardsPage() {
             {/* Favorites Button */}
             <Link 
               href="/favorites"
-              className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
+              className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors flex items-center justify-center"
               title="รายการที่ถูกใจ"
             >
               <Heart size={20} />

@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       body: JSON.stringify({
         action: 'getRecords',
         user_id: userId,
+        type: 'query',
       }),
     })
 

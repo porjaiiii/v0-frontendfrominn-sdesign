@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
 
     // ส่งข้อมูลไปยัง Google Apps Script Webhook
     const payload = {
+      action: 'submitWaste',
+      type: 'insert',
       timestamp,
       user_id,
       waste_type,

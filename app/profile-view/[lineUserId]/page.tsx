@@ -5,8 +5,8 @@ import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
+import { WasteCart } from '@/components/waste-cart'
 import { Award, TreePine, ChevronLeft, AlertCircle } from 'lucide-react'
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { Button } from '@/components/ui/button'
 
 export default function ProfileViewPage() {
@@ -155,69 +155,10 @@ export default function ProfileViewPage() {
           </div>
         )}
 
-        {/* Recycling Breakdown Chart */}
-        {profile.recycleData && profile.recycleData.length > 0 && (
-          <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 shadow-sm">
-            <p className="text-sm font-semibold text-[#154212] mb-3 text-center">การรีไซเคิลตามประเภท</p>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={profile.recycleData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {profile.recycleData.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              {profile.recycleData.map((item: any) => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                  <span className="text-xs text-[#666666]">{item.name}: {item.value}kg</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* CO2 Reduction Breakdown Chart */}
-        {profile.co2Data && profile.co2Data.length > 0 && (
-          <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 shadow-sm">
-            <p className="text-sm font-semibold text-[#154212] mb-3 text-center">ลดก๊าซคาร์บอนตามประเภท</p>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={profile.co2Data}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {profile.co2Data.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              {profile.co2Data.map((item: any) => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                  <span className="text-xs text-[#666666]">{item.name}: {item.value}kg</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Waste Cart Section */}
+        <div>
+          <WasteCart userId={profile.lineUserId || lineUserId} />
+        </div>
       </main>
 
       {/* <BottomNav /> */}

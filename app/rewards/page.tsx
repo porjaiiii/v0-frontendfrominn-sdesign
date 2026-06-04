@@ -1,14 +1,27 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { Heart, ShoppingCart } from 'lucide-react'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { REWARDS } from '@/lib/waste-data'
 import { cn } from '@/lib/utils'
-import Link from 'next/link'
 
 export default function RewardsPage() {
   const userPoints = 67 // Based on Figma design
+  const [favorites, setFavorites] = useState<Set<number>>(new Set())
+
+  const toggleFavorite = (id: number) => {
+    const newFavorites = new Set(favorites)
+    if (newFavorites.has(id)) {
+      newFavorites.delete(id)
+    } else {
+      newFavorites.add(id)
+    }
+    setFavorites(newFavorites)
+  }
 
   return (
     <div className="min-h-screen bg-white pb-24">
@@ -17,37 +30,57 @@ export default function RewardsPage() {
       <main className="max-w-md mx-auto px-4 py-4">
         {/* Points Display Card */}
         <div className="bg-gradient-to-b from-[#154212] to-[#1a5a16] rounded-2xl p-5 mb-6">
-          <p className="text-sm text-white/80 mb-1">คะแนะสะสมของคุณ</p>
-          <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-4xl font-bold text-white">{userPoints}</span>
+          <p className="text-sm text-white/80 mb-2">คะแนนแสะสมของคุณ</p>
+          <div className="flex items-baseline gap-2 mb-4">
+            <span className="text-5xl font-bold text-white">{userPoints}</span>
             <span className="text-lg text-white/80">คะแนน</span>
           </div>
-          {/* History Button inside card */}
-          <Link 
-            href="/history"
-            className="inline-block px-4 py-1.5 bg-white rounded-lg text-sm font-medium text-[#154212] hover:bg-[#f5f5f5] transition-colors"
-          >
-            ประวัติการสะสมคะแนน
-          </Link>
+          <div className="flex gap-2">
+            <Link 
+              href="/history"
+              className="px-4 py-1.5 bg-white rounded-lg text-sm font-medium text-[#154212] hover:bg-[#f5f5f5] transition-colors"
+            >
+              ประวัติการสะสมแนน
+            </Link>
+            <button className="px-4 py-1.5 bg-white rounded-lg text-sm font-medium text-[#154212] hover:bg-[#f5f5f5] transition-colors">
+              บริจาคคะแนน
+            </button>
+          </div>
         </div>
 
         {/* Rewards Section */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-[#154212]">รางวัลที่สามารถแลกได้</h2>
           
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {REWARDS.map((reward) => {
               const canRedeem = userPoints >= reward.points
+              const isFavorited = favorites.has(reward.id)
+
               return (
                 <div
                   key={reward.id}
                   className={cn(
-                    'bg-white rounded-xl border overflow-hidden transition-all',
+                    'bg-white rounded-xl border overflow-hidden transition-all relative',
                     canRedeem 
-                      ? 'border-[#b6ebad] hover:shadow-md cursor-pointer' 
-                      : 'border-[#e5e5e5] opacity-70'
+                      ? 'border-[#e5e5e5] hover:shadow-md' 
+                      : 'border-[#e5e5e5]'
                   )}
                 >
+                  {/* Favorite Heart */}
+                  <button
+                    onClick={() => toggleFavorite(reward.id)}
+                    className="absolute top-2 right-2 z-10 transition-transform hover:scale-110"
+                  >
+                    <Heart
+                      size={20}
+                      className={cn(
+                        isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-300'
+                      )}
+                    />
+                  </button>
+
+                  {/* Product Image */}
                   <div className="aspect-square relative bg-[#f5f5f5]">
                     <Image
                       src={reward.image}
@@ -56,14 +89,16 @@ export default function RewardsPage() {
                       className="object-cover"
                     />
                   </div>
+
+                  {/* Product Info */}
                   <div className="p-3">
-                    <h3 className="text-sm font-medium text-[#444444] mb-0.5 line-clamp-1">
+                    <h3 className="text-sm font-medium text-[#444444] mb-1">
                       {reward.name}
                     </h3>
                     {reward.description && (
                       <p className="text-xs text-[#666666] mb-2">{reward.description}</p>
                     )}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-3">
                       <span className={cn(
                         'text-sm font-semibold',
                         canRedeem ? 'text-[#157b03]' : 'text-[#999999]'
@@ -71,17 +106,32 @@ export default function RewardsPage() {
                         {reward.points} แต้ม
                       </span>
                     </div>
-                    <button
-                      disabled={!canRedeem}
-                      className={cn(
-                        'w-full mt-2 py-2 rounded-lg text-sm font-medium transition-colors',
-                        canRedeem
-                          ? 'bg-[#154212] text-white hover:bg-[#0d3308]'
-                          : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
-                      )}
-                    >
-                      {canRedeem ? 'แลกเลย' : 'คะแนนไม่พอ'}
-                    </button>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        disabled={!canRedeem}
+                        className={cn(
+                          'flex-1 py-2 rounded-lg text-sm font-medium transition-colors',
+                          canRedeem
+                            ? 'bg-[#154212] text-white hover:bg-[#0d3308]'
+                            : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+                        )}
+                      >
+                        แลกเลย
+                      </button>
+                      <Link
+                        href="/cart"
+                        className={cn(
+                          'flex-1 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center',
+                          canRedeem
+                            ? 'bg-white border border-[#154212] text-[#154212] hover:bg-[#f5f5f5]'
+                            : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+                        )}
+                      >
+                        <ShoppingCart size={16} />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               )

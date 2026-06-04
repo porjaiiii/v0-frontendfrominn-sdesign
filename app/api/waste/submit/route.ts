@@ -68,14 +68,18 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const error = await response.text()
-      console.error('[v0] Google Apps Script error:', error)
+      console.error('[v0] Google Apps Script error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: error.substring(0, 500)
+      })
       return NextResponse.json(
         { 
           error: 'Failed to save to Google Sheet',
-          details: error,
+          details: error.substring(0, 200),
           status: response.status,
         },
-        { status: response.status }
+        { status: 500 }
       )
     }
 

@@ -170,27 +170,31 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
 
       {/* Stats Summary */}
       {stats && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-2xl p-4 border-2 border-[#154212]">
-            <div className="flex items-center gap-2 mb-2">
-              <Leaf size={18} className="text-[#154212]" />
-              <p className="text-xs text-[#154212] font-medium">คาร์บอนลดลง</p>
+        <div className="bg-white rounded-2xl overflow-hidden border border-[#e5e5e5]">
+          <div className="grid grid-cols-2">
+            {/* CO2 Card */}
+            <div className="p-5 border-r border-[#e5e5e5] flex flex-col items-center justify-center text-center">
+              <div className="flex justify-center mb-2">
+                <Leaf size={20} className="text-[#154212]" />
+              </div>
+              <p className="text-xs text-[#666666] font-medium mb-2">คำนวณแอลจี</p>
+              <p className="text-2xl font-bold text-[#154212]">
+                {stats.total_carbon?.toFixed(1) || 0}
+              </p>
+              <p className="text-xs text-[#666666] mt-1">kg CO2</p>
             </div>
-            <p className="text-2xl font-bold text-[#154212]">
-              {stats.total_carbon?.toFixed(1) || 0}
-            </p>
-            <p className="text-xs text-[#154212] mt-1">kg CO2</p>
-          </div>
 
-          <div className="bg-white rounded-2xl p-4 border-2 border-[#154212]">
-            <div className="flex items-center gap-2 mb-2">
-              <Trash2 size={18} className="text-[#154212]" />
-              <p className="text-xs text-[#154212] font-medium">น้ำหนักรวม</p>
+            {/* Weight Card */}
+            <div className="p-5 flex flex-col items-center justify-center text-center">
+              <div className="flex justify-center mb-2">
+                <Trash2 size={20} className="text-[#154212]" />
+              </div>
+              <p className="text-xs text-[#666666] font-medium mb-2">น้ำหนักรวม</p>
+              <p className="text-2xl font-bold text-[#154212]">
+                {stats.total_weight?.toFixed(1) || 0}
+              </p>
+              <p className="text-xs text-[#666666] mt-1">kg</p>
             </div>
-            <p className="text-2xl font-bold text-[#154212]">
-              {stats.total_weight?.toFixed(1) || 0}
-            </p>
-            <p className="text-xs text-[#154212] mt-1">kg</p>
           </div>
         </div>
       )}

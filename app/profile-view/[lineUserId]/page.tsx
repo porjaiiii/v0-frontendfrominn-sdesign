@@ -127,7 +127,8 @@ export default function ProfileViewPage() {
           )}
         </div>
 
-        {/* Stats Cards Row */}
+        {/* Stats Cards Row - Hidden */}
+        {/* 
         <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 shadow-sm">
           <p className="text-sm font-semibold text-[#154212] mb-3">น้ำหนักรวม</p>
           <div className="space-y-2">
@@ -143,6 +144,7 @@ export default function ProfileViewPage() {
             </div>
           </div>
         </div>
+        */}
 
         {/* Waste Cart Section */}
         <div>

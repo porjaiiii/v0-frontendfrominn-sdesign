@@ -4,15 +4,24 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Heart, ShoppingCart } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { REWARDS } from '@/lib/waste-data'
 import { cn } from '@/lib/utils'
 
+interface FloatingHeart {
+  id: string
+  x: number
+  y: number
+}
+
 export default function RewardsPage() {
   const userPoints = 67 // Based on Figma design
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [mounted, setMounted] = useState(false)
+  const [cartCount, setCartCount] = useState(0)
+  const [floatingHearts, setFloatingHearts] = useState<FloatingHeart[]>([])
 
   // Load favorites from localStorage on mount
   useEffect(() => {
@@ -27,16 +36,36 @@ export default function RewardsPage() {
     setMounted(true)
   }, [])
 
-  const toggleFavorite = (id: number) => {
+  const toggleFavorite = (id: number, event: React.MouseEvent) => {
     const newFavorites = new Set(favorites)
-    if (newFavorites.has(id)) {
-      newFavorites.delete(id)
-    } else {
+    const isAdding = !newFavorites.has(id)
+    
+    if (isAdding) {
       newFavorites.add(id)
+      // Create floating heart animation
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+      const heartId = `${id}-${Date.now()}`
+      setFloatingHearts(prev => [...prev, {
+        id: heartId,
+        x: rect.left,
+        y: rect.top
+      }])
+      
+      // Remove floating heart after animation
+      setTimeout(() => {
+        setFloatingHearts(prev => prev.filter(h => h.id !== heartId))
+      }, 1000)
+    } else {
+      newFavorites.delete(id)
     }
+    
     setFavorites(newFavorites)
     // Save to localStorage
     localStorage.setItem('favorites', JSON.stringify(Array.from(newFavorites)))
+  }
+
+  const addToCart = () => {
+    setCartCount(prev => prev + 1)
   }
 
   return (
@@ -48,13 +77,26 @@ export default function RewardsPage() {
         <div className="bg-gradient-to-b from-[#154212] to-[#1a5a16] rounded-2xl p-5 mb-6 relative">
           {/* Icon Buttons - Top Right */}
           <div className="absolute top-4 right-4 flex gap-2">
-            <Link 
-              href="/cart"
-              className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
-              title="ดูตะกร้า"
-            >
-              <ShoppingCart size={20} />
-            </Link>
+            {/* Cart Button with Badge */}
+            <div className="relative">
+              <button
+                className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
+                title="ดูตะกร้า"
+              >
+                <ShoppingCart size={20} />
+              </button>
+              {cartCount > 0 && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
+                >
+                  {cartCount}
+                </motion.div>
+              )}
+            </div>
+
+            {/* Favorites Button */}
             <Link 
               href="/favorites"
               className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
@@ -82,6 +124,24 @@ export default function RewardsPage() {
           </div>
         </div>
 
+        {/* Floating Hearts Container */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <AnimatePresence>
+            {floatingHearts.map((heart) => (
+              <motion.div
+                key={heart.id}
+                initial={{ x: heart.x - 160, y: heart.y, opacity: 1, scale: 1 }}
+                animate={{ x: -160 + 24, y: -20, opacity: 0, scale: 0.5 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+                className="fixed pointer-events-none"
+              >
+                <Heart size={24} className="fill-red-500 text-red-500" />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
         {/* Rewards Section */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-[#154212]">รางวัลที่สามารถแลกได้</h2>
@@ -103,7 +163,7 @@ export default function RewardsPage() {
                 >
                   {/* Favorite Heart */}
                   <button
-                    onClick={() => toggleFavorite(reward.id)}
+                    onClick={(e) => toggleFavorite(reward.id, e)}
                     className="absolute top-2 right-2 z-10 transition-transform hover:scale-110"
                   >
                     <Heart
@@ -154,8 +214,9 @@ export default function RewardsPage() {
                       >
                         แลกเลย
                       </button>
-                      <Link
-                        href="/cart"
+                      <button
+                        onClick={addToCart}
+                        disabled={!canRedeem}
                         className={cn(
                           'flex-[3] py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center',
                           canRedeem
@@ -164,7 +225,7 @@ export default function RewardsPage() {
                         )}
                       >
                         <ShoppingCart size={16} />
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </div>

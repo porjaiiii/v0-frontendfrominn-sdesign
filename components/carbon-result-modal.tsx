@@ -168,7 +168,16 @@ export function CarbonResultModal({
             ย้อนกลับ
           </button>
           <button
-            onClick={showQR ? (onSubmit || onClose) : (onNext || onClose)}
+            onClick={() => {
+              console.log('[v0] Button clicked - showQR:', showQR, 'onNext:', !!onNext, 'onSubmit:', !!onSubmit)
+              if (showQR) {
+                if (onSubmit) onSubmit()
+                else onClose()
+              } else {
+                if (onNext) onNext()
+                else onClose()
+              }
+            }}
             className={cn(
               'flex-1 py-3 rounded-xl font-medium transition-colors',
               'bg-[#154212] text-white hover:bg-[#0d3308]'

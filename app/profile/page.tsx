@@ -27,6 +27,8 @@ export default function ProfilePage() {
   const [isScanning, setIsScanning] = useState(false)
   const [copiedLineId, setCopiedLineId] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState<string>('')
+  const [fetchedProfile, setFetchedProfile] = useState<any>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
   
   const { isReady, isLoggedIn, profile: liffProfile, scanCode, openExternalBrowser, isInClient } = useLiffContext()
   const { userProfile } = useApp()
@@ -54,16 +56,50 @@ export default function ProfilePage() {
     }
   }, [liffProfile?.userId])
   
-  // Use LINE profile if available, otherwise use mock guest data
+  // Fetch profile data from API
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!liffProfile?.userId) {
+        console.log('[v0] No LINE User ID available')
+        return
+      }
+      
+      try {
+        setProfileLoading(true)
+        console.log('[v0] Fetching profile data for LINE ID:', liffProfile.userId)
+        
+        const response = await fetch(`/api/profile/${encodeURIComponent(liffProfile.userId)}`)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log('[v0] Profile data fetched successfully:', data)
+          setFetchedProfile(data)
+        } else {
+          console.log('[v0] Profile fetch returned status:', response.status)
+          setFetchedProfile(null)
+        }
+      } catch (error) {
+        console.error('[v0] Error fetching profile:', error)
+        setFetchedProfile(null)
+      } finally {
+        setProfileLoading(false)
+      }
+    }
+    
+    fetchUserProfile()
+  }, [liffProfile?.userId])
+  
+  // Use fetched profile data, fallback to LIFF and mock if not available
   const user = {
-    name: liffProfile?.displayName || MOCK_USER.name,
-    lineUsername: liffProfile?.displayName || userProfile?.displayName || MOCK_USER.displayName,
-    gender: MOCK_USER.gender,
-    age: MOCK_USER.age,
-    type: MOCK_USER.type,
-    subdistrict: MOCK_USER.subdistrict,
-    occupation: MOCK_USER.occupation,
-    avatar: liffProfile?.pictureUrl || userProfile?.pictureUrl || MOCK_USER.avatar,
+    name: fetchedProfile?.name || liffProfile?.displayName || MOCK_USER.name,
+    lineUsername: fetchedProfile?.displayName || liffProfile?.displayName || userProfile?.displayName || MOCK_USER.displayName,
+    gender: fetchedProfile?.gender || MOCK_USER.gender,
+    age: fetchedProfile?.age || MOCK_USER.age,
+    type: fetchedProfile?.type || MOCK_USER.type,
+    subdistrict: fetchedProfile?.subdistrict || MOCK_USER.subdistrict,
+    occupation: fetchedProfile?.occupation || MOCK_USER.occupation,
+    avatar: fetchedProfile?.avatar || liffProfile?.pictureUrl || userProfile?.pictureUrl || MOCK_USER.avatar,
+    phone: fetchedProfile?.phone || '',
   }
 
   const stats = {
@@ -204,6 +240,16 @@ export default function ProfilePage() {
                   <span className="ml-2 text-[#154212] font-medium">{user.occupation}</span>
                 </div>
               </div>
+
+              {/* Row 5: Phone (if available) */}
+              {user.phone && (
+                <div className="flex">
+                  <div className="flex-1">
+                    <span className="text-[#666666]">เบอร์โทร</span>
+                    <span className="ml-4 text-[#154212] font-medium">{user.phone}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

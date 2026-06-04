@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Camera } from 'lucide-react'
+import { Camera, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import { useLiffContext } from '@/lib/liff-context'
 
 interface WeightInputProps {
   value: number
@@ -104,11 +105,68 @@ interface ImageEvidenceProps {
 }
 
 export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referenceLabel }: ImageEvidenceProps) {
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { profile } = useLiffContext()
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      const url = URL.createObjectURL(file)
-      onImageChange(url)
+    if (!file) return
+
+    try {
+      setIsUploading(true)
+      setError(null)
+      
+      // 1. แปลงรูปเป็น base64
+      const reader = new FileReader()
+      reader.onload = async (event) => {
+        const base64String = event.target?.result as string
+        console.log('[v0] Image selected, starting upload to Google Drive')
+        
+        // 2. ส่ง base64 ไปยัง API
+        try {
+          const response = await fetch('/api/upload-image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              base64Data: base64String.split(',')[1], // ลบ data:image/jpeg;base64, ออก
+              fileName: `waste_${profile?.userId || 'unknown'}_${Date.now()}.jpg`,
+              userId: profile?.userId || 'unknown',
+              mimeType: 'image/jpeg'
+            })
+          })
+
+          const result = await response.json()
+          
+          if (result.success && result.imageUrl) {
+            console.log('[v0] Image uploaded to Google Drive:', result.imageUrl)
+            onImageChange(result.imageUrl) // เก็บ Google Drive URL แทน local URL
+          } else {
+            const errorMsg = result.error || 'ไม่สามารถอัพโหลดรูปได้'
+            console.error('[v0] Upload error:', errorMsg)
+            setError(errorMsg)
+            // fallback ไปใช้ local URL ถ้าอัพโหลดล้มเหลว
+            const localUrl = URL.createObjectURL(file)
+            onImageChange(localUrl)
+          }
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด'
+          console.error('[v0] Upload request failed:', err)
+          setError(errorMsg)
+          // fallback ไปใช้ local URL
+          const localUrl = URL.createObjectURL(file)
+          onImageChange(localUrl)
+        }
+      }
+      
+      reader.readAsDataURL(file)
+    } catch (err) {
+      console.error('[v0] File processing error:', err)
+      setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -139,21 +197,31 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
             'border-2 border-dashed transition-colors',
             imageUrl 
               ? 'border-[#154212] bg-[#f0fdf0]' 
-              : 'border-[#e5e5e5] bg-[#f5f5f5] hover:border-[#154212]'
+              : 'border-[#e5e5e5] bg-[#f5f5f5] hover:border-[#154212]',
+            isUploading && 'opacity-75 cursor-wait'
           )}>
             <input
               type="file"
               accept="image/*"
               capture="environment"
               onChange={handleFileChange}
+              disabled={isUploading}
               className="hidden"
             />
-            {imageUrl ? (
+            {isUploading ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80">
+                <Loader2 className="w-8 h-8 animate-spin text-[#154212] mb-2" />
+                <span className="text-xs font-medium text-[#666666]">กำลังอัพโหลด...</span>
+              </div>
+            ) : imageUrl ? (
               <Image
                 src={imageUrl}
                 alt="หลักฐาน"
                 fill
                 className="object-cover"
+                onError={(e) => {
+                  console.log('[v0] Image display error, may be Google Drive URL')
+                }}
               />
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-[#666666]">
@@ -165,6 +233,9 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
           <span className="text-xs text-[#666666] mt-2 font-medium">
             {imageUrl ? 'รูปของคุณ' : 'กดเพื่อถ่ายรูป'}
           </span>
+          {error && (
+            <span className="text-xs text-[#c06161] mt-1 font-medium">{error}</span>
+          )}
         </div>
       </div>
     </div>

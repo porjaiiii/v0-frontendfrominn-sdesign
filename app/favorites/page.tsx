@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Heart, ShoppingCart } from 'lucide-react'
+import { Heart, ShoppingCart, ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
@@ -11,14 +11,11 @@ import { REWARDS } from '@/lib/waste-data'
 import { useCart } from '@/lib/cart-context'
 import { cn } from '@/lib/utils'
 
-export default function RewardsPage() {
+export default function FavoritesPage() {
   const userPoints = 67
   const { addToCart, cartCount } = useCart()
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
-  const [mounted, setMounted] = useState(false)
   const [clickedButton, setClickedButton] = useState<number | null>(null)
-  const buttonRefs = useRef<{ [key: number]: HTMLButtonElement | null }>({})
-  const [showBadge, setShowBadge] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('favorites')
@@ -29,7 +26,6 @@ export default function RewardsPage() {
         console.error('Failed to load favorites:', e)
       }
     }
-    setMounted(true)
   }, [])
 
   const toggleFavorite = (id: number) => {
@@ -51,77 +47,51 @@ export default function RewardsPage() {
       image: reward.image
     })
     setClickedButton(reward.id)
-    setShowBadge(true)
     setTimeout(() => setClickedButton(null), 200)
-    setTimeout(() => setShowBadge(false), 600)
   }
+
+  const favoriteRewards = REWARDS.filter(reward => favorites.has(reward.id))
 
   return (
     <div className="min-h-screen bg-white pb-24">
       <PageHeader />
 
       <main className="max-w-md mx-auto px-4 py-4">
-        {/* Points Display Card */}
-        <div className="bg-gradient-to-b from-[#154212] to-[#1a5a16] rounded-2xl p-5 mb-6 relative">
-          {/* Icon Buttons - Top Right */}
-          <div className="absolute top-4 right-4 flex gap-2">
-            {/* Cart Button with Badge */}
-            <div className="relative">
-              <Link
-                href="/cart"
-                className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors flex items-center justify-center"
-                title="ดูตะกร้า"
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <Link href="/rewards" className="flex items-center gap-2 text-[#154212] hover:text-[#0d3308]">
+            <ArrowLeft size={20} />
+            <span>รายการที่ถูกใจ</span>
+          </Link>
+          <Link
+            href="/cart"
+            className="relative p-2 bg-[#f5f5f5] hover:bg-[#e5e5e5] rounded-lg text-[#154212] transition-colors flex items-center justify-center"
+            title="ดูตะกร้า"
+          >
+            <ShoppingCart size={20} />
+            {cartCount > 0 && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
               >
-                <ShoppingCart size={20} />
-              </Link>
-              {cartCount > 0 && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
-                >
-                  {cartCount}
-                </motion.div>
-              )}
-            </div>
-
-            {/* Favorites Button */}
-            <Link 
-              href="/favorites"
-              className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors flex items-center justify-center"
-              title="รายการที่ถูกใจ"
-            >
-              <Heart size={20} />
-            </Link>
-          </div>
-
-          <p className="text-sm text-white/80 mb-2">คะแนนแสะสมของคุณ</p>
-          <div className="flex items-baseline gap-2 mb-4">
-            <span className="text-5xl font-bold text-white">{userPoints}</span>
-            <span className="text-lg text-white/80">คะแนน</span>
-          </div>
-          <div className="flex gap-2">
-            <Link 
-              href="/history"
-              className="px-4 py-1.5 bg-white rounded-lg text-sm font-medium text-[#154212] hover:bg-[#f5f5f5] transition-colors"
-            >
-              ประวัติการสะสมแนน
-            </Link>
-            <button className="px-4 py-1.5 bg-white rounded-lg text-sm font-medium text-[#154212] hover:bg-[#f5f5f5] transition-colors">
-              บริจาคคะแนน
-            </button>
-          </div>
+                {cartCount}
+              </motion.div>
+            )}
+          </Link>
         </div>
 
-        {/* Rewards Section */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-[#154212]">รางวัลที่สามารถแลกได้</h2>
-          
+        {/* Empty State */}
+        {favoriteRewards.length === 0 ? (
+          <div className="text-center py-12">
+            <Heart size={48} className="mx-auto mb-4 text-[#e5e5e5]" />
+            <p className="text-[#999999] text-sm">ยังไม่มีรายการที่ถูกใจ</p>
+          </div>
+        ) : (
           <div className="grid grid-cols-2 gap-4">
-            {REWARDS.map((reward) => {
+            {favoriteRewards.map((reward) => {
               const canRedeem = userPoints >= reward.points
               const isFavorited = favorites.has(reward.id)
-              const isClicked = clickedButton === reward.id
 
               return (
                 <div
@@ -188,12 +158,9 @@ export default function RewardsPage() {
                         แลกเลย
                       </button>
                       <motion.button
-                        ref={(el) => {
-                          if (el) buttonRefs.current[reward.id] = el
-                        }}
                         onClick={() => handleCartClick(reward)}
                         disabled={!canRedeem}
-                        animate={isClicked ? { scale: 0.85 } : { scale: 1 }}
+                        animate={clickedButton === reward.id ? { scale: 0.85 } : { scale: 1 }}
                         transition={{ duration: 0.2 }}
                         className={cn(
                           'flex-[3] py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center',
@@ -210,7 +177,7 @@ export default function RewardsPage() {
               )
             })}
           </div>
-        </div>
+        )}
       </main>
 
       <BottomNav />

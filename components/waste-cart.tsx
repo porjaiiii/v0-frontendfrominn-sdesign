@@ -19,6 +19,7 @@ interface WasteRecord {
 
 interface WasteCartProps {
   userId: string
+  onTotalWeightChange?: (weight: number) => void
 }
 
 const WASTE_TYPE_COLORS: Record<string, string> = {
@@ -29,11 +30,12 @@ const WASTE_TYPE_COLORS: Record<string, string> = {
   oil: 'bg-yellow-100 text-yellow-800',
 }
 
-export function WasteCart({ userId }: WasteCartProps) {
+export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
   const [records, setRecords] = useState<WasteRecord[]>([])
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [totalWeight, setTotalWeight] = useState(0)
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -72,6 +74,13 @@ export function WasteCart({ userId }: WasteCartProps) {
           status: record[8],
           notes: record[9],
         }))
+        
+        // Calculate total weight
+        const calculatedTotal = mappedRecords.reduce((sum, r) => sum + r.weight_kg, 0)
+        setTotalWeight(calculatedTotal)
+        if (onTotalWeightChange) {
+          onTotalWeightChange(calculatedTotal)
+        }
         
         setRecords(mappedRecords)
         setStats(data.stats || null)
@@ -150,13 +159,17 @@ export function WasteCart({ userId }: WasteCartProps) {
             {records.map((record, index) => (
               <div key={index} className="p-4">
                 {record.image_url && (
-                  <div className="mb-3 rounded-lg overflow-hidden h-32 bg-gray-100">
+                  <div className="mb-3 rounded-lg overflow-hidden h-32 bg-gray-100 flex items-center justify-center">
                     <Image
                       src={record.image_url}
                       alt={`${record.waste_type} - ${record.waste_subtype}`}
                       width={300}
                       height={200}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement
+                        img.style.display = 'none'
+                      }}
                     />
                   </div>
                 )}
@@ -192,11 +205,14 @@ export function WasteCart({ userId }: WasteCartProps) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-500">วันที่</p>
-                    <p className="font-semibold text-gray-800">
+                    <p className="text-gray-500">วันเวลา</p>
+                    <p className="font-semibold text-gray-800 text-xs">
                       {new Date(record.timestamp).toLocaleDateString('th-TH', {
                         month: 'short',
                         day: 'numeric',
+                      })} {new Date(record.timestamp).toLocaleTimeString('th-TH', {
+                        hour: '2-digit',
+                        minute: '2-digit',
                       })}
                     </p>
                   </div>

@@ -1,77 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const SHEET_ID = '1SK_Nat8jb3iQWt-Gs_YUimycxMTcubV5ViD_QtqkO78'
-const SHEET_NAME = 'submissions'
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwmfv652zC-yp978r_jTAA034BD3gkOsQ3L6WH_536euEts50Ie3e1E73OEydAOO4_r/exec'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('user_id')
 
-    const apiKey = process.env.GCP_API_KEY
-    if (!apiKey) {
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Google API key not configured' },
-        { status: 500 }
+        { error: 'user_id parameter is required' },
+        { status: 400 }
       )
     }
 
-    // ดึงข้อมูลทั้งหมดจาก Sheet
-    const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}?key=${apiKey}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    )
+    // เรียก Google Apps Script เพื่อดึงข้อมูล
+    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'getRecords',
+        user_id: userId,
+      }),
+    })
 
     if (!response.ok) {
-      throw new Error(`Google Sheets API error: ${response.statusText}`)
+      console.error('[v0] Apps Script error:', response.statusText)
+      return NextResponse.json(
+        { error: 'Failed to fetch waste records' },
+        { status: response.status }
+      )
     }
 
     const data = await response.json()
-    const rows = data.values || []
-
-    // ข้ามส่วนหัว (header row)
-    if (rows.length === 0) {
-      return NextResponse.json({ records: [], stats: null })
-    }
-
-    const [headers, ...records] = rows
-
-    // แปลง rows เป็น objects
-    const parsedRecords = records.map((row: any[]) => ({
-      timestamp: row[0],
-      user_id: row[1],
-      waste_type: row[2],
-      waste_subtype: row[3],
-      weight_kg: parseFloat(row[4]) || 0,
-      image_url: row[5],
-      carbon_reduction: parseFloat(row[6]) || 0,
-      points_earned: parseFloat(row[7]) || 0,
-      status: row[8],
-      notes: row[9],
-    }))
-
-    // กรองตาม user_id ถ้ามี
-    let filteredRecords = parsedRecords
-    if (userId) {
-      filteredRecords = parsedRecords.filter((record: any) => record.user_id === userId)
-    }
-
-    // คำนวณสถิติ
-    const stats = {
-      total_records: filteredRecords.length,
-      total_weight: filteredRecords.reduce((sum: number, r: any) => sum + r.weight_kg, 0),
-      total_carbon: filteredRecords.reduce((sum: number, r: any) => sum + r.carbon_reduction, 0),
-      total_points: filteredRecords.reduce((sum: number, r: any) => sum + r.points_earned, 0),
-    }
 
     return NextResponse.json({
-      records: filteredRecords,
-      stats,
+      records: data.records || [],
+      stats: data.stats || null,
     })
   } catch (error) {
     console.error('[v0] Error fetching waste records:', error)

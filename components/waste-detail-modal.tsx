@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { X, CheckCircle2 } from 'lucide-react'
+import { X, CheckCircle2, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface WasteRecord {
@@ -55,7 +55,7 @@ export function WasteDetailModal({
         {/* Content */}
         <div className="space-y-6">
           {/* Image with Fallback */}
-          <div className="rounded-xl overflow-hidden h-48 bg-gray-100 flex items-center justify-center">
+          <div className="rounded-xl overflow-hidden h-48 bg-gray-100 flex items-center justify-center border-2 border-[#154212]">
             {record.image_url ? (
               <Image
                 src={record.image_url}
@@ -65,18 +65,23 @@ export function WasteDetailModal({
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   const img = e.target as HTMLImageElement
-                  img.src = '/images/placeholder-waste.png'
-                  img.style.display = 'block'
+                  img.style.display = 'none'
+                  const parent = img.parentElement
+                  if (parent) {
+                    const placeholder = document.createElement('div')
+                    placeholder.className = 'flex flex-col items-center justify-center gap-2'
+                    placeholder.innerHTML = '<svg class="w-16 h-16 text-[#154212]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span class="text-[#154212] font-semibold text-sm">รูปไม่พบ</span>'
+                    parent.appendChild(placeholder)
+                  }
                 }}
               />
             ) : (
-              <Image
-                src="/images/placeholder-waste.png"
-                alt="Placeholder"
-                width={400}
-                height={300}
-                className="w-full h-full object-cover"
-              />
+              <div className="flex flex-col items-center justify-center gap-2">
+                <svg className="w-16 h-16 text-[#154212]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="text-[#154212] font-semibold text-sm">รูปไม่พบ</span>
+              </div>
             )}
           </div>
 
@@ -94,28 +99,28 @@ export function WasteDetailModal({
 
           {/* Stats Grid */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#f0f9e8] rounded-xl p-4 border border-[#d4e9c1]">
+            <div className="bg-white rounded-xl p-4 border-2 border-[#154212]">
               <p className="text-xs text-[#154212] mb-1 font-semibold">น้ำหนัก</p>
               <p className="text-2xl font-bold text-[#154212]">{record.weight_kg}</p>
-              <p className="text-xs text-[#666666] mt-1">kg</p>
+              <p className="text-xs text-[#154212] mt-1">kg</p>
             </div>
-            <div className="bg-[#f0f9e8] rounded-xl p-4 border border-[#d4e9c1]">
+            <div className="bg-white rounded-xl p-4 border-2 border-[#154212]">
               <p className="text-xs text-[#154212] mb-1 font-semibold">คาร์บอนลดลง</p>
               <p className="text-2xl font-bold text-[#154212]">
                 {(record.carbon_reduction ?? 0).toFixed(1)}
               </p>
-              <p className="text-xs text-[#666666] mt-1">kg CO2</p>
+              <p className="text-xs text-[#154212] mt-1">kg CO2</p>
             </div>
           </div>
 
           {/* Points & Status */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#f0f9e8] rounded-xl p-4 border border-[#d4e9c1]">
+            <div className="bg-white rounded-xl p-4 border-2 border-[#154212]">
               <p className="text-xs text-[#154212] mb-1 font-semibold">คะแนน</p>
               <p className="text-2xl font-bold text-[#154212]">+{record.points_earned}</p>
             </div>
-            <div className="bg-white rounded-xl p-4 border-2 border-[#e5e5e5]">
-              <p className="text-xs text-[#666666] mb-1 font-semibold">สถานะ</p>
+            <div className="bg-white rounded-xl p-4 border-2 border-[#154212]">
+              <p className="text-xs text-[#154212] mb-1 font-semibold">สถานะ</p>
               <p className="text-sm font-semibold text-[#154212] capitalize">
                 {record.status === 'pending' ? 'รอการยืนยัน' : record.status}
               </p>
@@ -123,8 +128,8 @@ export function WasteDetailModal({
           </div>
 
           {/* Timestamp */}
-          <div className="border-2 border-[#e5e5e5] rounded-xl p-4">
-            <p className="text-sm text-[#666666] mb-2 font-semibold">วันเวลาบันทึก</p>
+          <div className="border-2 border-[#154212] rounded-xl p-4 bg-white">
+            <p className="text-sm text-[#154212] mb-2 font-semibold">วันเวลาบันทึก</p>
             <p className="font-semibold text-[#154212]">
               {new Date(record.timestamp).toLocaleDateString('th-TH', {
                 weekday: 'long',

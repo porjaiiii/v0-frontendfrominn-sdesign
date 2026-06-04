@@ -171,7 +171,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
       {/* Stats Summary */}
       {stats && (
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-[#f0f9e8] rounded-2xl p-4 border-2 border-[#d4e9c1]">
+          <div className="bg-white rounded-2xl p-4 border-2 border-[#154212]">
             <div className="flex items-center gap-2 mb-2">
               <Leaf size={18} className="text-[#154212]" />
               <p className="text-xs text-[#154212] font-medium">คาร์บอนลดลง</p>
@@ -179,10 +179,10 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
             <p className="text-2xl font-bold text-[#154212]">
               {stats.total_carbon?.toFixed(1) || 0}
             </p>
-            <p className="text-xs text-[#666666] mt-1">kg CO2</p>
+            <p className="text-xs text-[#154212] mt-1">kg CO2</p>
           </div>
 
-          <div className="bg-[#f0f9e8] rounded-2xl p-4 border-2 border-[#d4e9c1]">
+          <div className="bg-white rounded-2xl p-4 border-2 border-[#154212]">
             <div className="flex items-center gap-2 mb-2">
               <Trash2 size={18} className="text-[#154212]" />
               <p className="text-xs text-[#154212] font-medium">น้ำหนักรวม</p>
@@ -190,7 +190,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
             <p className="text-2xl font-bold text-[#154212]">
               {stats.total_weight?.toFixed(1) || 0}
             </p>
-            <p className="text-xs text-[#666666] mt-1">kg</p>
+            <p className="text-xs text-[#154212] mt-1">kg</p>
           </div>
         </div>
       )}
@@ -212,7 +212,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
             {records.map((record, index) => (
               <div key={index} className="p-4">
                 {record.image_url && (
-                  <div className="mb-3 rounded-lg overflow-hidden h-32 bg-gray-100 flex items-center justify-center">
+                  <div className="mb-3 rounded-lg overflow-hidden h-32 bg-gray-100 flex items-center justify-center border-2 border-[#154212]">
                     <Image
                       src={record.image_url}
                       alt={`${record.waste_type} - ${record.waste_subtype}`}
@@ -221,8 +221,14 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         const img = e.target as HTMLImageElement
-                        img.src = '/images/placeholder-waste.png'
-                        img.style.display = 'block'
+                        img.style.display = 'none'
+                        const parent = img.parentElement
+                        if (parent) {
+                          const placeholder = document.createElement('div')
+                          placeholder.className = 'flex flex-col items-center justify-center gap-2'
+                          placeholder.innerHTML = '<svg class="w-12 h-12 text-[#154212]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
+                          parent.appendChild(placeholder)
+                        }
                       }}
                     />
                   </div>
@@ -275,7 +281,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
                 {/* Action Button */}
                 <button
                   onClick={() => handleOpenDetails(record)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-[#f0f9e8] text-[#154212] font-semibold rounded-lg hover:bg-[#e0f1d0] transition-colors border-2 border-[#d4e9c1]"
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white text-[#154212] font-semibold rounded-lg hover:bg-[#f0f9e8] transition-colors border-2 border-[#154212]"
                 >
                   <span>ดูรายละเอียด</span>
                   <ChevronRight size={20} />

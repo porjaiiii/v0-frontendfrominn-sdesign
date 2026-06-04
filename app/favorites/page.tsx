@@ -84,6 +84,7 @@ export default function FavoritesPage() {
                   <button
                     onClick={() => toggleFavorite(reward.id)}
                     className="absolute top-2 right-2 z-10 transition-transform hover:scale-110"
+                    title="เพิ่มสินค้าไปยังรายการโปรด"
                   >
                     <Heart
                       size={20}

@@ -142,6 +142,7 @@ export default function CartPage() {
                       <button
                         onClick={() => handleToggleFavorite(item.id)}
                         className="transition-transform hover:scale-110"
+                        title="เพิ่มสินค้าไปยังรายการโปรด"
                       >
                         <Heart
                           size={16}
@@ -154,7 +155,7 @@ export default function CartPage() {
                       </button>
                       <button
                         onClick={() => handleRemoveItem(item.id)}
-                        className="text-[#999999] hover:text-[#666666] transition-colors"
+                        className="text-red-500 hover:text-red-600 transition-colors"
                       >
                         <Trash2 size={16} />
                       </button>

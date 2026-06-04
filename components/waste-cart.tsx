@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { Leaf, Trash2, ChevronRight } from 'lucide-react'
+import { Leaf, Trash2, ChevronRight, ArrowDownUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WasteDetailModal } from './waste-detail-modal'
 
@@ -40,6 +40,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
   const [selectedRecord, setSelectedRecord] = useState<WasteRecord | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
+  const [sortByWeight, setSortByWeight] = useState(false)
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -168,134 +169,6 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
         isConfirming={isConfirming}
       />
 
-      {/* Records List */}
-      <div className="bg-white rounded-2xl overflow-hidden border border-[#e5e5e5]">
-        <div className="p-4 border-b border-[#e5e5e5]">
-          <h3 className="font-bold text-lg text-[#154212]">
-            รายการขยะ ({records.length})
-          </h3>
-        </div>
-
-        {records.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-[#999999]">ยังไม่มีการบันทึกขยะ</p>
-          </div>
-        ) : (
-          <>
-            <div className="divide-y divide-[#e5e5e5]">
-              {records.map((record, index) => (
-                <div key={index} className="p-4">
-                  {record.image_url && (
-                    <div className="mb-3 rounded-lg overflow-hidden h-32 bg-gray-100 flex items-center justify-center border-2 border-[#154212]">
-                      <Image
-                        src={record.image_url}
-                        alt={`${record.waste_type} - ${record.waste_subtype}`}
-                        width={300}
-                        height={200}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const img = e.target as HTMLImageElement
-                          img.style.display = 'none'
-                          const parent = img.parentElement
-                          if (parent) {
-                            const placeholder = document.createElement('div')
-                            placeholder.className = 'flex flex-col items-center justify-center gap-2'
-                            placeholder.innerHTML = '<svg class="w-12 h-12 text-[#154212]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
-                            parent.appendChild(placeholder)
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <span
-                        className={cn(
-                          'inline-block px-3 py-1 rounded-full text-xs font-semibold',
-                          WASTE_TYPE_COLORS[record.waste_type] ||
-                            'bg-[#f0f0f0] text-[#666666]'
-                        )}
-                      >
-                        {record.waste_type}
-                      </span>
-                    </div>
-                    <span className="text-sm font-bold text-[#154212]">
-                      +{record.points_earned} คะแนน
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-xs text-[#666666] mb-4">
-                    <div>
-                      <p className="text-[#999999]">น้ำหนัก</p>
-                      <p className="font-semibold text-[#154212]">
-                        {record.weight_kg} kg
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[#999999]">คาร์บอน</p>
-                      <p className="font-semibold text-[#154212]">
-                        {(record.carbon_reduction ?? 0).toFixed(1)} kg
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[#999999]">วันเวลา</p>
-                      <p className="font-semibold text-[#154212] text-xs">
-                        {new Date(record.timestamp).toLocaleDateString('th-TH', {
-                          month: 'short',
-                          day: 'numeric',
-                        })} {new Date(record.timestamp).toLocaleTimeString('th-TH', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Action Button */}
-                  <button
-                    onClick={() => handleOpenDetails(record)}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-white text-[#154212] font-semibold rounded-lg hover:bg-[#f0f9e8] transition-colors border-2 border-[#154212]"
-                  >
-                    <span>ดูรายละเอียด</span>
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Distribution Progress Bar */}
-            {totalWeight > 0 && (
-              <div className="p-4 border-t border-[#e5e5e5]">
-                <p className="text-xs font-semibold text-[#666666] mb-3">สัดส่วนของแต่ละรายการ</p>
-                <div className="flex h-6 rounded-lg overflow-hidden border border-[#e5e5e5]">
-                  {records.map((record, index) => {
-                    const percentage = (record.weight_kg / totalWeight) * 100
-                    const colors = ['bg-[#6fc061]', 'bg-[#4a9c3a]', 'bg-[#2d7e1a]', 'bg-[#1a5c0f]', 'bg-[#0d3a08]']
-                    const color = colors[index % colors.length]
-                    return (
-                      <div
-                        key={index}
-                        className={`${color} transition-all`}
-                        style={{ width: `${percentage}%` }}
-                        title={`${record.waste_type}: ${record.weight_kg} kg (${percentage.toFixed(1)}%)`}
-                      />
-                    )
-                  })}
-                </div>
-                <div className="flex justify-between mt-2 text-xs text-[#666666]">
-                  {records.map((record, index) => (
-                    <span key={index} className="font-semibold">
-                      {index + 1}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
       {/* Stats Card - Total Weight */}
       {records.length > 0 && (
         <div className="bg-white rounded-2xl overflow-hidden border-2 border-[#154212] p-5">
@@ -311,6 +184,142 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
           </div>
         </div>
       )}
+
+      {/* Distribution Progress Bar */}
+      {totalWeight > 0 && (
+        <div className="bg-white rounded-2xl border border-[#e5e5e5] p-4">
+          <p className="text-xs font-semibold text-[#666666] mb-3">สัดส่วนของแต่ละรายการ</p>
+          <div className="flex h-6 rounded-lg overflow-hidden border border-[#e5e5e5]">
+            {(sortByWeight ? [...records].sort((a, b) => b.weight_kg - a.weight_kg) : records).map((record, index) => {
+              const percentage = (record.weight_kg / totalWeight) * 100
+              const colors = ['bg-[#6fc061]', 'bg-[#4a9c3a]', 'bg-[#2d7e1a]', 'bg-[#1a5c0f]', 'bg-[#0d3a08]']
+              const color = colors[index % colors.length]
+              return (
+                <div
+                  key={index}
+                  className={`${color} transition-all`}
+                  style={{ width: `${percentage}%` }}
+                  title={`${record.waste_type}: ${record.weight_kg} kg (${percentage.toFixed(1)}%)`}
+                />
+              )
+            })}
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-[#666666]">
+            {(sortByWeight ? [...records].sort((a, b) => b.weight_kg - a.weight_kg) : records).map((record, index) => (
+              <span key={index} className="font-semibold">
+                {index + 1}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Records List */}
+      <div className="bg-white rounded-2xl overflow-hidden border border-[#e5e5e5]">
+        <div className="p-4 border-b border-[#e5e5e5] flex items-center justify-between">
+          <h3 className="font-bold text-lg text-[#154212]">
+            รายการขยะ ({records.length})
+          </h3>
+          {records.length > 0 && (
+            <button
+              onClick={() => setSortByWeight(!sortByWeight)}
+              className="flex items-center gap-1 px-3 py-1 bg-[#f0f9e8] text-[#154212] rounded-lg hover:bg-[#e0f1d0] transition-colors border border-[#d4e9c1]"
+              title="เรียงลำดับน้ำหนักจากมากไปน้อย"
+            >
+              <ArrowDownUp size={16} />
+              <span className="text-xs font-semibold">เรียงลำดับ</span>
+            </button>
+          )}
+        </div>
+
+        {records.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="text-[#999999]">ยังไม่มีการบันทึกขยะ</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-[#e5e5e5]">
+            {(sortByWeight ? [...records].sort((a, b) => b.weight_kg - a.weight_kg) : records).map((record, index) => (
+              <div key={index} className="p-4">
+                {record.image_url && (
+                  <div className="mb-3 rounded-lg overflow-hidden h-32 bg-gray-100 flex items-center justify-center border-2 border-[#154212]">
+                    <Image
+                      src={record.image_url}
+                      alt={`${record.waste_type} - ${record.waste_subtype}`}
+                      width={300}
+                      height={200}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement
+                        img.style.display = 'none'
+                        const parent = img.parentElement
+                        if (parent) {
+                          const placeholder = document.createElement('div')
+                          placeholder.className = 'flex flex-col items-center justify-center gap-2'
+                          placeholder.innerHTML = '<svg class="w-12 h-12 text-[#154212]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
+                          parent.appendChild(placeholder)
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <span
+                      className={cn(
+                        'inline-block px-3 py-1 rounded-full text-xs font-semibold',
+                        WASTE_TYPE_COLORS[record.waste_type] ||
+                          'bg-[#f0f0f0] text-[#666666]'
+                      )}
+                    >
+                      {record.waste_type}
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-[#154212]">
+                    +{record.points_earned} คะแนน
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-xs text-[#666666] mb-4">
+                  <div>
+                    <p className="text-[#999999]">น้ำหนัก</p>
+                    <p className="font-semibold text-[#154212]">
+                      {record.weight_kg} kg
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[#999999]">คาร์บอน</p>
+                    <p className="font-semibold text-[#154212]">
+                      {(record.carbon_reduction ?? 0).toFixed(1)} kg
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[#999999]">วันเวลา</p>
+                    <p className="font-semibold text-[#154212] text-xs">
+                      {new Date(record.timestamp).toLocaleDateString('th-TH', {
+                        month: 'short',
+                        day: 'numeric',
+                      })} {new Date(record.timestamp).toLocaleTimeString('th-TH', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <button
+                  onClick={() => handleOpenDetails(record)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white text-[#154212] font-semibold rounded-lg hover:bg-[#f0f9e8] transition-colors border-2 border-[#154212]"
+                >
+                  <span>ดูรายละเอียด</span>
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

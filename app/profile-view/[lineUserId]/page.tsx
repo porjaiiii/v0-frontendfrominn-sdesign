@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { WasteCart } from '@/components/waste-cart'
-import { Award, TreePine, ChevronLeft, AlertCircle } from 'lucide-react'
+import { Phone, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function ProfileViewPage() {
@@ -110,6 +110,13 @@ export default function ProfileViewPage() {
             </p>
           </div>
           
+          {profile.phone && (
+            <div className="flex items-center justify-center gap-2 text-sm text-[#154212]">
+              <Phone size={16} />
+              <p>{profile.phone}</p>
+            </div>
+          )}
+          
           {profile.subdistrict && (
             <p className="text-sm text-[#999999]">{profile.subdistrict}</p>
           )}
@@ -120,40 +127,21 @@ export default function ProfileViewPage() {
         </div>
 
         {/* Stats Cards Row */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* CO2 Reduction */}
-          <div className="bg-[#6fc061] rounded-xl p-4 text-white shadow-sm">
-            <div className="text-3xl font-bold">{profile.co2Reduced || 0}</div>
-            <div className="text-xs font-semibold mt-1">kgCO2</div>
-            <div className="text-xs opacity-90 mt-1">ลดก๊าซคาร์บอน</div>
-          </div>
-          
-          {/* Trees Planted */}
-          <div className="bg-[#27ae60] rounded-xl p-4 text-white shadow-sm">
-            <div className="text-3xl font-bold">{profile.treesPlanted || 0}</div>
-            <div className="text-xs font-semibold mt-1">ต้น</div>
-            <div className="text-xs opacity-90 mt-1">ปลูกต้นไม้</div>
-          </div>
-        </div>
-
-        {/* Recycled Items */}
-        {profile.totalRecycled !== undefined && (
-          <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 shadow-sm">
-            <p className="text-sm font-semibold text-[#154212] mb-3">รีไซเคิลทั้งหมด</p>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-[#666666]">รวม</span>
-                <span className="text-lg font-bold text-[#154212]">{profile.totalRecycled} kg</span>
-              </div>
-              <div className="w-full bg-[#e5e5e5] rounded-full h-2">
-                <div 
-                  className="bg-[#6fc061] h-2 rounded-full"
-                  style={{ width: '45%' }}
-                ></div>
-              </div>
+        <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 shadow-sm">
+          <p className="text-sm font-semibold text-[#154212] mb-3">น้ำหนักรวม</p>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-[#666666]">จากการรีไซเคิล</span>
+              <span className="text-lg font-bold text-[#154212]">{profile.totalRecycled || 0} kg</span>
+            </div>
+            <div className="w-full bg-[#e5e5e5] rounded-full h-2">
+              <div 
+                className="bg-[#6fc061] h-2 rounded-full"
+                style={{ width: '45%' }}
+              ></div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Waste Cart Section */}
         <div>

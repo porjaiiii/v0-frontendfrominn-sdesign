@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { Leaf, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -10,6 +11,7 @@ interface WasteRecord {
   waste_type: string
   waste_subtype: string
   weight_kg: number
+  image_url: string
   carbon_reduction: number
   points_earned: number
   status: string
@@ -147,6 +149,18 @@ export function WasteCart({ userId }: WasteCartProps) {
           <div className="divide-y divide-gray-100">
             {records.map((record, index) => (
               <div key={index} className="p-4">
+                {record.image_url && (
+                  <div className="mb-3 rounded-lg overflow-hidden h-32 bg-gray-100">
+                    <Image
+                      src={record.image_url}
+                      alt={`${record.waste_type} - ${record.waste_subtype}`}
+                      width={300}
+                      height={200}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <span

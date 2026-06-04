@@ -56,18 +56,37 @@ export async function POST(request: NextRequest) {
 
     const result = await response.json()
     console.log('[v0] Image uploaded successfully - Full response:', JSON.stringify(result, null, 2))
-    console.log('[v0] imageUrl value:', result.imageUrl)
+    
+    // 🟩 [ปรับปรุงจุดที่ 1] ดักจับค่าลิงก์รูปภาพทั้งแบบ camelCase และ snake_case เพื่อความปลอดภัย
+    const finalImageUrl = result.imageUrl || result.image_url
+
+    console.log('[v0] finalImageUrl value:', finalImageUrl)
+
+    // 🟩 [ปรับปรุงจุดที่ 2] ถ้าตรวจสอบแล้วว่าผลลัพธ์สำเร็จ แต่ดันไม่มี URL รูปภาพกลับมา ให้แจ้งเตือนทันที
+    if (!finalImageUrl) {
+      console.error('[v0] Upload response error - no imageUrl found in result object')
+      return NextResponse.json(
+        { 
+          error: 'Google Drive uploaded successfully but failed to return image URL',
+          details: JSON.stringify(result)
+        },
+        { status: 500 }
+      )
+    }
+
     console.log('[v0] Returning to client:', {
       success: true,
-      imageUrl: result.imageUrl,
-      fileName: result.fileName,
+      imageUrl: finalImageUrl,
+      fileName: result.fileName || fileName,
     })
 
+    // ส่งข้อมูลกลับไปหาฝั่งหน้าจอ (UI Client)
     return NextResponse.json({
       success: true,
-      imageUrl: result.imageUrl,
-      fileName: result.fileName,
+      imageUrl: finalImageUrl,
+      fileName: result.fileName || fileName,
     })
+    
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     console.error('[v0] Error uploading image:', {

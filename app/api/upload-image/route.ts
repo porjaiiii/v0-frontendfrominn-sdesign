@@ -63,9 +63,17 @@ export async function POST(request: NextRequest) {
       fileName: result.fileName,
     })
   } catch (error) {
-    console.error('[v0] Error uploading image:', error)
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    console.error('[v0] Error uploading image:', {
+      error: errorMsg,
+      type: error instanceof Error ? error.constructor.name : typeof error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return NextResponse.json(
-      { error: 'Failed to upload image' },
+      { 
+        error: 'Failed to upload image',
+        details: errorMsg,
+      },
       { status: 500 }
     )
   }

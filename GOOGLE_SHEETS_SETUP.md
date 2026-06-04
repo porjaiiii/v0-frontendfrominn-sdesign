@@ -26,7 +26,7 @@
 เพิ่มลงในไฟล์ `.env.local` ของคุณ:
 
 ```
-GOOGLE_SHEETS_API_KEY=your_api_key_here
+GOOGLE_SHEETS_API_KEY=AIzaSyDlu1nHAGq7-u6AMARFvMYA1OGVS-MeKdQ
 ```
 
 ## API Endpoints

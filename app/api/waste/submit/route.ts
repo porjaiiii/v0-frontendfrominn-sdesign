@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_noRdEQaGUqln9xbL6sZmuXi34kDXmgx9f8KfClvNcVBNBAiPYPSgpCSUkVaMhrWX/exec'
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJyPhVNCqzOPNdb-YOuQxiQyuqqbGdfqdznUt9PUNVeCr7aO9D1A4Wi6J7UmUT1uBF/exec'
 const CARBON_FACTORS = {
   plastic: 2.5,
   paper: 1.8,

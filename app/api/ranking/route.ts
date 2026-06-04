@@ -10,9 +10,6 @@ export type RankingEntry = {
   location: string
 }
 
-// Sample data used as fallback when the Google Sheet 'point' tab is empty.
-// To use real data, populate the sheet with rows matching these columns:
-//   LINE User ID | total points | total kgCO2e
 const SAMPLE_RANKING: Omit<RankingEntry, 'rank'>[] = [
   { lineUserId: 'Usample001', name: 'สมชาย ใจดี', carbon: 256.5, points: 2565, avatar: '/placeholder.svg?height=40&width=40', location: 'ตำบลบางกะเจ้า' },
   { lineUserId: 'Usample002', name: 'สมหญิง รักษ์โลก', carbon: 234.3, points: 2343, avatar: '/placeholder.svg?height=40&width=40', location: 'ตำบลบางน้ำผึ้ง' },
@@ -29,9 +26,15 @@ function parseCSV(text: string): string[][] {
   )
 }
 
+function normalizeHeader(h: string): string {
+  return (h ?? '').toLowerCase().trim().replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (c) =>
+    String.fromCharCode(c.charCodeAt(0) - 0x2050)
+  )
+}
+
 function findColumnIndex(headers: string[], possibleNames: string[]): number {
   return headers.findIndex(h =>
-    possibleNames.some(name => h?.toLowerCase().trim().includes(name))
+    possibleNames.some(name => normalizeHeader(h).includes(name))
   )
 }
 
@@ -41,27 +44,29 @@ export type RankingResponse =
 
 export async function GET() {
   const sheetId = process.env.GOOGLE_SHEETS_ID
+  const apiKey = process.env.GOOGLE_SHEETS_API_KEY
 
-  if (!sheetId) {
+  if (!sheetId || !apiKey) {
     return NextResponse.json({ error: 'Server configuration missing' }, { status: 500 })
   }
 
   try {
-    const pointsUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&sheet=point`
-    const pointsRes = await fetch(pointsUrl, { cache: 'no-store' })
+    // Use Sheets API v4 to fetch the "point" tab by name — avoids the gid/sheet-name ambiguity
+    const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/point?key=${apiKey}`
+    const pointsRes = await fetch(apiUrl, { cache: 'no-store' })
 
     if (!pointsRes.ok) {
+      console.error('[ranking] Sheets API error:', pointsRes.status, await pointsRes.text())
       return NextResponse.json({
         ranking: SAMPLE_RANKING.map((e, i) => ({ ...e, rank: i + 1 })),
         isSample: true,
       })
     }
 
-    const pointsCsv = await pointsRes.text()
-    const rows = parseCSV(pointsCsv)
-    const dataRows = rows.slice(1).filter(r => r.some(cell => cell.trim()))
+    const json = await pointsRes.json()
+    const rows: string[][] = json.values ?? []
 
-    if (rows.length <= 1 || dataRows.length === 0) {
+    if (rows.length <= 1) {
       return NextResponse.json({
         ranking: SAMPLE_RANKING.map((e, i) => ({ ...e, rank: i + 1 })),
         isSample: true,
@@ -69,15 +74,24 @@ export async function GET() {
     }
 
     const headers = rows[0]
-    const lineIdIdx = findColumnIndex(headers, ['line user id', 'lineuserid', 'line_user_id'])
-    const co2Idx = findColumnIndex(headers, ['kgco2e', 'kgco2', 'co2', 'carbon'])
-    const pointsIdx = findColumnIndex(headers, ['total points', 'totalpoints', 'points'])
+    let lineIdIdx = findColumnIndex(headers, ['line user id', 'lineuserid', 'line_user_id'])
+    let co2Idx    = findColumnIndex(headers, ['kgco2e', 'kgco2', 'co2e', 'co2', 'carbon'])
+    let pointsIdx = findColumnIndex(headers, ['total points', 'totalpoints', 'points'])
 
+    // Positional fallback: LINE User ID (A=0) | total points (B=1) | total kgCO2e (C=2)
+    if (headers.length >= 3) {
+      if (lineIdIdx < 0) lineIdIdx = 0
+      if (pointsIdx  < 0) pointsIdx  = 1
+      if (co2Idx    < 0) co2Idx    = 2
+    }
+
+
+    const dataRows = rows.slice(1).filter(r => r.some(cell => cell?.trim()))
     const entries = dataRows
       .map(row => ({
-        lineUserId: lineIdIdx >= 0 ? row[lineIdIdx]?.trim() || '' : '',
-        carbon: co2Idx >= 0 ? parseFloat(row[co2Idx]) || 0 : 0,
-        points: pointsIdx >= 0 ? parseFloat(row[pointsIdx]) || 0 : 0,
+        lineUserId: row[lineIdIdx]?.trim() || '',
+        carbon:     parseFloat(row[co2Idx]    ?? '') || 0,
+        points:     parseFloat(row[pointsIdx] ?? '') || 0,
       }))
       .filter(e => e.lineUserId)
 
@@ -88,29 +102,28 @@ export async function GET() {
       })
     }
 
-    // Cross-reference the default profile sheet to get names and locations
+    // Cross-reference the default profile sheet (CSV) to get names and locations
     const nameMap: Record<string, { name: string; avatar: string; location: string }> = {}
     try {
       const profileUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`
       const profileRes = await fetch(profileUrl, { cache: 'no-store' })
       if (profileRes.ok) {
-        const profileCsv = await profileRes.text()
-        const profileRows = parseCSV(profileCsv)
+        const profileRows = parseCSV(await profileRes.text())
         if (profileRows.length > 1) {
           const ph = profileRows[0]
-          const pLineIdx = findColumnIndex(ph, ['line', 'lineuserid'])
-          const pNameIdx = findColumnIndex(ph, ['ชื่อ', 'name'])
+          const pLineIdx   = findColumnIndex(ph, ['line user id', 'lineuserid', 'line_user_id'])
+          const pNameIdx   = findColumnIndex(ph, ['ชื่อ', 'name'])
           const pAvatarIdx = findColumnIndex(ph, ['ภาพ', 'picture', 'avatar'])
-          const pLocIdx = findColumnIndex(ph, ['ตำบล', 'subdistrict'])
+          const pLocIdx    = findColumnIndex(ph, ['ตำบล', 'subdistrict'])
           profileRows.slice(1).forEach(row => {
             const lid = pLineIdx >= 0 ? row[pLineIdx]?.trim() : ''
             if (lid) {
               nameMap[lid] = {
-                name: pNameIdx >= 0 ? row[pNameIdx]?.trim() || '' : '',
-                avatar: pAvatarIdx >= 0 && row[pAvatarIdx]?.trim()
-                  ? row[pAvatarIdx].trim()
-                  : '/placeholder.svg?height=40&width=40',
-                location: pLocIdx >= 0 ? row[pLocIdx]?.trim() || '' : '',
+                name:     pNameIdx   >= 0 ? row[pNameIdx]?.trim()   || '' : '',
+                avatar:   pAvatarIdx >= 0 && row[pAvatarIdx]?.trim()
+                            ? row[pAvatarIdx].trim()
+                            : '/placeholder.svg?height=40&width=40',
+                location: pLocIdx    >= 0 ? row[pLocIdx]?.trim()    || '' : '',
               }
             }
           })
@@ -123,13 +136,13 @@ export async function GET() {
     const ranking: RankingEntry[] = entries
       .sort((a, b) => b.carbon - a.carbon)
       .map((entry, i) => ({
-        rank: i + 1,
+        rank:       i + 1,
         lineUserId: entry.lineUserId,
-        name: nameMap[entry.lineUserId]?.name || `ผู้ใช้ ${i + 1}`,
-        carbon: entry.carbon,
-        points: entry.points,
-        avatar: nameMap[entry.lineUserId]?.avatar || '/placeholder.svg?height=40&width=40',
-        location: nameMap[entry.lineUserId]?.location || '',
+        name:       nameMap[entry.lineUserId]?.name   || `ผู้ใช้ ${i + 1}`,
+        carbon:     entry.carbon,
+        points:     entry.points,
+        avatar:     nameMap[entry.lineUserId]?.avatar || '/placeholder.svg?height=40&width=40',
+        location:   nameMap[entry.lineUserId]?.location || '',
       }))
 
     return NextResponse.json({ ranking, isSample: false })

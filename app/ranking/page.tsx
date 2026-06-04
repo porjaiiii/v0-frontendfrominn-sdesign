@@ -8,9 +8,11 @@ import { cn } from '@/lib/utils'
 import { Leaf, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import type { RankingEntry } from '@/app/api/ranking/route'
+import { useLiffContext } from '@/lib/liff-context'
 
 type LeaderboardEntry = {
   rank: number
+  lineUserId?: string
   name: string
   carbon: number
   location: string
@@ -55,19 +57,28 @@ export default function RankingPage() {
   const [isSampleData, setIsSampleData] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
-  const currentUser = {
-    rank: 5,
-    name: 'สมชาย มั่นคงผล',
-    carbon: 100,
-    avatar: '/placeholder-user.jpg',
-    location: '',
-  }
+  const { profile: liffProfile } = useLiffContext()
+
+  const currentUserEntry = dataMode === 'real' && liffProfile
+    ? realLeaderboard.find(u => u.lineUserId === liffProfile.userId)
+    : undefined
+
+  const currentUser = dataMode === 'mock'
+    ? { rank: 5, name: 'สมชาย มั่นคงผล', carbon: 100, avatar: '/placeholder-user.jpg', location: '' }
+    : {
+        rank: currentUserEntry?.rank ?? 0,
+        name: liffProfile?.displayName ?? 'ผู้ใช้',
+        carbon: currentUserEntry?.carbon ?? 0,
+        avatar: liffProfile?.pictureUrl ?? '/placeholder-user.jpg',
+        location: currentUserEntry?.location ?? '',
+      }
 
   useEffect(() => {
     if (dataMode !== 'real') return
+    const controller = new AbortController()
     setIsLoading(true)
     setFetchError(null)
-    fetch('/api/ranking')
+    fetch('/api/ranking', { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         if (data.error) {
@@ -77,6 +88,7 @@ export default function RankingPage() {
         setRealLeaderboard(
           (data.ranking as RankingEntry[]).map(e => ({
             rank: e.rank,
+            lineUserId: e.lineUserId,
             name: e.name,
             carbon: e.carbon,
             location: e.location,
@@ -85,8 +97,11 @@ export default function RankingPage() {
         )
         setIsSampleData(data.isSample)
       })
-      .catch(() => setFetchError('ไม่สามารถโหลดข้อมูลได้'))
+      .catch((err) => {
+        if (err.name !== 'AbortError') setFetchError('ไม่สามารถโหลดข้อมูลได้')
+      })
       .finally(() => setIsLoading(false))
+    return () => controller.abort()
   }, [dataMode])
 
   const leaderboard = dataMode === 'mock' ? MOCK_LEADERBOARD : realLeaderboard
@@ -172,7 +187,9 @@ export default function RankingPage() {
             </div>
             <div className="text-right">
               <p className="text-sm text-white/80">อันดับ</p>
-              <p className="text-2xl font-bold text-white">#{currentUser.rank}</p>
+              <p className="text-2xl font-bold text-white">
+                {currentUser.rank > 0 ? `#${currentUser.rank}` : '-'}
+              </p>
             </div>
           </div>
           <Link

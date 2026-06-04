@@ -179,27 +179,11 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
         isConfirming={isConfirming}
       />
 
-      {/* Stats Card - Total Weight */}
-      {records.length > 0 && (
-        <div className="bg-white rounded-2xl overflow-hidden border-2 border-[#154212] p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-[#666666] font-medium mb-1">น้ำหนักรวมทั้งสิ้น</p>
-              <p className="text-3xl font-bold text-[#154212]">{totalWeight.toFixed(2)}</p>
-              <p className="text-xs text-[#666666] mt-1">kg</p>
-            </div>
-            <div className="flex items-center justify-center">
-              <Trash2 size={32} className="text-[#154212]" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Distribution Progress Bar */}
+      {/* Distribution Progress Bar - Smaller */}
       {totalWeight > 0 && (
         <div className="bg-white rounded-2xl border border-[#e5e5e5] p-4">
-          <p className="text-xs font-semibold text-[#666666] mb-3">สัดส่วนของแต่ละรายการ</p>
-          <div className="flex h-6 rounded-lg overflow-hidden border border-[#e5e5e5]">
+          <p className="text-xs font-semibold text-[#666666] mb-2">สัดส่วนของแต่ละรายการ</p>
+          <div className="flex h-3 rounded-full overflow-hidden border border-[#e5e5e5]">
             {(sortByWeight ? [...records].sort((a, b) => b.weight_kg - a.weight_kg) : records).map((record, index) => {
               const percentage = (record.weight_kg / totalWeight) * 100
               const colors = ['bg-[#6fc061]', 'bg-[#4a9c3a]', 'bg-[#2d7e1a]', 'bg-[#1a5c0f]', 'bg-[#0d3a08]']
@@ -213,13 +197,6 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
                 />
               )
             })}
-          </div>
-          <div className="flex justify-between mt-2 text-xs text-[#666666]">
-            {(sortByWeight ? [...records].sort((a, b) => b.weight_kg - a.weight_kg) : records).map((record, index) => (
-              <span key={index} className="font-semibold">
-                {index + 1}
-              </span>
-            ))}
           </div>
         </div>
       )}

@@ -24,11 +24,11 @@ interface WasteCartProps {
 }
 
 const WASTE_TYPE_COLORS: Record<string, string> = {
-  plastic: 'bg-blue-100 text-blue-800',
-  paper: 'bg-amber-100 text-amber-800',
-  glass: 'bg-cyan-100 text-cyan-800',
-  aluminum: 'bg-gray-100 text-gray-800',
-  oil: 'bg-yellow-100 text-yellow-800',
+  plastic: 'bg-[#e8f3e6] text-[#154212]',
+  paper: 'bg-[#fff4e6] text-[#8b6f47]',
+  glass: 'bg-[#e8f0f7] text-[#1a4d8f]',
+  aluminum: 'bg-[#f0f0f0] text-[#666666]',
+  oil: 'bg-[#fff9e6] text-[#c4a300]',
 }
 
 export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
@@ -171,44 +171,44 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
       {/* Stats Summary */}
       {stats && (
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-4">
+          <div className="bg-[#f0f9e8] rounded-2xl p-4 border-2 border-[#d4e9c1]">
             <div className="flex items-center gap-2 mb-2">
-              <Leaf size={18} className="text-green-700" />
-              <p className="text-xs text-green-700 font-medium">คาร์บอนลดลง</p>
+              <Leaf size={18} className="text-[#154212]" />
+              <p className="text-xs text-[#154212] font-medium">คาร์บอนลดลง</p>
             </div>
-            <p className="text-2xl font-bold text-green-800">
+            <p className="text-2xl font-bold text-[#154212]">
               {stats.total_carbon?.toFixed(1) || 0}
             </p>
-            <p className="text-xs text-green-600 mt-1">kg CO2</p>
+            <p className="text-xs text-[#666666] mt-1">kg CO2</p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4">
+          <div className="bg-[#f0f9e8] rounded-2xl p-4 border-2 border-[#d4e9c1]">
             <div className="flex items-center gap-2 mb-2">
-              <Trash2 size={18} className="text-blue-700" />
-              <p className="text-xs text-blue-700 font-medium">น้ำหนักรวม</p>
+              <Trash2 size={18} className="text-[#154212]" />
+              <p className="text-xs text-[#154212] font-medium">น้ำหนักรวม</p>
             </div>
-            <p className="text-2xl font-bold text-blue-800">
+            <p className="text-2xl font-bold text-[#154212]">
               {stats.total_weight?.toFixed(1) || 0}
             </p>
-            <p className="text-xs text-blue-600 mt-1">kg</p>
+            <p className="text-xs text-[#666666] mt-1">kg</p>
           </div>
         </div>
       )}
 
       {/* Records List */}
-      <div className="bg-white rounded-2xl overflow-hidden">
-        <div className="p-4 border-b border-gray-100">
-          <h3 className="font-bold text-lg text-gray-800">
+      <div className="bg-white rounded-2xl overflow-hidden border border-[#e5e5e5]">
+        <div className="p-4 border-b border-[#e5e5e5]">
+          <h3 className="font-bold text-lg text-[#154212]">
             รายการขยะ ({records.length})
           </h3>
         </div>
 
         {records.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-gray-500">ยังไม่มีการบันทึกขยะ</p>
+            <p className="text-[#999999]">ยังไม่มีการบันทึกขยะ</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-[#e5e5e5]">
             {records.map((record, index) => (
               <div key={index} className="p-4">
                 {record.image_url && (
@@ -221,7 +221,8 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         const img = e.target as HTMLImageElement
-                        img.style.display = 'none'
+                        img.src = '/images/placeholder-waste.png'
+                        img.style.display = 'block'
                       }}
                     />
                   </div>
@@ -233,33 +234,33 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
                       className={cn(
                         'inline-block px-3 py-1 rounded-full text-xs font-semibold',
                         WASTE_TYPE_COLORS[record.waste_type] ||
-                          'bg-gray-100 text-gray-800'
+                          'bg-[#f0f0f0] text-[#666666]'
                       )}
                     >
                       {record.waste_type}
                     </span>
                   </div>
-                  <span className="text-sm font-bold text-green-600">
+                  <span className="text-sm font-bold text-[#154212]">
                     +{record.points_earned} คะแนน
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 mb-4">
+                <div className="grid grid-cols-3 gap-2 text-xs text-[#666666] mb-4">
                   <div>
-                    <p className="text-gray-500">น้ำหนัก</p>
-                    <p className="font-semibold text-gray-800">
+                    <p className="text-[#999999]">น้ำหนัก</p>
+                    <p className="font-semibold text-[#154212]">
                       {record.weight_kg} kg
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-500">คาร์บอน</p>
-                    <p className="font-semibold text-gray-800">
+                    <p className="text-[#999999]">คาร์บอน</p>
+                    <p className="font-semibold text-[#154212]">
                       {(record.carbon_reduction ?? 0).toFixed(1)} kg
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-500">วันเวลา</p>
-                    <p className="font-semibold text-gray-800 text-xs">
+                    <p className="text-[#999999]">วันเวลา</p>
+                    <p className="font-semibold text-[#154212] text-xs">
                       {new Date(record.timestamp).toLocaleDateString('th-TH', {
                         month: 'short',
                         day: 'numeric',
@@ -274,7 +275,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
                 {/* Action Button */}
                 <button
                   onClick={() => handleOpenDetails(record)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-green-50 text-green-700 font-semibold rounded-lg hover:bg-green-100 transition-colors border border-green-200"
+                  className="w-full flex items-center justify-between px-4 py-3 bg-[#f0f9e8] text-[#154212] font-semibold rounded-lg hover:bg-[#e0f1d0] transition-colors border-2 border-[#d4e9c1]"
                 >
                   <span>ดูรายละเอียด</span>
                   <ChevronRight size={20} />

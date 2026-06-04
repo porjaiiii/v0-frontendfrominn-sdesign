@@ -151,7 +151,7 @@ export function WasteCart({ userId }: WasteCartProps) {
                   <div>
                     <p className="text-gray-500">คาร์บอน</p>
                     <p className="font-semibold text-gray-800">
-                      {record.carbon_reduction.toFixed(1)} kg
+                      {(record.carbon_reduction ?? 0).toFixed(1)} kg
                     </p>
                   </div>
                   <div>

@@ -37,9 +37,13 @@ export function WasteDetailModal({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
       <div className="w-full bg-white rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
+        {/* Header with Green Tab */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-800">รายละเอียดขยะ</h2>
+          <div className="flex items-center gap-3">
+            <div className="bg-[#154212] text-white px-4 py-2 rounded-lg font-semibold text-sm">
+              ข้อมูลขยะ
+            </div>
+          </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -50,9 +54,9 @@ export function WasteDetailModal({
 
         {/* Content */}
         <div className="space-y-6">
-          {/* Image */}
-          {record.image_url && (
-            <div className="rounded-xl overflow-hidden h-48 bg-gray-100 flex items-center justify-center">
+          {/* Image with Fallback */}
+          <div className="rounded-xl overflow-hidden h-48 bg-gray-100 flex items-center justify-center">
+            {record.image_url ? (
               <Image
                 src={record.image_url}
                 alt={`${record.waste_type} - ${record.waste_subtype}`}
@@ -61,58 +65,67 @@ export function WasteDetailModal({
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   const img = e.target as HTMLImageElement
-                  img.style.display = 'none'
+                  img.src = '/images/placeholder-waste.png'
+                  img.style.display = 'block'
                 }}
               />
-            </div>
-          )}
+            ) : (
+              <Image
+                src="/images/placeholder-waste.png"
+                alt="Placeholder"
+                width={400}
+                height={300}
+                className="w-full h-full object-cover"
+              />
+            )}
+          </div>
 
           {/* Type Info */}
-          <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+          <div className="border-2 border-[#e5e5e5] rounded-xl p-4 space-y-3">
             <div>
-              <p className="text-sm text-gray-600 mb-1">ประเภทขยะ</p>
-              <p className="font-semibold text-gray-800">{record.waste_type}</p>
+              <p className="text-sm text-[#666666] mb-1">ประเภทขยะ</p>
+              <p className="font-semibold text-[#154212]">{record.waste_type}</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">ประเภทย่อย</p>
-              <p className="font-semibold text-gray-800">{record.waste_subtype}</p>
+            <div className="border-t border-[#e5e5e5] pt-3">
+              <p className="text-sm text-[#666666] mb-1">ประเภทย่อย</p>
+              <p className="font-semibold text-[#154212]">{record.waste_subtype}</p>
             </div>
           </div>
 
-          {/* Stats */}
+          {/* Stats Grid */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-blue-50 rounded-xl p-4">
-              <p className="text-xs text-blue-600 mb-1">น้ำหนัก</p>
-              <p className="text-2xl font-bold text-blue-800">{record.weight_kg}</p>
-              <p className="text-xs text-blue-600 mt-1">kg</p>
+            <div className="bg-[#f0f9e8] rounded-xl p-4 border border-[#d4e9c1]">
+              <p className="text-xs text-[#154212] mb-1 font-semibold">น้ำหนัก</p>
+              <p className="text-2xl font-bold text-[#154212]">{record.weight_kg}</p>
+              <p className="text-xs text-[#666666] mt-1">kg</p>
             </div>
-            <div className="bg-green-50 rounded-xl p-4">
-              <p className="text-xs text-green-600 mb-1">คาร์บอนลดลง</p>
-              <p className="text-2xl font-bold text-green-800">
+            <div className="bg-[#f0f9e8] rounded-xl p-4 border border-[#d4e9c1]">
+              <p className="text-xs text-[#154212] mb-1 font-semibold">คาร์บอนลดลง</p>
+              <p className="text-2xl font-bold text-[#154212]">
                 {(record.carbon_reduction ?? 0).toFixed(1)}
               </p>
-              <p className="text-xs text-green-600 mt-1">kg CO2</p>
+              <p className="text-xs text-[#666666] mt-1">kg CO2</p>
             </div>
           </div>
 
           {/* Points & Status */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-yellow-50 rounded-xl p-4">
-              <p className="text-xs text-yellow-600 mb-1">คะแนน</p>
-              <p className="text-2xl font-bold text-yellow-800">+{record.points_earned}</p>
+            <div className="bg-[#f0f9e8] rounded-xl p-4 border border-[#d4e9c1]">
+              <p className="text-xs text-[#154212] mb-1 font-semibold">คะแนน</p>
+              <p className="text-2xl font-bold text-[#154212]">+{record.points_earned}</p>
             </div>
-            <div className="bg-gray-100 rounded-xl p-4">
-              <p className="text-xs text-gray-600 mb-1">สถานะ</p>
-              <p className="text-sm font-semibold text-gray-800 capitalize">
-                {record.status}
+            <div className="bg-white rounded-xl p-4 border-2 border-[#e5e5e5]">
+              <p className="text-xs text-[#666666] mb-1 font-semibold">สถานะ</p>
+              <p className="text-sm font-semibold text-[#154212] capitalize">
+                {record.status === 'pending' ? 'รอการยืนยัน' : record.status}
               </p>
             </div>
           </div>
 
           {/* Timestamp */}
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-sm text-gray-600 mb-2">วันเวลาบันทึก</p>
-            <p className="font-semibold text-gray-800">
+          <div className="border-2 border-[#e5e5e5] rounded-xl p-4">
+            <p className="text-sm text-[#666666] mb-2 font-semibold">วันเวลาบันทึก</p>
+            <p className="font-semibold text-[#154212]">
               {new Date(record.timestamp).toLocaleDateString('th-TH', {
                 weekday: 'long',
                 year: 'numeric',
@@ -130,18 +143,18 @@ export function WasteDetailModal({
           <div className="flex gap-3 pt-4">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-800 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-3 border-2 border-[#154212] text-[#154212] font-semibold rounded-xl hover:bg-[#f0f9e8] transition-colors"
             >
-              ปิด
+              ยื่องลับ
             </button>
             {record.status === 'pending' && (
               <button
                 onClick={() => onConfirm(record)}
                 disabled={isConfirming}
-                className="flex-1 px-4 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3 bg-[#154212] text-white font-semibold rounded-xl hover:bg-[#0f300c] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <CheckCircle2 size={20} />
-                {isConfirming ? 'กำลังยืนยัน...' : 'ยืนยันข้อมูล'}
+                {isConfirming ? 'กำลังยืนยัน...' : 'บันทึก'}
               </button>
             )}
           </div>

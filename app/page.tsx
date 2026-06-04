@@ -293,22 +293,6 @@ export default function HomePage() {
         onNext={handleShowQR}
       />
 
-      {/* QR Result Modal */}
-      <CarbonResultModal
-        isOpen={showQRResult}
-        onClose={() => setShowQRResult(false)}
-        carbonAmount={calculatedCarbon}
-        pointsEarned={Math.round(calculatedCarbon * 10)}
-        showQR
-        qrData={JSON.stringify({
-          type: selectedType,
-          subType: selectedSubType?.id,
-          weight,
-          carbon: calculatedCarbon,
-          timestamp: new Date().toISOString()
-        })}
-        onSubmit={handleSubmit}
-      />
 
       {/* <BottomNav /> */}
     </div>

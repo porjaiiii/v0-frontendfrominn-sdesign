@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useContext } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { BottomNav } from '@/components/bottom-nav'
@@ -9,8 +9,8 @@ import { WeightInput, ImageEvidence } from '@/components/weight-input'
 import { CarbonResultModal } from '@/components/carbon-result-modal'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
 import { type WasteType, type WasteSubType } from '@/lib/app-context'
+import { useLiffContext } from '@/lib/liff-context'
 import { cn } from '@/lib/utils'
-import { LiffContext } from '@/lib/liff-context'
 
 // Carbon factors per kg for each waste type
 const CARBON_FACTORS: Record<WasteType, number> = {
@@ -32,7 +32,7 @@ const WASTE_IMAGES: Record<WasteType, string> = {
 
 export default function HomePage() {
   const router = useRouter()
-  const liffContext = useContext(LiffContext)
+  const liffContext = useLiffContext()
   const [step, setStep] = useState(1)
   const [selectedType, setSelectedType] = useState<WasteType | null>(null)
   const [selectedSubType, setSelectedSubType] = useState<WasteSubType | null>(null)

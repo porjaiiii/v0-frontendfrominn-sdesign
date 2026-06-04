@@ -10,9 +10,10 @@ import { PageHeader } from '@/components/page-header'
 import { REWARDS } from '@/lib/waste-data'
 import { useCart } from '@/lib/cart-context'
 import { cn } from '@/lib/utils'
+import { MOCK_USER } from '@/lib/mock-user'
 
 export default function RewardsPage() {
-  const userPoints = 67
+  const userPoints = MOCK_USER.points
   const { addToCart, cartCount } = useCart()
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [mounted, setMounted] = useState(false)

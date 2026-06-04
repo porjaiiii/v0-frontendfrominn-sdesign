@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { MOCK_USER } from '@/lib/mock-user'
 
 export type WasteType = 'plastic' | 'paper' | 'glass' | 'aluminum' | 'oil'
 
@@ -77,11 +78,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [imageEvidence, setImageEvidence] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [userProfile, setUserProfile] = useState<UserProfile | null>({
-    userId: 'demo-user',
-    displayName: 'ผู้ใช้ทดสอบ',
-    totalCarbon: 45.5,
-    totalPoints: 1250,
-    rank: 15,
+    userId: MOCK_USER.lineUserId,
+    displayName: MOCK_USER.displayName,
+    totalCarbon: MOCK_USER.carbon,
+    totalPoints: MOCK_USER.points,
+    rank: 0,
     submissions: []
   })
 

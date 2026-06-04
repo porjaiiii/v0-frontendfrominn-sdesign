@@ -5,6 +5,7 @@ import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { ChevronLeft, Calendar } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { MOCK_USER } from '@/lib/mock-user'
 
 // Mock data for the detail page
 const recycleDetail = {
@@ -15,7 +16,7 @@ const recycleDetail = {
   pointsEarned: 21,
   image: '/placeholder.jpg',
   date: '27 พฤษภาคม 2569',
-  totalPoints: 67,
+  totalPoints: MOCK_USER.points,
 }
 
 export default function HistoryDetailPage() {

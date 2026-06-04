@@ -9,6 +9,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { useState } from 'react'
 import { useLiffContext } from '@/lib/liff-context'
 import { useApp } from '@/lib/app-context'
+import { MOCK_USER } from '@/lib/mock-user'
 import { Button } from '@/components/ui/button'
 import QRCode from 'qrcode'
 
@@ -53,22 +54,22 @@ export default function ProfilePage() {
     }
   }, [liffProfile?.userId])
   
-  // Use LINE profile if available, otherwise use demo data
+  // Use LINE profile if available, otherwise use mock guest data
   const user = {
-    name: 'สมหวัง คนดี222', // Demo name - can be updated from user settings
-    lineUsername: liffProfile?.displayName || userProfile?.displayName || 'ผู้ใช้ทดสอบ',
-    gender: 'หญิง',
-    age: '21-40 ปี',
-    type: 'ชาวบางกระเจ้า',
-    subdistrict: 'บางกอบัว',
-    occupation: 'เกษตรกร',
-    avatar: liffProfile?.pictureUrl || userProfile?.pictureUrl || '/placeholder-user.jpg',
+    name: liffProfile?.displayName || MOCK_USER.name,
+    lineUsername: liffProfile?.displayName || userProfile?.displayName || MOCK_USER.displayName,
+    gender: MOCK_USER.gender,
+    age: MOCK_USER.age,
+    type: MOCK_USER.type,
+    subdistrict: MOCK_USER.subdistrict,
+    occupation: MOCK_USER.occupation,
+    avatar: liffProfile?.pictureUrl || userProfile?.pictureUrl || MOCK_USER.avatar,
   }
 
   const stats = {
-    co2Reduced: 100,
-    treesPlanted: 6,
-    totalRecycled: 49.50,
+    co2Reduced: MOCK_USER.carbon,
+    treesPlanted: MOCK_USER.treesPlanted,
+    totalRecycled: MOCK_USER.totalRecycled,
   }
 
   const recycleData = [

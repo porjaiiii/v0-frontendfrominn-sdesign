@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/page-header'
 import { cn } from '@/lib/utils'
@@ -8,6 +8,7 @@ import { Leaf, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import type { RankingEntry } from '@/app/api/ranking/route'
 import { useLiffContext } from '@/lib/liff-context'
+import { MOCK_USER } from '@/lib/mock-user'
 
 type LeaderboardEntry = {
   rank: number
@@ -18,7 +19,7 @@ type LeaderboardEntry = {
   avatar: string
 }
 
-const MOCK_CURRENT_USER_ID = 'mock-current-user'
+const MOCK_CURRENT_USER_ID = MOCK_USER.lineUserId
 
 // Sub-districts of บางกะเจ้า (คลองสาน, พระประแดง)
 const BANGKACHAO_SUBDISTRICTS = [
@@ -37,15 +38,17 @@ function isBangkachaoSubdistrict(location: string): boolean {
 }
 
 const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 1, name: 'สมชาย ใจดี', carbon: 256.5, location: 'ตำบลบางกะเจ้า', avatar: '/placeholder.svg?height=40&width=40&query=thai man avatar' },
-  { rank: 2, name: 'สมหญิง รักษ์โลก', carbon: 234.3, location: 'ตำบลบางน้ำผึ้ง', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar' },
-  { rank: 3, name: 'มนัส เกื้อกูล', carbon: 112.4, location: 'ตำบลบางกอบัว', avatar: '/placeholder.svg?height=40&width=40&query=thai person avatar' },
-  { rank: 4, lineUserId: MOCK_CURRENT_USER_ID, name: 'สมชาย มั่นคงผล', carbon: 100, location: '', avatar: '/placeholder-user.jpg' },
-  { rank: 5, name: 'กมลา ตาวุดีมี', carbon: 89, location: '', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 2' },
-  { rank: 6, name: 'สมหญิง รักษ์โลก', carbon: 78, location: 'ตำบลบางกระสอบ', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 3' },
-  { rank: 7, name: 'วรรณา เจริญสุข', carbon: 76, location: 'ตำบลบางยอ', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 4' },
-  { rank: 8, name: 'ประยุทธ รุ่งเรือง', carbon: 74, location: 'ตำบลทรงคะนอง', avatar: '/placeholder.svg?height=40&width=40&query=thai man avatar 2' },
+  { rank: 0, name: 'สมชาย ใจดี', carbon: 256.5, location: 'ตำบลบางกะเจ้า', avatar: '/placeholder.svg?height=40&width=40&query=thai man avatar' },
+  { rank: 0, name: 'สมหญิง รักษ์โลก', carbon: 234.3, location: 'ตำบลบางน้ำผึ้ง', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar' },
+  { rank: 0, name: 'มนัส เกื้อกูล', carbon: 112.4, location: 'ตำบลบางกอบัว', avatar: '/placeholder.svg?height=40&width=40&query=thai person avatar' },
+  { rank: 0, name: 'กมลา ตาวุดีมี', carbon: 89, location: '', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 2' },
+  { rank: 0, name: 'สมหญิง รักษ์โลก', carbon: 78, location: 'ตำบลบางกระสอบ', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 3' },
+  { rank: 0, name: 'วรรณา เจริญสุข', carbon: 76, location: 'ตำบลบางยอ', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 4' },
+  { rank: 0, name: 'ประยุทธ รุ่งเรือง', carbon: 74, location: 'ตำบลทรงคะนอง', avatar: '/placeholder.svg?height=40&width=40&query=thai man avatar 2' },
+  { rank: 0, lineUserId: MOCK_CURRENT_USER_ID, name: MOCK_USER.name, carbon: MOCK_USER.carbon, location: MOCK_USER.location, avatar: MOCK_USER.avatar },
 ]
+  .sort((a, b) => b.carbon - a.carbon)
+  .map((e, i) => ({ ...e, rank: i + 1 }))
 
 const tabs = [
   { id: 'all', label: 'ทั้งหมด' },
@@ -59,6 +62,21 @@ export default function RankingPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSampleData, setIsSampleData] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [isCurrentUserInView, setIsCurrentUserInView] = useState(false)
+  const currentUserObserverRef = useRef<IntersectionObserver | null>(null)
+
+  const currentUserRowRef = useCallback((el: HTMLDivElement | null) => {
+    if (currentUserObserverRef.current) {
+      currentUserObserverRef.current.disconnect()
+      currentUserObserverRef.current = null
+    }
+    if (!el) { setIsCurrentUserInView(false); return }
+    currentUserObserverRef.current = new IntersectionObserver(
+      ([entry]) => setIsCurrentUserInView(entry.isIntersecting),
+      { threshold: 0.5 }
+    )
+    currentUserObserverRef.current.observe(el)
+  }, [])
 
   const { profile: liffProfile } = useLiffContext()
 
@@ -112,8 +130,10 @@ export default function RankingPage() {
     ? baseLeaderboard.find(u => u.lineUserId === liffProfile.userId)
     : undefined
 
+  const mockUserRank = MOCK_LEADERBOARD.find(e => e.lineUserId === MOCK_CURRENT_USER_ID)?.rank ?? 0
+
   const currentUser = dataMode === 'mock'
-    ? { rank: 8, name: 'สมชาย มั่นคงผล', carbon: 3, avatar: '/placeholder-user.jpg', location: '' }
+    ? { rank: mockUserRank, name: MOCK_USER.name, carbon: MOCK_USER.carbon, avatar: MOCK_USER.avatar, location: MOCK_USER.location }
     : {
         rank: currentUserEntry?.rank ?? 0,
         name: liffProfile?.displayName ?? 'ผู้ใช้',
@@ -129,11 +149,13 @@ export default function RankingPage() {
         .map((u, i) => ({ ...u, rank: i + 1 }))
     : leaderboard
 
-  const isCurrentUserVisible = displayLeaderboard.some(e =>
+  // Rank shown in the sticky — uses district rank when in ตำบล tab, overall rank otherwise
+  const currentUserDisplayEntry = displayLeaderboard.find(e =>
     dataMode === 'mock'
       ? e.lineUserId === MOCK_CURRENT_USER_ID
       : liffProfile != null && e.lineUserId === liffProfile.userId
   )
+  const stickyRank = currentUserDisplayEntry?.rank ?? currentUser.rank
 
   const getRankBadge = (rank: number) => {
     if (rank === 1) return { bg: 'bg-[#ffc818]', icon: 'text-[#ffc818]' }
@@ -294,8 +316,10 @@ export default function RankingPage() {
                     ? 'linear-gradient(180deg,#eef6ff,#bcd7ff)'
                     : 'linear-gradient(180deg,#ffe9e9,#ff9a9a)'
                   const starFilter = getStarFilter(u.rank)
+                  const isPodiumCurrent = u.lineUserId === MOCK_CURRENT_USER_ID ||
+                    (liffProfile != null && u.lineUserId === liffProfile.userId)
                   return (
-                    <div key={u.rank} className="flex flex-col items-center relative">
+                    <div key={u.rank} ref={isPodiumCurrent ? currentUserRowRef : undefined} className="flex flex-col items-center relative">
                       <div className="w-16 h-16 rounded-full bg-[#0f3b14] overflow-hidden relative mb-2 shadow-md">
                         <Image src={u.avatar} alt={u.name} fill className="object-cover" />
                       </div>
@@ -356,11 +380,17 @@ export default function RankingPage() {
                   ) : (
                     <div className="space-y-2">
                       {listEntries.map((user) => {
-                        const displayUser = user.rank === currentUser.rank ? currentUser : user
+                        const isCurrent = dataMode === 'mock'
+                          ? user.lineUserId === MOCK_CURRENT_USER_ID
+                          : liffProfile != null && user.lineUserId === liffProfile.userId
+                        const displayUser = isCurrent
+                          ? { ...user, name: currentUser.name, avatar: currentUser.avatar }
+                          : user
                         const cardBg = getRankCardBg(displayUser.rank)
                         return (
                           <div
                             key={displayUser.rank}
+                            ref={isCurrent ? currentUserRowRef : undefined}
                             className={cn(
                               'flex items-center gap-3 p-3 rounded-xl',
                               cardBg
@@ -379,7 +409,7 @@ export default function RankingPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-[#444444] truncate">
-                                {obfuscateName(displayUser.name, displayUser.rank === currentUser.rank || displayUser.name === currentUser.name || user.lineUserId === liffProfile?.userId)}
+                                {obfuscateName(displayUser.name, isCurrent)}
                               </p>
                               {displayUser.location && (
                                 <p className="text-xs text-[#666666] flex items-center gap-1">
@@ -406,10 +436,10 @@ export default function RankingPage() {
       </main>
 
       {/* Sticky placement card — shown when current user is not visible in the leaderboard */}
-      {currentUser.rank > 0 && !isCurrentUserVisible && (
-        <div className="fixed bottom-20 left-0 right-0 max-w-md mx-auto px-4 z-50">
+      {!isLoading && stickyRank > 0 && !isCurrentUserInView && (
+        <div className="fixed bottom-24 left-0 right-0 max-w-md mx-auto px-4 z-50">
           <div className="bg-[#d4edda] border border-[#a8d5b5] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg">
-            <span className="text-sm font-bold text-[#154212] w-8 text-center">#{currentUser.rank}</span>
+            <span className="text-sm font-bold text-[#154212] w-8 text-center">#{stickyRank}</span>
             <div className="w-10 h-10 rounded-full overflow-hidden relative flex-shrink-0">
               <Image src={currentUser.avatar} alt="คุณ" fill className="object-cover" />
             </div>

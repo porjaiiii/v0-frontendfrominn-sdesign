@@ -8,16 +8,18 @@ import { motion } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { REWARDS } from '@/lib/waste-data'
+import { useCart } from '@/lib/cart-context'
 import { cn } from '@/lib/utils'
 
 export default function RewardsPage() {
-  const userPoints = 67 // Based on Figma design
+  const userPoints = 67
+  const { addToCart, cartCount } = useCart()
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [mounted, setMounted] = useState(false)
   const [clickedButton, setClickedButton] = useState<number | null>(null)
   const buttonRefs = useRef<{ [key: number]: HTMLButtonElement | null }>({})
+  const [showBadge, setShowBadge] = useState(false)
 
-  // Load favorites from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('favorites')
     if (saved) {
@@ -38,13 +40,20 @@ export default function RewardsPage() {
       newFavorites.add(id)
     }
     setFavorites(newFavorites)
-    // Save to localStorage
     localStorage.setItem('favorites', JSON.stringify(Array.from(newFavorites)))
   }
 
-  const handleCartClick = (id: number) => {
-    setClickedButton(id)
+  const handleCartClick = (reward: any) => {
+    addToCart({
+      id: reward.id,
+      name: reward.name,
+      points: reward.points,
+      image: reward.image
+    })
+    setClickedButton(reward.id)
+    setShowBadge(true)
     setTimeout(() => setClickedButton(null), 200)
+    setTimeout(() => setShowBadge(false), 600)
   }
 
   return (
@@ -56,14 +65,25 @@ export default function RewardsPage() {
         <div className="bg-gradient-to-b from-[#154212] to-[#1a5a16] rounded-2xl p-5 mb-6 relative">
           {/* Icon Buttons - Top Right */}
           <div className="absolute top-4 right-4 flex gap-2">
-            {/* Cart Button */}
-            <Link
-              href="/cart"
-              className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
-              title="ดูตะกร้า"
-            >
-              <ShoppingCart size={20} />
-            </Link>
+            {/* Cart Button with Badge */}
+            <div className="relative">
+              <Link
+                href="/cart"
+                className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
+                title="ดูตะกร้า"
+              >
+                <ShoppingCart size={20} />
+              </Link>
+              {cartCount > 0 && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
+                >
+                  {cartCount}
+                </motion.div>
+              )}
+            </div>
 
             {/* Favorites Button */}
             <Link 
@@ -171,7 +191,7 @@ export default function RewardsPage() {
                         ref={(el) => {
                           if (el) buttonRefs.current[reward.id] = el
                         }}
-                        onClick={() => handleCartClick(reward.id)}
+                        onClick={() => handleCartClick(reward)}
                         disabled={!canRedeem}
                         animate={isClicked ? { scale: 0.85 } : { scale: 1 }}
                         transition={{ duration: 0.2 }}

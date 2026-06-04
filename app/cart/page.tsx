@@ -1,52 +1,69 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ChevronLeft, Heart, Trash2 } from 'lucide-react'
 import { BottomNav } from '@/components/bottom-nav'
+import { useCart, CartItem as ContextCartItem } from '@/lib/cart-context'
 import { REWARDS } from '@/lib/waste-data'
 import { cn } from '@/lib/utils'
 
-interface CartItem {
-  id: number
-  quantity: number
-  favorited: boolean
+interface CartItemWithFav extends ContextCartItem {
+  favorited?: boolean
 }
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    { id: 1, quantity: 1, favorited: false },
-    { id: 2, quantity: 8, favorited: true },
-  ])
+  const { items: contextItems, updateQuantity, removeFromCart } = useCart()
+  const [cartItems, setCartItems] = useState<CartItemWithFav[]>([])
+  const [favorites, setFavorites] = useState<Set<number>>(new Set())
+  const [mounted, setMounted] = useState(false)
+
+  // Load favorites on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('favorites')
+    if (saved) {
+      try {
+        setFavorites(new Set(JSON.parse(saved)))
+      } catch (e) {
+        console.error('Failed to load favorites:', e)
+      }
+    }
+    setMounted(true)
+  }, [])
+
+  // Sync context items with local state
+  useEffect(() => {
+    setCartItems(contextItems.map(item => ({
+      ...item,
+      favorited: favorites.has(item.id)
+    })))
+  }, [contextItems, favorites])
 
   const handleQuantityChange = (id: number, delta: number) => {
-    setCartItems(items =>
-      items.map(item =>
-        item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
-    )
+    const item = cartItems.find(i => i.id === id)
+    if (item) {
+      updateQuantity(id, Math.max(1, item.quantity + delta))
+    }
   }
 
   const handleRemoveItem = (id: number) => {
-    setCartItems(items => items.filter(item => item.id !== id))
+    removeFromCart(id)
   }
 
   const handleToggleFavorite = (id: number) => {
-    setCartItems(items =>
-      items.map(item =>
-        item.id === id
-          ? { ...item, favorited: !item.favorited }
-          : item
-      )
-    )
+    const newFavorites = new Set(favorites)
+    if (newFavorites.has(id)) {
+      newFavorites.delete(id)
+    } else {
+      newFavorites.add(id)
+    }
+    setFavorites(newFavorites)
+    localStorage.setItem('favorites', JSON.stringify(Array.from(newFavorites)))
   }
 
   const totalPoints = cartItems.reduce((sum, item) => {
-    const reward = REWARDS.find(r => r.id === item.id)
-    return sum + (reward?.points || 0) * item.quantity
+    return sum + item.points * item.quantity
   }, 0)
 
   return (

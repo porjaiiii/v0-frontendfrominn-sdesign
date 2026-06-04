@@ -8,14 +8,15 @@ import { motion } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { REWARDS } from '@/lib/waste-data'
+import { useCart } from '@/lib/cart-context'
 import { cn } from '@/lib/utils'
 
 export default function FavoritesPage() {
   const userPoints = 67
+  const { addToCart, cartCount } = useCart()
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [clickedButton, setClickedButton] = useState<number | null>(null)
 
-  // Load favorites from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('favorites')
     if (saved) {
@@ -38,8 +39,14 @@ export default function FavoritesPage() {
     localStorage.setItem('favorites', JSON.stringify(Array.from(newFavorites)))
   }
 
-  const handleCartClick = (id: number) => {
-    setClickedButton(id)
+  const handleCartClick = (reward: any) => {
+    addToCart({
+      id: reward.id,
+      name: reward.name,
+      points: reward.points,
+      image: reward.image
+    })
+    setClickedButton(reward.id)
     setTimeout(() => setClickedButton(null), 200)
   }
 
@@ -51,11 +58,27 @@ export default function FavoritesPage() {
 
       <main className="max-w-md mx-auto px-4 py-4">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <Link href="/rewards" className="p-2 hover:bg-[#f5f5f5] rounded-lg transition-colors">
-            <ArrowLeft size={20} className="text-[#154212]" />
+        <div className="flex items-center justify-between mb-4">
+          <Link href="/rewards" className="flex items-center gap-2 text-[#154212] hover:text-[#0d3308]">
+            <ArrowLeft size={20} />
+            <span>รายการที่ถูกใจ</span>
           </Link>
-          <h1 className="text-xl font-semibold text-[#154212]">รายการที่ถูกใจ</h1>
+          <Link
+            href="/cart"
+            className="relative p-2 bg-[#f5f5f5] hover:bg-[#e5e5e5] rounded-lg text-[#154212] transition-colors"
+            title="ดูตะกร้า"
+          >
+            <ShoppingCart size={20} />
+            {cartCount > 0 && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
+              >
+                {cartCount}
+              </motion.div>
+            )}
+          </Link>
         </div>
 
         {/* Empty State */}
@@ -135,7 +158,7 @@ export default function FavoritesPage() {
                         แลกเลย
                       </button>
                       <motion.button
-                        onClick={() => handleCartClick(reward.id)}
+                        onClick={() => handleCartClick(reward)}
                         disabled={!canRedeem}
                         animate={clickedButton === reward.id ? { scale: 0.85 } : { scale: 1 }}
                         transition={{ duration: 0.2 }}

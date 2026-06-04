@@ -23,7 +23,10 @@ export async function POST(request: NextRequest) {
       notes,
     } = body
 
+    console.log('[v0] Received waste submission:', { user_id, waste_type, waste_subtype, weight_kg })
+
     if (!user_id || !waste_type || !waste_subtype || !weight_kg) {
+      console.log('[v0] Missing required fields')
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -45,29 +48,37 @@ export async function POST(request: NextRequest) {
     ]
 
     const apiKey = process.env.GCP_API_KEY
+    console.log('[v0] API Key exists:', !!apiKey)
+    console.log('[v0] Sheet ID:', SHEET_ID)
+    
     if (!apiKey) {
+      console.error('[v0] GCP_API_KEY not configured')
       return NextResponse.json(
         { error: 'Google API key not configured' },
         { status: 500 }
       )
     }
 
-    const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}:append?valueInputOption=USER_ENTERED&key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ values }),
-      }
-    )
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}:append?valueInputOption=USER_ENTERED&key=${apiKey}`
+    console.log('[v0] Calling Google Sheets API...')
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ values }),
+    })
+
+    console.log('[v0] Google Sheets response status:', response.status)
 
     if (!response.ok) {
       const error = await response.text()
       console.error('[v0] Google Sheets API error:', error)
       throw new Error(`Google Sheets API error: ${response.statusText}`)
     }
+
+    console.log('[v0] Data submitted successfully')
 
     return NextResponse.json({
       success: true,

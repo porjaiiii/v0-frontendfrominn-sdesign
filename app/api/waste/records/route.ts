@@ -14,20 +14,28 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    console.log('[v0] Fetching waste records for user_id:', userId)
+
     // เรียก Google Apps Script เพื่อดึงข้อมูล
+    const payload = {
+      action: 'getRecords',
+      user_id: userId,
+    }
+    console.log('[v0] Sending payload to Apps Script:', payload)
+    
     const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        action: 'getRecords',
-        user_id: userId,
-      }),
+      body: JSON.stringify(payload),
     })
 
+    console.log('[v0] Apps Script response status:', response.status)
+
     if (!response.ok) {
-      console.error('[v0] Apps Script error:', response.statusText)
+      const errorText = await response.text()
+      console.error('[v0] Apps Script error:', errorText)
       return NextResponse.json(
         { error: 'Failed to fetch waste records' },
         { status: response.status }
@@ -35,6 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json()
+    console.log('[v0] Apps Script returned data:', data)
 
     return NextResponse.json({
       records: data.records || [],

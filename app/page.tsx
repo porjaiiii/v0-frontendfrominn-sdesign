@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useContext } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { BottomNav } from '@/components/bottom-nav'
@@ -10,6 +10,7 @@ import { CarbonResultModal } from '@/components/carbon-result-modal'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
 import { type WasteType, type WasteSubType } from '@/lib/app-context'
 import { cn } from '@/lib/utils'
+import { LiffContext } from '@/lib/liff-context'
 
 // Carbon factors per kg for each waste type
 const CARBON_FACTORS: Record<WasteType, number> = {
@@ -31,6 +32,7 @@ const WASTE_IMAGES: Record<WasteType, string> = {
 
 export default function HomePage() {
   const router = useRouter()
+  const liffContext = useContext(LiffContext)
   const [step, setStep] = useState(1)
   const [selectedType, setSelectedType] = useState<WasteType | null>(null)
   const [selectedSubType, setSelectedSubType] = useState<WasteSubType | null>(null)
@@ -38,6 +40,7 @@ export default function HomePage() {
   const [imageEvidence, setImageEvidence] = useState<string | null>(null)
   const [showResult, setShowResult] = useState(false)
   const [showQRResult, setShowQRResult] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const calculatedCarbon = selectedType 
     ? weight * CARBON_FACTORS[selectedType]
@@ -71,9 +74,42 @@ export default function HomePage() {
     }
   }
 
-  const handleShowQR = () => {
+  const handleShowQR = async () => {
     setShowResult(false)
-    setShowQRResult(true)
+    setIsSubmitting(true)
+    
+    try {
+      // ดึง user_id จาก LIFF context
+      const userId = liffContext?.userProfile?.userId || 'unknown-user'
+      
+      // เรียก API บันทึกขยะ
+      const response = await fetch('/api/waste/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          waste_type: selectedType,
+          waste_subtype: selectedSubType?.id,
+          weight_kg: weight,
+          image_url: imageEvidence || null,
+          notes: '',
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit waste record')
+      }
+
+      console.log('[v0] Waste submitted successfully')
+      setShowQRResult(true)
+    } catch (error) {
+      console.error('[v0] Error submitting waste:', error)
+      alert('ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleSubmit = () => {

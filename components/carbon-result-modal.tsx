@@ -13,6 +13,7 @@ interface CarbonResultModalProps {
   showQR?: boolean
   qrData?: string
   onSubmit?: () => void
+  onNext?: () => void
 }
 
 export function CarbonResultModal({ 
@@ -22,7 +23,8 @@ export function CarbonResultModal({
   pointsEarned = 100,
   showQR = false,
   qrData,
-  onSubmit 
+  onSubmit,
+  onNext
 }: CarbonResultModalProps) {
   const { Canvas } = useQRCode()
 
@@ -166,7 +168,7 @@ export function CarbonResultModal({
             ย้อนกลับ
           </button>
           <button
-            onClick={onSubmit || onClose}
+            onClick={showQR ? (onSubmit || onClose) : (onNext || onClose)}
             className={cn(
               'flex-1 py-3 rounded-xl font-medium transition-colors',
               'bg-[#154212] text-white hover:bg-[#0d3308]'

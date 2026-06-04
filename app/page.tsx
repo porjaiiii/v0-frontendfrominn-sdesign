@@ -279,7 +279,7 @@ export default function HomePage() {
         onClose={() => setShowResult(false)}
         carbonAmount={calculatedCarbon}
         pointsEarned={Math.round(calculatedCarbon * 10)}
-        onSubmit={handleShowQR}
+        onNext={handleShowQR}
       />
 
       {/* QR Result Modal */}

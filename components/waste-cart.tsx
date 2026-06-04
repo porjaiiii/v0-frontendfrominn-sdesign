@@ -36,14 +36,18 @@ export function WasteCart({ userId }: WasteCartProps) {
   useEffect(() => {
     const fetchRecords = async () => {
       try {
+        console.log('[v0] Fetching waste records for userId:', userId)
         setLoading(true)
         const response = await fetch(`/api/waste/records?user_id=${userId}`)
+        
+        console.log('[v0] API response status:', response.status)
         
         if (!response.ok) {
           throw new Error('Failed to fetch waste records')
         }
 
         const data = await response.json()
+        console.log('[v0] Waste records data received:', data)
         setRecords(data.records || [])
         setStats(data.stats || null)
       } catch (err) {

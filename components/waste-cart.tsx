@@ -80,6 +80,16 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
           notes: record[9],
         }))
         
+        console.log('[v0] Mapped records:', mappedRecords)
+        mappedRecords.forEach((record, idx) => {
+          console.log(`[v0] Record ${idx}:`, {
+            type: record.waste_type,
+            weight: record.weight_kg,
+            imageUrl: record.image_url,
+            status: record.status
+          })
+        })
+        
         // Calculate total weight
         const calculatedTotal = mappedRecords.reduce((sum, r) => sum + r.weight_kg, 0)
         setTotalWeight(calculatedTotal)
@@ -249,6 +259,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
                       height={200}
                       className="w-full h-full object-cover"
                       onError={(e) => {
+                        console.log('[v0] Image load error for URL:', record.image_url)
                         const img = e.target as HTMLImageElement
                         img.style.display = 'none'
                         const parent = img.parentElement
@@ -258,6 +269,9 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
                           placeholder.innerHTML = '<svg class="w-12 h-12 text-[#154212]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
                           parent.appendChild(placeholder)
                         }
+                      }}
+                      onLoad={() => {
+                        console.log('[v0] Image loaded successfully:', record.image_url)
                       }}
                     />
                   </div>

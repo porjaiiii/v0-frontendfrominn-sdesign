@@ -17,6 +17,7 @@ export default function ProfileViewPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0)
+  const [totalWeight, setTotalWeight] = useState(0)
 
   // Fetch profile data when page loads
   useEffect(() => {
@@ -132,12 +133,12 @@ export default function ProfileViewPage() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-[#666666]">จากการรีไซเคิล</span>
-              <span className="text-lg font-bold text-[#154212]">{profile.totalRecycled || 0} kg</span>
+              <span className="text-lg font-bold text-[#154212]">{totalWeight.toFixed(2)} kg</span>
             </div>
             <div className="w-full bg-[#e5e5e5] rounded-full h-2">
               <div 
                 className="bg-[#6fc061] h-2 rounded-full"
-                style={{ width: '45%' }}
+                style={{ width: totalWeight > 0 ? '45%' : '0%' }}
               ></div>
             </div>
           </div>
@@ -145,7 +146,10 @@ export default function ProfileViewPage() {
 
         {/* Waste Cart Section */}
         <div>
-          <WasteCart userId={profile.lineUserId || lineUserId} />
+          <WasteCart 
+            userId={profile.lineUserId || lineUserId}
+            onTotalWeightChange={setTotalWeight}
+          />
         </div>
       </main>
 

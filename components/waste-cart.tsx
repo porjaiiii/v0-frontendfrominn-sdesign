@@ -211,7 +211,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
             <button
               onClick={() => setSortByWeight(!sortByWeight)}
               className="flex items-center gap-1 px-3 py-1 bg-[#f0f9e8] text-[#154212] rounded-lg hover:bg-[#e0f1d0] transition-colors border border-[#d4e9c1]"
-              title="เรียงลำดับน้ำหนักจากมากไปน้อย"
+              title="เรียงลำดับน้ำหนักจา��มากไปน้อย"
             >
               <ArrowDownUp size={16} />
               <span className="text-xs font-semibold">เรียงลำดับ</span>
@@ -298,14 +298,16 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
                   </div>
                 </div>
 
-                {/* Action Button */}
-                <button
-                  onClick={() => handleOpenDetails(record)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-white text-[#154212] font-semibold rounded-lg hover:bg-[#f0f9e8] transition-colors border-2 border-[#154212]"
-                >
-                  <span>ดูรายละเอียด</span>
-                  <ChevronRight size={20} />
-                </button>
+                {/* Action Button - Bottom Right */}
+                <div className="flex justify-end mt-4">
+                  <button
+                    onClick={() => handleOpenDetails(record)}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-[#154212] text-white font-semibold rounded-lg hover:bg-[#154212]/90 transition-colors text-sm"
+                  >
+                    <span>ดูรายละเอียด</span>
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

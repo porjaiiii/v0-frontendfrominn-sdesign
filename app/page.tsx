@@ -39,7 +39,6 @@ export default function HomePage() {
   const [weight, setWeight] = useState(0)
   const [imageEvidence, setImageEvidence] = useState<string | null>(null)
   const [showResult, setShowResult] = useState(false)
-  const [showQRResult, setShowQRResult] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const calculatedCarbon = selectedType 
@@ -75,12 +74,19 @@ export default function HomePage() {
   }
 
   const handleShowQR = async () => {
+    console.log('[v0] handleShowQR called')
     setShowResult(false)
     setIsSubmitting(true)
     
     try {
       // ดึง user_id จาก LIFF context
       const userId = liffContext?.userProfile?.userId || 'unknown-user'
+      console.log('[v0] Submitting with userId:', userId)
+      console.log('[v0] Waste data:', { 
+        waste_type: selectedType, 
+        waste_subtype: selectedSubType?.id, 
+        weight_kg: weight 
+      })
       
       // เรียก API บันทึกขยะ
       const response = await fetch('/api/waste/submit', {
@@ -98,12 +104,24 @@ export default function HomePage() {
         }),
       })
 
+      console.log('[v0] API Response status:', response.status)
+
       if (!response.ok) {
+        const error = await response.json()
+        console.error('[v0] API Error:', error)
         throw new Error('Failed to submit waste record')
       }
 
-      console.log('[v0] Waste submitted successfully')
-      setShowQRResult(true)
+      const result = await response.json()
+      console.log('[v0] Waste submitted successfully:', result)
+      
+      // รีเซ็ต form
+      setStep(1)
+      setSelectedType(null)
+      setSelectedSubType(null)
+      setWeight(0)
+      setImageEvidence(null)
+      alert('บันทึกข้อมูลสำเร็จ!')
     } catch (error) {
       console.error('[v0] Error submitting waste:', error)
       alert('ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่')
@@ -113,14 +131,7 @@ export default function HomePage() {
   }
 
   const handleSubmit = () => {
-    setShowQRResult(false)
-    // Reset form
-    setStep(1)
-    setSelectedType(null)
-    setSelectedSubType(null)
-    setWeight(0)
-    setImageEvidence(null)
-    router.push('/ranking')
+    // ไม่ต้องทำอะไร เพราะ handleShowQR แล้ว reset form
   }
 
   const getStepTitle = () => {

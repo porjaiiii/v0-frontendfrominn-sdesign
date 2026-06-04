@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwmfv652zC-yp978r_jTAA034BD3gkOsQ3L6WH_536euEts50Ie3e1E73OEydAOO4_r/exec'
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzGdHhDG8g9TcGHhtg6sZ5KOnRwAY5Rs-3dcuOYF5SUeTObmriMFEDVmq5S0Amt4KDi/exec'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       body: JSON.stringify({
         action: 'getRecords',
         user_id: userId,
+        type: 'query',
       }),
     })
 

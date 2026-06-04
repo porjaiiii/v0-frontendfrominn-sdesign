@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_Y0cz3EqPbsqekxg6q0cBJSedh9bAHPbb2ooebIN3J9qBv-axJ7njUimv_I9M-Tj4/exec'
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzUL9njUWzL2Kw2P7N5A2DaEh9ZfyE1P8n_PJYkRZ76LuUw4nNkJU1g30gC6QpacgoJ/exec'
 
 export async function POST(request: NextRequest) {
   try {

@@ -79,8 +79,8 @@ export default function HomePage() {
     setIsSubmitting(true)
     
     try {
-      // ดึง user_id จาก LIFF context
-      const userId = liffContext?.userProfile?.userId || 'unknown-user'
+      // ดึง user_id จาก LIFF context - ใช้ profile แทน userProfile
+      const userId = liffContext?.profile?.userId || 'unknown-user'
       console.log('[v0] Submitting with userId:', userId)
       console.log('[v0] Waste data:', { 
         waste_type: selectedType, 

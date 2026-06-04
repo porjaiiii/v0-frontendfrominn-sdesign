@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Heart, ShoppingCart, ArrowLeft } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { REWARDS } from '@/lib/waste-data'
@@ -12,6 +13,7 @@ import { cn } from '@/lib/utils'
 export default function FavoritesPage() {
   const userPoints = 67
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
+  const [clickedButton, setClickedButton] = useState<number | null>(null)
 
   // Load favorites from localStorage
   useEffect(() => {
@@ -34,6 +36,11 @@ export default function FavoritesPage() {
     }
     setFavorites(newFavorites)
     localStorage.setItem('favorites', JSON.stringify(Array.from(newFavorites)))
+  }
+
+  const handleCartClick = (id: number) => {
+    setClickedButton(id)
+    setTimeout(() => setClickedButton(null), 200)
   }
 
   const favoriteRewards = REWARDS.filter(reward => favorites.has(reward.id))
@@ -115,21 +122,10 @@ export default function FavoritesPage() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2">
-                      <Link
-                        href="/cart"
-                        className={cn(
-                          'flex-[7] py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center',
-                          canRedeem
-                            ? 'bg-white border border-[#154212] text-[#154212] hover:bg-[#f5f5f5]'
-                            : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
-                        )}
-                      >
-                        <ShoppingCart size={16} />
-                      </Link>
                       <button
                         disabled={!canRedeem}
                         className={cn(
-                          'flex-[3] py-2 rounded-lg text-sm font-medium transition-colors',
+                          'flex-[7] py-2 rounded-lg text-sm font-medium transition-colors',
                           canRedeem
                             ? 'bg-[#154212] text-white hover:bg-[#0d3308]'
                             : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
@@ -137,6 +133,20 @@ export default function FavoritesPage() {
                       >
                         แลกเลย
                       </button>
+                      <motion.button
+                        onClick={() => handleCartClick(reward.id)}
+                        disabled={!canRedeem}
+                        animate={clickedButton === reward.id ? { scale: 0.85 } : { scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                        className={cn(
+                          'flex-[3] py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center',
+                          canRedeem
+                            ? 'bg-white border border-[#154212] text-[#154212] hover:bg-[#f5f5f5]'
+                            : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+                        )}
+                      >
+                        <ShoppingCart size={16} />
+                      </motion.button>
                     </div>
                   </div>
                 </div>

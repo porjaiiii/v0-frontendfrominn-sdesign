@@ -18,7 +18,7 @@ interface WasteRecord {
 
 interface WasteCardProps {
   record: WasteRecord
-  onEdit: (record: WasteRecord) => void
+  onEdit: (record: WasteRecord, isEditing: boolean) => void
   onSave: (record: WasteRecord) => void
   isSaving?: boolean
 }
@@ -94,7 +94,7 @@ export function WasteCard({ record, onEdit, onSave, isSaving = false }: WasteCar
       {/* Action Buttons */}
       <div className="flex gap-3 pt-2">
         <button
-          onClick={() => onEdit(record)}
+          onClick={() => onEdit(record, true)}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-[#d4d4d4] text-[#666666] font-semibold rounded-lg hover:bg-gray-50 transition-colors"
         >
           <Edit2 size={16} />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { X, CheckCircle2, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -23,6 +23,7 @@ interface WasteDetailModalProps {
   onClose: () => void
   onConfirm: (record: WasteRecord) => void
   isConfirming?: boolean
+  isEditing?: boolean
 }
 
 export function WasteDetailModal({
@@ -31,8 +32,17 @@ export function WasteDetailModal({
   onClose,
   onConfirm,
   isConfirming = false,
+  isEditing = false,
 }: WasteDetailModalProps) {
-  if (!isOpen || !record) return null
+  const [editedRecord, setEditedRecord] = useState<WasteRecord | null>(null)
+
+  useEffect(() => {
+    if (record) {
+      setEditedRecord(record)
+    }
+  }, [record])
+
+  if (!isOpen || !record || !editedRecord) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
@@ -85,65 +95,107 @@ export function WasteDetailModal({
             )}
           </div>
 
-          {/* Type Info - Read Only Display */}
+          {/* Type Info - Editable */}
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">ประเภทขยะ</p>
-            <div className="w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold">
-              {record.waste_type}
-            </div>
+            <input
+              type="text"
+              value={editedRecord.waste_type}
+              onChange={(e) =>
+                setEditedRecord({ ...editedRecord, waste_type: e.target.value })
+              }
+              disabled={!isEditing}
+              className={cn(
+                'w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold',
+                isEditing ? 'bg-white cursor-text' : 'bg-white cursor-default'
+              )}
+            />
           </div>
 
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">ประเภทย่อย</p>
-            <div className="w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold">
-              {record.waste_subtype}
-            </div>
+            <input
+              type="text"
+              value={editedRecord.waste_subtype}
+              onChange={(e) =>
+                setEditedRecord({ ...editedRecord, waste_subtype: e.target.value })
+              }
+              disabled={!isEditing}
+              className={cn(
+                'w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold',
+                isEditing ? 'bg-white cursor-text' : 'bg-white cursor-default'
+              )}
+            />
           </div>
 
-          {/* Weight & Carbon */}
+          {/* Weight & Carbon - Editable */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs text-[#666666] font-medium mb-2">น้ำหนัก</p>
-              <div className="w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg">
-                {record.weight_kg}
+              <div className="flex items-end gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editedRecord.weight_kg}
+                  onChange={(e) =>
+                    setEditedRecord({ ...editedRecord, weight_kg: parseFloat(e.target.value) || 0 })
+                  }
+                  disabled={!isEditing}
+                  className={cn(
+                    'flex-1 bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
+                    isEditing ? 'cursor-text' : 'cursor-default'
+                  )}
+                />
+                <span className="text-xs text-[#666666] font-medium mb-[14px]">kg</span>
               </div>
-              <p className="text-xs text-[#666666] mt-1">kg</p>
             </div>
             <div>
               <p className="text-xs text-[#666666] font-medium mb-2">คาร์บอนลดลง</p>
-              <div className="w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg">
-                {(record.carbon_reduction ?? 0).toFixed(1)}
+              <div className="flex items-end gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editedRecord.carbon_reduction ?? 0}
+                  onChange={(e) =>
+                    setEditedRecord({ ...editedRecord, carbon_reduction: parseFloat(e.target.value) || 0 })
+                  }
+                  disabled={!isEditing}
+                  className={cn(
+                    'flex-1 bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
+                    isEditing ? 'cursor-text' : 'cursor-default'
+                  )}
+                />
+                <span className="text-xs text-[#666666] font-medium mb-[14px]">kg CO2</span>
               </div>
-              <p className="text-xs text-[#666666] mt-1">kg CO2</p>
             </div>
           </div>
 
-          {/* Points & Status */}
+          {/* Points & Status - Read Only */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs text-[#666666] font-medium mb-2">คะแนน</p>
-              <div className="w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg">
-                +{record.points_earned}
+              <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg cursor-default">
+                +{editedRecord.points_earned}
               </div>
             </div>
             <div>
               <p className="text-xs text-[#666666] font-medium mb-2">สถานะ</p>
-              <div className="w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold capitalize">
-                {record.status === 'pending' ? 'ยื่นคำร้อง กำลังรอการเก็บ' : record.status}
+              <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold capitalize cursor-default">
+                {editedRecord.status === 'pending' ? 'ยื่นคำร้อง กำลังรอการเก็บ' : editedRecord.status}
               </div>
             </div>
           </div>
 
-          {/* Timestamp */}
+          {/* Timestamp - Read Only */}
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">วันเวลาบันทึก</p>
-            <div className="w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold">
-              {new Date(record.timestamp).toLocaleDateString('th-TH', {
+            <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold cursor-default">
+              {new Date(editedRecord.timestamp).toLocaleDateString('th-TH', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
-              })} เวลา {new Date(record.timestamp).toLocaleTimeString('th-TH', {
+              })} เวลา {new Date(editedRecord.timestamp).toLocaleTimeString('th-TH', {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
@@ -159,15 +211,26 @@ export function WasteDetailModal({
             >
               ยืองลับ
             </button>
-            {record.status === 'pending' && (
+            {isEditing ? (
               <button
-                onClick={() => onConfirm(record)}
+                onClick={() => onConfirm(editedRecord)}
                 disabled={isConfirming}
                 className="flex-1 px-4 py-3 bg-[#154212] text-white font-semibold rounded-full hover:bg-[#0f300c] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <CheckCircle2 size={20} />
-                {isConfirming ? 'กำลังบันทึก...' : 'บันทึก'}
+                {isConfirming ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
               </button>
+            ) : (
+              record.status === 'pending' && (
+                <button
+                  onClick={() => onConfirm(editedRecord)}
+                  disabled={isConfirming}
+                  className="flex-1 px-4 py-3 bg-[#154212] text-white font-semibold rounded-full hover:bg-[#0f300c] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={20} />
+                  {isConfirming ? 'กำลังบันทึก...' : 'บันทึก'}
+                </button>
+              )
             )}
           </div>
         </div>

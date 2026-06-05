@@ -44,6 +44,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
   const [isConfirming, setIsConfirming] = useState(false)
   const [sortByWeight, setSortByWeight] = useState(false)
   const [savingRecordId, setSavingRecordId] = useState<string | null>(null)
+  const [isEditingMode, setIsEditingMode] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -146,9 +147,11 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
     }
   }
 
-  const handleEditRecord = (record: WasteRecord) => {
-    // Navigate to history detail page where user can edit
-    router.push(`/history/${encodeURIComponent(record.timestamp)}`)
+  const handleEditRecord = (record: WasteRecord, isEditing: boolean) => {
+    // Open modal in edit mode
+    setSelectedRecord(record)
+    setIsModalOpen(true)
+    setIsEditingMode(isEditing)
   }
 
   const handleSaveRecord = async (record: WasteRecord) => {
@@ -186,6 +189,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setSelectedRecord(null)
+    setIsEditingMode(false)
   }
 
   if (loading) {
@@ -213,6 +217,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
         onClose={handleCloseModal}
         onConfirm={handleConfirmRecord}
         isConfirming={isConfirming}
+        isEditing={isEditingMode}
       />
 
       {/* Distribution Progress Bar - Smaller */}

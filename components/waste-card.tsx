@@ -69,7 +69,7 @@ export function WasteCard({ record, onEdit, onSave, isSaving = false }: WasteCar
           {/* Waste Subtype */}
           <div className="flex justify-between items-start">
             <span className="text-xs text-[#666666]">ประเภทย่อย</span>
-            <span className="text-sm font-semibold text-[#154212]">{record.waste_subtype} ({record.waste_type.toUpperCase()})</span>
+            <span className="text-sm font-semibold text-[#154212]">{record.waste_subtype} </span>
           </div>
 
           {/* Weight */}

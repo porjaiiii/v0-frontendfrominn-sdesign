@@ -169,78 +169,64 @@ export function WasteDetailModal({
             />
           </div>
 
-          {/* Weight & Carbon - Editable */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs text-[#666666] font-medium mb-2">น้ำหนัก</p>
-              <div className="flex items-end gap-2">
-                <input
-                  type="number"
-                  step="0.1"
-                  value={editedRecord.weight_kg}
-                  onChange={(e) =>
-                    setEditedRecord({ ...editedRecord, weight_kg: parseFloat(e.target.value) || 0 })
-                  }
-                  disabled={!isEditing}
-                  className={cn(
-                    'flex-1 bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
-                    isEditing ? 'cursor-text' : 'cursor-default'
-                  )}
-                />
-                <span className="text-xs text-[#666666] font-medium mb-[14px]">kg</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-xs text-[#666666] font-medium mb-2">คาร์บอนลดลง</p>
-              <div className="flex items-end gap-2">
-                <input
-                  type="number"
-                  step="0.1"
-                  value={editedRecord.carbon_reduction ?? 0}
-                  onChange={(e) =>
-                    setEditedRecord({ ...editedRecord, carbon_reduction: parseFloat(e.target.value) || 0 })
-                  }
-                  disabled={!isEditing}
-                  className={cn(
-                    'flex-1 bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
-                    isEditing ? 'cursor-text' : 'cursor-default'
-                  )}
-                />
-                <span className="text-xs text-[#666666] font-medium mb-[14px]">kg CO2</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Points & Status - Read Only */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs text-[#666666] font-medium mb-2">คะแนน</p>
-              <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg cursor-default">
-                +{editedRecord.points_earned}
-              </div>
-            </div>
-            <div>
-              <p className="text-xs text-[#666666] font-medium mb-2">สถานะ</p>
-              <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold capitalize cursor-default">
-                {editedRecord.status === 'pending' ? 'ยื่นคำร้อง กำลังรอการเก็บ' : editedRecord.status}
-              </div>
+          {/* Weight - Full Width */}
+          <div>
+            <p className="text-xs text-[#666666] font-medium mb-2">ระบุน้ำหนัก (กก.)</p>
+            <div className="flex items-end gap-2">
+              <input
+                type="number"
+                step="0.1"
+                value={editedRecord.weight_kg}
+                onChange={(e) =>
+                  setEditedRecord({ ...editedRecord, weight_kg: parseFloat(e.target.value) || 0 })
+                }
+                disabled={!isEditing}
+                className={cn(
+                  'flex-1 bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
+                  isEditing ? 'cursor-text' : 'cursor-default'
+                )}
+              />
             </div>
           </div>
 
           {/* Timestamp - Read Only */}
           <div>
-            <p className="text-xs text-[#666666] font-medium mb-2">วันเวลาบันทึก</p>
+            <p className="text-xs text-[#666666] font-medium mb-2">เวลา</p>
             <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold cursor-default">
               {new Date(editedRecord.timestamp).toLocaleDateString('th-TH', {
-                weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
-              })} เวลา {new Date(editedRecord.timestamp).toLocaleTimeString('th-TH', {
+              })} {new Date(editedRecord.timestamp).toLocaleTimeString('th-TH', {
                 hour: '2-digit',
                 minute: '2-digit',
-                second: '2-digit',
-              })}
+              })} น.
+            </div>
+          </div>
+
+          {/* Points - Now Editable */}
+          <div>
+            <p className="text-xs text-[#666666] font-medium mb-2">แต่นิ่งได้รับ</p>
+            <input
+              type="number"
+              step="1"
+              value={editedRecord.points_earned}
+              onChange={(e) =>
+                setEditedRecord({ ...editedRecord, points_earned: parseInt(e.target.value) || 0 })
+              }
+              disabled={!isEditing}
+              className={cn(
+                'w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
+                isEditing ? 'cursor-text' : 'cursor-default'
+              )}
+            />
+          </div>
+
+          {/* Carbon Reduction - Read Only */}
+          <div>
+            <p className="text-xs text-[#666666] font-medium mb-2">หมายเหตุ</p>
+            <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold cursor-default">
+              {(editedRecord.carbon_reduction ?? 0).toFixed(2)} kg CO2
             </div>
           </div>
 

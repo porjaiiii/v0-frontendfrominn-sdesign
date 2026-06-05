@@ -236,7 +236,7 @@ export function WasteDetailModal({
               onClick={onClose}
               className="flex-1 px-4 py-3 border-2 border-[#d4d4d4] text-[#666666] font-semibold rounded-xl hover:bg-gray-50 transition-colors"
             >
-              ยืองลับ
+              ย้อนกลับ
             </button>
             {isEditing ? (
               <button

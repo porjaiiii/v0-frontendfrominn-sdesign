@@ -158,11 +158,11 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
     try {
       const recordId = `${record.timestamp}-${record.user_id}`
       setSavingRecordId(recordId)
-      console.log('[v0] Saving waste record:', record)
+      console.log('[v0] Saving waste record (update status to done):', record)
       
-      // Call API to save the record
-      const response = await fetch('/api/waste/submit', {
-        method: 'POST',
+      // Call API to update record - change status from pending to done
+      const response = await fetch('/api/waste/update', {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },

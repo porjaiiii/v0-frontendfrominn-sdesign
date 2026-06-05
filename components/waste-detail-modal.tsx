@@ -21,7 +21,7 @@ interface WasteDetailModalProps {
   record: WasteRecord | null
   isOpen: boolean
   onClose: () => void
-  onConfirm: (record: WasteRecord) => void
+  onConfirm: (record: WasteRecord) => void | Promise<void>
   isConfirming?: boolean
   isEditing?: boolean
 }
@@ -35,12 +35,53 @@ export function WasteDetailModal({
   isEditing = false,
 }: WasteDetailModalProps) {
   const [editedRecord, setEditedRecord] = useState<WasteRecord | null>(null)
+  const [isSavingApi, setIsSavingApi] = useState(false)
 
   useEffect(() => {
     if (record) {
       setEditedRecord(record)
     }
   }, [record])
+
+  const handleConfirmClick = async () => {
+    if (!editedRecord) return
+
+    try {
+      setIsSavingApi(true)
+      console.log('[v0] Modal confirm clicked, isEditing:', isEditing)
+      
+      if (isEditing) {
+        // Call API to update the record
+        console.log('[v0] Updating record via API:', editedRecord)
+        const response = await fetch('/api/waste/update', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(editedRecord),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          console.error('[v0] API error:', error)
+          alert('เกิดข้อผิดพลาดในการบันทึก: ' + (error.error || 'Unknown error'))
+          return
+        }
+
+        const result = await response.json()
+        console.log('[v0] API response:', result)
+      }
+
+      // Call the parent handler
+      await onConfirm(editedRecord)
+      onClose()
+    } catch (error) {
+      console.error('[v0] Error in handleConfirmClick:', error)
+      alert('เกิดข้อผิดพลาด: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    } finally {
+      setIsSavingApi(false)
+    }
+  }
 
   if (!isOpen || !record || !editedRecord) return null
 
@@ -213,22 +254,22 @@ export function WasteDetailModal({
             </button>
             {isEditing ? (
               <button
-                onClick={() => onConfirm(editedRecord)}
-                disabled={isConfirming}
+                onClick={handleConfirmClick}
+                disabled={isSavingApi || isConfirming}
                 className="flex-1 px-4 py-3 bg-[#154212] text-white font-semibold rounded-full hover:bg-[#0f300c] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <CheckCircle2 size={20} />
-                {isConfirming ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
+                {isSavingApi || isConfirming ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
               </button>
             ) : (
               record.status === 'pending' && (
                 <button
-                  onClick={() => onConfirm(editedRecord)}
-                  disabled={isConfirming}
+                  onClick={handleConfirmClick}
+                  disabled={isSavingApi || isConfirming}
                   className="flex-1 px-4 py-3 bg-[#154212] text-white font-semibold rounded-full hover:bg-[#0f300c] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <CheckCircle2 size={20} />
-                  {isConfirming ? 'กำลังบันทึก...' : 'บันทึก'}
+                  {isSavingApi || isConfirming ? 'กำลังบันทึก...' : 'บันทึก'}
                 </button>
               )
             )}

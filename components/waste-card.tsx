@@ -70,7 +70,7 @@ export function WasteCard({ record, onEdit, onSave, isSaving = false }: WasteCar
             )}>
               {record.waste_type}
             </span>
-            <span className="text-xs text-[#999999]">พลาสติก</span>
+       
           </div>
         </div>
 

@@ -240,64 +240,76 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
         isEditing={isEditingMode}
       />
 
-      {/* Distribution Progress Bar - Smaller */}
-      {totalWeight > 0 && (
-        <div className="bg-white rounded-2xl border border-[#e5e5e5] p-4">
-          <p className="text-xs font-semibold text-[#666666] mb-2">สัดส่วนของแต่ละรายการ</p>
-          <div className="flex h-3 rounded-full overflow-hidden border border-[#e5e5e5]">
-            {(sortByWeight ? [...records].sort((a, b) => b.weight_kg - a.weight_kg) : records).map((record, index) => {
-              const percentage = (record.weight_kg / totalWeight) * 100
-              const colors = ['bg-[#6fc061]', 'bg-[#4a9c3a]', 'bg-[#2d7e1a]', 'bg-[#1a5c0f]', 'bg-[#0d3a08]']
-              const color = colors[index % colors.length]
-              return (
-                <div
-                  key={index}
-                  className={`${color} transition-all`}
-                  style={{ width: `${percentage}%` }}
-                  title={`${record.waste_type}: ${record.weight_kg} kg (${percentage.toFixed(1)}%)`}
-                />
-              )
-            })}
-          </div>
-        </div>
-      )}
+      {/* Filter pending records only */}
+      {(() => {
+        const pendingRecords = records.filter(r => r.status === 'pending')
+        const displayRecords = sortByWeight 
+          ? [...pendingRecords].sort((a, b) => b.weight_kg - a.weight_kg) 
+          : pendingRecords
 
-      {/* Records List */}
-      <div className="bg-white rounded-2xl overflow-hidden border border-[#e5e5e5]">
-        <div className="p-4 border-b border-[#e5e5e5] flex items-center justify-between">
-          <h3 className="font-bold text-lg text-[#154212]">
-            รายการขยะ ({records.length})
-          </h3>
-          {records.length > 0 && (
-            <button
-              onClick={() => setSortByWeight(!sortByWeight)}
-              className="flex items-center gap-1 px-3 py-1 bg-[#f0f9e8] text-[#154212] rounded-lg hover:bg-[#e0f1d0] transition-colors border border-[#d4e9c1]"
-              title="เรียงลำดับน้ำหนักจา���มากไปน้อย"
-            >
-              <ArrowDownUp size={16} />
-              <span className="text-xs font-semibold">เรียงลำดับ</span>
-            </button>
-          )}
-        </div>
+        return (
+          <>
+            {/* Distribution Progress Bar - Smaller */}
+            {pendingRecords.length > 0 && totalWeight > 0 && (
+              <div className="bg-white rounded-2xl border border-[#e5e5e5] p-4">
+                <p className="text-xs font-semibold text-[#666666] mb-2">สัดส่วนของแต่ละรายการ</p>
+                <div className="flex h-3 rounded-full overflow-hidden border border-[#e5e5e5]">
+                  {displayRecords.map((record, index) => {
+                    const percentage = (record.weight_kg / totalWeight) * 100
+                    const colors = ['bg-[#6fc061]', 'bg-[#4a9c3a]', 'bg-[#2d7e1a]', 'bg-[#1a5c0f]', 'bg-[#0d3a08]']
+                    const color = colors[index % colors.length]
+                    return (
+                      <div
+                        key={index}
+                        className={`${color} transition-all`}
+                        style={{ width: `${percentage}%` }}
+                        title={`${record.waste_type}: ${record.weight_kg} kg (${percentage.toFixed(1)}%)`}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
-        {records.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-[#999999]">ยังไม่มีการบันทึกขยะ</p>
-          </div>
-        ) : (
-          <div className="space-y-4 p-4">
-            {(sortByWeight ? [...records].sort((a, b) => b.weight_kg - a.weight_kg) : records).map((record, index) => (
-              <WasteCard
-                key={index}
-                record={record}
-                onEdit={handleEditRecord}
-                onSave={handleSaveRecord}
-                isSaving={savingRecordId === `${record.timestamp}-${record.user_id}`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+            {/* Records List */}
+            <div className="bg-white rounded-2xl overflow-hidden border border-[#e5e5e5]">
+              <div className="p-4 border-b border-[#e5e5e5] flex items-center justify-between">
+                <h3 className="font-bold text-lg text-[#154212]">
+                  รายการขยะที่รอบันทึก ({pendingRecords.length})
+                </h3>
+                {pendingRecords.length > 0 && (
+                  <button
+                    onClick={() => setSortByWeight(!sortByWeight)}
+                    className="flex items-center gap-1 px-3 py-1 bg-[#f0f9e8] text-[#154212] rounded-lg hover:bg-[#e0f1d0] transition-colors border border-[#d4e9c1]"
+                    title="เรียงลำดับน้ำหนักจากมากไปน้อย"
+                  >
+                    <ArrowDownUp size={16} />
+                    <span className="text-xs font-semibold">เรียงลำดับ</span>
+                  </button>
+                )}
+              </div>
+
+              {pendingRecords.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-[#999999]">ยังไม่มีการบันทึกขยะที่รอบันทึก</p>
+                </div>
+              ) : (
+                <div className="space-y-4 p-4">
+                  {displayRecords.map((record, index) => (
+                    <WasteCard
+                      key={index}
+                      record={record}
+                      onEdit={handleEditRecord}
+                      onSave={handleSaveRecord}
+                      isSaving={savingRecordId === `${record.timestamp}-${record.user_id}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )
+      })()}
     </div>
   )
 }

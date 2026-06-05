@@ -206,7 +206,7 @@ export function WasteDetailModal({
 
           {/* Points - Now Editable */}
           <div>
-            <p className="text-xs text-[#666666] font-medium mb-2">แต่นิ่งได้รับ</p>
+            <p className="text-xs text-[#666666] font-medium mb-2">แต้มที่ได้รับ</p>
             <input
               type="number"
               step="1"
@@ -236,7 +236,7 @@ export function WasteDetailModal({
               onClick={onClose}
               className="flex-1 px-4 py-3 border-2 border-[#d4d4d4] text-[#666666] font-semibold rounded-xl hover:bg-gray-50 transition-colors"
             >
-              ยืองลับ
+              ย้อนกลับ
             </button>
             {isEditing ? (
               <button

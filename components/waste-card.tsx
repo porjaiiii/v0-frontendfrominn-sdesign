@@ -69,7 +69,7 @@ export function WasteCard({ record, onEdit, onSave, isSaving = false }: WasteCar
           {/* Waste Subtype */}
           <div className="flex justify-between items-start">
             <span className="text-xs text-[#666666]">ประเภทย่อย</span>
-            <span className="text-sm font-semibold text-[#154212]">{record.waste_subtype} ({record.waste_type.toUpperCase()})</span>
+            <span className="text-sm font-semibold text-[#154212]">{record.waste_subtype} </span>
           </div>
 
           {/* Weight */}
@@ -95,7 +95,7 @@ export function WasteCard({ record, onEdit, onSave, isSaving = false }: WasteCar
           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#154212] text-white font-semibold rounded-lg hover:bg-[#0f300c] transition-colors disabled:opacity-50"
         >
           <CheckCircle2 size={16} />
-          <span>{isSaving ? 'กำลัง...' : 'ยืนยืนอือบา'}</span>
+          <span>{isSaving ? 'กำลัง...' : 'บันทึก'}</span>
         </button>
       </div>
     </div>

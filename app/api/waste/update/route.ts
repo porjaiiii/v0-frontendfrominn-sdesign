@@ -41,6 +41,7 @@ export async function PUT(request: NextRequest) {
     const payload = {
       action: 'updateWaste',
       type: 'update',
+      status: 'done',
       timestamp,
       user_id,
       waste_type,

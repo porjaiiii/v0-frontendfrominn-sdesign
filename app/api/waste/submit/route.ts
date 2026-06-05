@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     const payload = {
       action: 'submitWaste',
       type: 'insert',
+      status: 'done',
       timestamp,
       user_id,
       waste_type,

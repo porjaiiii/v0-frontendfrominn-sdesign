@@ -9,10 +9,11 @@ const CARBON_FACTORS = {
   oil: 3.0,
 }
 
-export async function POST(request: NextRequest) {
+export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
     const {
+      timestamp,
       user_id,
       waste_type,
       waste_subtype,
@@ -21,28 +22,25 @@ export async function POST(request: NextRequest) {
       notes,
     } = body
 
-    console.log('[v0] Received waste submission:', { user_id, waste_type, waste_subtype, weight_kg })
+    console.log('[v0] Received waste update:', { timestamp, user_id, waste_type, weight_kg })
 
-    if (!user_id || !waste_type || !waste_subtype || !weight_kg) {
-      console.log('[v0] Missing required fields')
+    if (!timestamp || !user_id || !waste_type || !waste_subtype || !weight_kg) {
+      console.log('[v0] Missing required fields for update')
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    // คำนวณ carbon reduction
+    // คำนวณ carbon reduction ใหม่
     const carbonFactor = CARBON_FACTORS[waste_type as keyof typeof CARBON_FACTORS] || 2.0
     const carbonReduction = weight_kg * carbonFactor
     const pointsEarned = Math.round(carbonReduction * 10)
 
-    // บันทึก timestamp
-    const timestamp = new Date().toISOString()
-
     // ส่งข้อมูลไปยัง Google Apps Script Webhook
     const payload = {
-      action: 'submitWaste',
-      type: 'insert',
+      action: 'updateWaste',
+      type: 'update',
       status: 'done',
       timestamp,
       user_id,
@@ -55,7 +53,7 @@ export async function POST(request: NextRequest) {
       notes: notes || ''
     }
 
-    console.log('[v0] Sending to Google Apps Script...')
+    console.log('[v0] Sending update to Google Apps Script...')
     
     const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
       method: 'POST',
@@ -76,7 +74,7 @@ export async function POST(request: NextRequest) {
       })
       return NextResponse.json(
         { 
-          error: 'Failed to save to Google Sheet',
+          error: 'Failed to update in Google Sheet',
           details: error.substring(0, 200),
           status: response.status,
         },
@@ -85,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json()
-    console.log('[v0] Data submitted successfully:', result)
+    console.log('[v0] Data updated successfully:', result)
 
     return NextResponse.json({
       success: true,
@@ -99,10 +97,15 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('[v0] Error submitting waste record:', error)
+    console.error('[v0] Error updating waste record:', error)
     return NextResponse.json(
-      { error: 'Failed to submit waste record' },
+      { error: 'Failed to update waste record' },
       { status: 500 }
     )
   }
+}
+
+export async function POST(request: NextRequest) {
+  // Redirect POST to PUT
+  return PUT(request)
 }

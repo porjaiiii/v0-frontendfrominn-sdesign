@@ -158,9 +158,28 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
     try {
       const recordId = `${record.timestamp}-${record.user_id}`
       setSavingRecordId(recordId)
-      console.log('[v0] Saving waste record:', record)
+      console.log('[v0] Saving waste record (update status to done):', record)
       
-      // Remove the record from the list (same as confirm)
+      // Call API to update record - change status from pending to done
+      const response = await fetch('/api/waste/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(record),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        console.error('[v0] API error:', error)
+        alert('เกิดข้อผิดพลาดในการบันทึก: ' + (error.error || 'Unknown error'))
+        return
+      }
+
+      const result = await response.json()
+      console.log('[v0] Save API response:', result)
+      
+      // Remove the record from the list
       setRecords(records.filter(r => 
         !(r.timestamp === record.timestamp && r.user_id === record.user_id)
       ))
@@ -176,6 +195,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
       }
     } catch (err) {
       console.error('[v0] Error saving record:', err)
+      alert('เกิดข้อผิดพลาด: ' + (err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setSavingRecordId(null)
     }

@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { Leaf, Trash2, ChevronRight, ArrowDownUp } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { WasteDetailModal } from './waste-detail-modal'
+import { WasteCard } from './waste-card'
 
 interface WasteRecord {
   timestamp: string
@@ -41,6 +43,8 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
   const [sortByWeight, setSortByWeight] = useState(false)
+  const [savingRecordId, setSavingRecordId] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -142,6 +146,38 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
     }
   }
 
+  const handleEditRecord = (record: WasteRecord) => {
+    // Navigate to history detail page where user can edit
+    router.push(`/history/${encodeURIComponent(record.timestamp)}`)
+  }
+
+  const handleSaveRecord = async (record: WasteRecord) => {
+    try {
+      const recordId = `${record.timestamp}-${record.user_id}`
+      setSavingRecordId(recordId)
+      console.log('[v0] Saving waste record:', record)
+      
+      // Remove the record from the list (same as confirm)
+      setRecords(records.filter(r => 
+        !(r.timestamp === record.timestamp && r.user_id === record.user_id)
+      ))
+      
+      // Recalculate total weight
+      const newRecords = records.filter(r => 
+        !(r.timestamp === record.timestamp && r.user_id === record.user_id)
+      )
+      const newTotal = newRecords.reduce((sum, r) => sum + r.weight_kg, 0)
+      setTotalWeight(newTotal)
+      if (onTotalWeightChange) {
+        onTotalWeightChange(newTotal)
+      }
+    } catch (err) {
+      console.error('[v0] Error saving record:', err)
+    } finally {
+      setSavingRecordId(null)
+    }
+  }
+
   const handleOpenDetails = (record: WasteRecord) => {
     setSelectedRecord(record)
     setIsModalOpen(true)
@@ -211,7 +247,7 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
             <button
               onClick={() => setSortByWeight(!sortByWeight)}
               className="flex items-center gap-1 px-3 py-1 bg-[#f0f9e8] text-[#154212] rounded-lg hover:bg-[#e0f1d0] transition-colors border border-[#d4e9c1]"
-              title="เรียงลำดับน้ำหนักจา��มากไปน้อย"
+              title="เรียงลำดับน้ำหนักจา���มากไปน้อย"
             >
               <ArrowDownUp size={16} />
               <span className="text-xs font-semibold">เรียงลำดับ</span>
@@ -224,91 +260,15 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
             <p className="text-[#999999]">ยังไม่มีการบันทึกขยะ</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#e5e5e5]">
+          <div className="space-y-4 p-4">
             {(sortByWeight ? [...records].sort((a, b) => b.weight_kg - a.weight_kg) : records).map((record, index) => (
-              <div key={index} className="p-4">
-                {record.image_url && (
-                  <div className="mb-3 rounded-lg overflow-hidden h-32 bg-gray-100 flex items-center justify-center border-2 border-[#154212]">
-                    <Image
-                      src={record.image_url}
-                      alt={`${record.waste_type} - ${record.waste_subtype}`}
-                      width={300}
-                      height={200}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.log('[v0] Image load error for URL:', record.image_url)
-                        const img = e.target as HTMLImageElement
-                        img.style.display = 'none'
-                        const parent = img.parentElement
-                        if (parent) {
-                          const placeholder = document.createElement('div')
-                          placeholder.className = 'flex flex-col items-center justify-center gap-2'
-                          placeholder.innerHTML = '<svg class="w-12 h-12 text-[#154212]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
-                          parent.appendChild(placeholder)
-                        }
-                      }}
-                      onLoad={() => {
-                        console.log('[v0] Image loaded successfully:', record.image_url)
-                      }}
-                    />
-                  </div>
-                )}
-
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <span
-                      className={cn(
-                        'inline-block px-3 py-1 rounded-full text-xs font-semibold',
-                        WASTE_TYPE_COLORS[record.waste_type] ||
-                          'bg-[#f0f0f0] text-[#666666]'
-                      )}
-                    >
-                      {record.waste_type}
-                    </span>
-                  </div>
-                  <span className="text-sm font-bold text-[#154212]">
-                    +{record.points_earned} คะแนน
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 text-xs text-[#666666] mb-4">
-                  <div>
-                    <p className="text-[#999999]">น้ำหนัก</p>
-                    <p className="font-semibold text-[#154212]">
-                      {record.weight_kg} kg
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[#999999]">คาร์บอน</p>
-                    <p className="font-semibold text-[#154212]">
-                      {(record.carbon_reduction ?? 0).toFixed(1)} kg
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[#999999]">วันเวลา</p>
-                    <p className="font-semibold text-[#154212] text-xs">
-                      {new Date(record.timestamp).toLocaleDateString('th-TH', {
-                        month: 'short',
-                        day: 'numeric',
-                      })} {new Date(record.timestamp).toLocaleTimeString('th-TH', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Action Button - Bottom Right */}
-                <div className="flex justify-end mt-4">
-                  <button
-                    onClick={() => handleOpenDetails(record)}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-[#154212] text-white font-semibold rounded-lg hover:bg-[#154212]/90 transition-colors text-sm"
-                  >
-                    <span>ดูรายละเอียด</span>
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
+              <WasteCard
+                key={index}
+                record={record}
+                onEdit={handleEditRecord}
+                onSave={handleSaveRecord}
+                isSaving={savingRecordId === `${record.timestamp}-${record.user_id}`}
+              />
             ))}
           </div>
         )}

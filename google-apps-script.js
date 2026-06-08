@@ -13,54 +13,73 @@
 
 function doPost(e) {
   try {
+    // Log ทันทีเพื่อดูว่า request มาถึงหรือไม่
+    Logger.log('===== REQUEST RECEIVED =====');
+    Logger.log('Request timestamp:', new Date().toISOString());
+    Logger.log('Raw e.postData:', e.postData);
+    
     const payload = JSON.parse(e.postData.contents);
-    Logger.log('Received payload:', payload);
+    Logger.log('Parsed payload:', JSON.stringify(payload, null, 2));
 
     if (payload.action === 'registerUser') {
+      Logger.log('ACTION: registerUser');
       return registerUser(payload);
     } else if (payload.action === 'submitWaste') {
+      Logger.log('ACTION: submitWaste');
       return submitWaste(payload);
     }
 
+    Logger.log('ERROR: Unknown action:', payload.action);
     return ContentService.createTextOutput(JSON.stringify({
       status: 'error',
-      message: 'Unknown action'
+      message: 'Unknown action: ' + payload.action
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
-    Logger.log('Error:', error);
+    Logger.log('===== ERROR IN doPost =====');
+    Logger.log('Error message:', error.toString());
+    Logger.log('Error stack:', error.stack);
     return ContentService.createTextOutput(JSON.stringify({
       status: 'error',
-      message: error.toString()
+      message: error.toString(),
+      timestamp: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 function registerUser(payload) {
   try {
+    Logger.log('===== REGISTER USER START =====');
+    
     // เปิด Google Sheet
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Registration');
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    Logger.log('Spreadsheet name:', ss.getName());
+    Logger.log('Available sheets:', ss.getSheets().map(s => s.getName()));
+    
+    const sheet = ss.getSheetByName('Registration');
     
     if (!sheet) {
+      Logger.log('ERROR: Sheet "Registration" not found!');
+      const availableSheets = ss.getSheets().map(s => s.getName()).join(', ');
       return ContentService.createTextOutput(JSON.stringify({
         status: 'error',
-        message: 'Sheet "Registration" not found'
+        message: 'Sheet "Registration" not found. Available sheets: ' + availableSheets
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // ดึงแถวแรก (ส่วนหัว) เพื่อกำหนดคอลัมน์
-    const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    Logger.log('Sheet found:', sheet.getName());
     
-    // สร้าง object จาก header
-    const columnMap = {};
-    headerRow.forEach((header, index) => {
-      columnMap[header] = index + 1;
-    });
+    // ดึงแถวแรก (ส่วนหัว) เพื่อกำหนดคอลัมน์
+    const lastColumn = sheet.getLastColumn();
+    Logger.log('Last column:', lastColumn);
+    
+    const headerRow = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+    Logger.log('Headers:', JSON.stringify(headerRow));
 
     // เพิ่มแถวใหม่
     const newRow = [];
-    for (let i = 1; i <= sheet.getLastColumn(); i++) {
-      const header = headerRow[i - 1];
+    for (let i = 0; i < headerRow.length; i++) {
+      const header = headerRow[i];
       let value = '';
 
       switch (header) {
@@ -102,24 +121,34 @@ function registerUser(payload) {
       }
 
       newRow.push(value);
+      Logger.log('Column [' + header + ']: ' + value);
     }
+
+    Logger.log('New row to append:', JSON.stringify(newRow));
 
     // ผนวกแถวใหม่
     sheet.appendRow(newRow);
-
-    Logger.log('User registered successfully:', payload.fullName);
+    
+    const newRowCount = sheet.getLastRow();
+    Logger.log('Row appended! Total rows now:', newRowCount);
+    Logger.log('===== REGISTER USER SUCCESS =====');
 
     return ContentService.createTextOutput(JSON.stringify({
       status: 'success',
       message: 'Registration saved successfully',
-      data: payload
+      rowNumber: newRowCount,
+      data: payload,
+      timestamp: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
-    Logger.log('Error in registerUser:', error);
+    Logger.log('===== ERROR IN REGISTER USER =====');
+    Logger.log('Error message:', error.toString());
+    Logger.log('Error stack:', error.stack);
     return ContentService.createTextOutput(JSON.stringify({
       status: 'error',
-      message: error.toString()
+      message: error.toString(),
+      timestamp: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }

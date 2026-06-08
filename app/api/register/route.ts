@@ -5,6 +5,9 @@ const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_REGISTER_URL || 'h
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log('[v0] === REGISTRATION REQUEST START ===')
+    console.log('[v0] Raw body received:', JSON.stringify(body, null, 2))
+    
     const {
       lineUserId,
       userId,
@@ -19,11 +22,13 @@ export async function POST(request: NextRequest) {
       registrationDate,
     } = body
 
-    console.log('[v0] Received registration data:', { lineUserId, fullName, phoneNumber })
+    console.log('[v0] Parsed data - LINE ID:', lineUserId, 'Name:', fullName, 'Phone:', phoneNumber)
 
     // Validate required fields
     if (!lineUserId || !fullName || !phoneNumber || !gender || !ageRange || !pdpaConsent) {
-      console.log('[v0] Missing required fields')
+      console.log('[v0] VALIDATION ERROR: Missing required fields')
+      console.log('[v0] lineUserId:', !!lineUserId, 'fullName:', !!fullName, 'phoneNumber:', !!phoneNumber)
+      console.log('[v0] gender:', !!gender, 'ageRange:', !!ageRange, 'pdpaConsent:', !!pdpaConsent)
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -49,7 +54,9 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     }
 
-    console.log('[v0] Sending registration to Google Apps Script...')
+    console.log('[v0] Payload to send:', JSON.stringify(payload, null, 2))
+    console.log('[v0] Using Google Apps Script URL:', GOOGLE_APPS_SCRIPT_URL)
+    console.log('[v0] Attempting to POST to Google Apps Script...')
     
     const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
       method: 'POST',
@@ -59,27 +66,28 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(payload),
     })
 
-    console.log('[v0] Google Apps Script response status:', response.status)
+    console.log('[v0] Google Apps Script response status:', response.status, response.statusText)
+    console.log('[v0] Response headers:', Object.fromEntries(response.headers.entries()))
+
+    const responseText = await response.text()
+    console.log('[v0] Response body (raw):', responseText.substring(0, 1000))
 
     if (!response.ok) {
-      const error = await response.text()
-      console.error('[v0] Google Apps Script error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: error.substring(0, 500)
-      })
+      console.error('[v0] GOOGLE APPS SCRIPT ERROR:')
+      console.error('[v0] Status:', response.status, response.statusText)
+      console.error('[v0] Response:', responseText.substring(0, 500))
       return NextResponse.json(
         { 
           error: 'Failed to save registration to Google Sheet',
-          details: error.substring(0, 200),
+          details: responseText.substring(0, 200),
           status: response.status,
         },
         { status: 500 }
       )
     }
 
-    const result = await response.json()
-    console.log('[v0] Registration submitted successfully:', result)
+    console.log('[v0] SUCCESS! Registration data sent to Google Sheet')
+    console.log('[v0] === REGISTRATION REQUEST END ===')
 
     return NextResponse.json({
       success: true,
@@ -90,9 +98,15 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('[v0] Error submitting registration:', error)
+    console.error('[v0] === ERROR IN REGISTRATION ===')
+    console.error('[v0] Error type:', error instanceof Error ? error.constructor.name : typeof error)
+    console.error('[v0] Error message:', error instanceof Error ? error.message : String(error))
+    console.error('[v0] Full error:', error)
     return NextResponse.json(
-      { error: 'Failed to submit registration' },
+      { 
+        error: 'Failed to submit registration',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     )
   }

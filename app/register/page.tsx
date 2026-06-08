@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
+import { PageHeader } from '@/components/page-header'
 
 const OCCUPATIONS = [
   'นักเรียน',
@@ -123,36 +124,35 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#157b03] to-[#0d5002] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 text-center max-w-md w-full">
-          <div className="w-12 h-12 bg-[#157b03] rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+      <div className="min-h-screen bg-white flex flex-col">
+        <PageHeader />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center max-w-md w-full">
+            <div className="w-16 h-16 bg-[#154212] rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-[#154212] mb-3">ลงทะเบียนสำเร็จ</h2>
+            <p className="text-gray-600 mb-2">ยินดีต้อนรับสู่ Digital Wasted Account</p>
+            <p className="text-sm text-gray-500">กำลังเปลี่ยนไปยังหน้าหลัก...</p>
           </div>
-          <h2 className="text-2xl font-bold text-[#157b03] mb-2">ลงทะเบียนสำเร็จ</h2>
-          <p className="text-gray-600">ยินดีต้อนรับสู่ Digital Wasted Account</p>
-          <p className="text-sm text-gray-500 mt-4">กำลังเปลี่ยนไปยังหน้าหลัก...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#157b03] to-[#0d5002]">
-      {/* Header */}
-      <div className="bg-white sticky top-0 z-10 shadow-sm">
-        <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <ChevronLeft className="w-6 h-6 text-gray-700" />
-          </Link>
-          <h1 className="text-lg font-bold text-gray-900">ลงทะเบียน</h1>
-          <div className="w-10" />
-        </div>
-      </div>
+    <div className="min-h-screen bg-white pb-24">
+      <PageHeader />
 
       {/* Form */}
-      <div className="max-w-md mx-auto px-4 py-8">
+      <div className="max-w-md mx-auto px-4 py-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-[#154212] mb-2">ลงทะเบียน</h1>
+          <p className="text-gray-600 text-sm">กรุณากรอกข้อมูลของคุณให้ครบถ้วน</p>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -162,67 +162,67 @@ export default function RegisterPage() {
 
           {/* LINE User ID */}
           <div>
-            <label className="block text-white font-medium mb-2">LINE User ID *</label>
+            <label className="block text-gray-700 font-medium mb-2">LINE User ID *</label>
             <input
               type="text"
               name="lineUserId"
               value={formData.lineUserId}
               onChange={handleChange}
               placeholder="LINE User ID"
-              className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-[#157b03] outline-none"
+              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
               required
             />
           </div>
 
           {/* User ID */}
           <div>
-            <label className="block text-white font-medium mb-2">User ID</label>
+            <label className="block text-gray-700 font-medium mb-2">User ID</label>
             <input
               type="text"
               name="userId"
               value={formData.userId}
               onChange={handleChange}
               placeholder="User ID"
-              className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-[#157b03] outline-none"
+              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
             />
           </div>
 
           {/* Full Name */}
           <div>
-            <label className="block text-white font-medium mb-2">ชื่อ-นามสกุล *</label>
+            <label className="block text-gray-700 font-medium mb-2">ชื่อ-นามสกุล *</label>
             <input
               type="text"
               name="fullName"
               value={formData.fullName}
               onChange={handleChange}
               placeholder="เช่น สมชาย สมการ"
-              className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-[#157b03] outline-none"
+              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
               required
             />
           </div>
 
           {/* Phone Number */}
           <div>
-            <label className="block text-white font-medium mb-2">เบอร์ติดต่อ *</label>
+            <label className="block text-gray-700 font-medium mb-2">เบอร์ติดต่อ *</label>
             <input
               type="tel"
               name="phoneNumber"
               value={formData.phoneNumber}
               onChange={handleChange}
               placeholder="เช่น 08xxxxxxxx"
-              className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-[#157b03] outline-none"
+              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
               required
             />
           </div>
 
           {/* Gender */}
           <div>
-            <label className="block text-white font-medium mb-2">เพศ *</label>
+            <label className="block text-gray-700 font-medium mb-2">เพศ *</label>
             <select
               name="gender"
               value={formData.gender}
               onChange={handleChange}
-              className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-[#157b03] outline-none"
+              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
               required
             >
               <option value="">-- เลือกเพศ --</option>
@@ -234,12 +234,12 @@ export default function RegisterPage() {
 
           {/* Age Range */}
           <div>
-            <label className="block text-white font-medium mb-2">ช่วงอายุ *</label>
+            <label className="block text-gray-700 font-medium mb-2">ช่วงอายุ *</label>
             <select
               name="ageRange"
               value={formData.ageRange}
               onChange={handleChange}
-              className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-[#157b03] outline-none"
+              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
               required
             >
               <option value="">-- เลือกช่วงอายุ --</option>
@@ -255,12 +255,12 @@ export default function RegisterPage() {
 
           {/* User Type */}
           <div>
-            <label className="block text-white font-medium mb-2">ประเภทผู้ใช้งาน</label>
+            <label className="block text-gray-700 font-medium mb-2">ประเภทผู้ใช้งาน</label>
             <select
               name="userType"
               value={formData.userType}
               onChange={handleChange}
-              className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-[#157b03] outline-none"
+              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
             >
               <option value="">-- เลือกประเภท --</option>
               <option value="บุคคลทั่วไป">บุคคลทั่วไป</option>
@@ -272,12 +272,12 @@ export default function RegisterPage() {
 
           {/* Subdistrict */}
           <div>
-            <label className="block text-white font-medium mb-2">ตำบล</label>
+            <label className="block text-gray-700 font-medium mb-2">ตำบล</label>
             <select
               name="subdistrict"
               value={formData.subdistrict}
               onChange={handleChange}
-              className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-[#157b03] outline-none"
+              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
             >
               <option value="">-- เลือกตำบล --</option>
               {SUBDISTRICTS.map(district => (
@@ -288,12 +288,12 @@ export default function RegisterPage() {
 
           {/* Occupation */}
           <div>
-            <label className="block text-white font-medium mb-2">อาชีพ</label>
+            <label className="block text-gray-700 font-medium mb-2">อาชีพ</label>
             <select
               name="occupation"
               value={formData.occupation}
               onChange={handleChange}
-              className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-[#157b03] outline-none"
+              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
             >
               <option value="">-- เลือกอาชีพ --</option>
               {OCCUPATIONS.map(occ => (
@@ -303,17 +303,17 @@ export default function RegisterPage() {
           </div>
 
           {/* PDPA Consent */}
-          <div className="bg-white bg-opacity-10 rounded-lg p-4 space-y-3">
+          <div className="bg-[#f5f5f5] rounded-lg p-4 space-y-3">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 name="pdpaConsent"
                 checked={formData.pdpaConsent}
                 onChange={handleChange}
-                className="mt-1 w-5 h-5 rounded border-gray-300 text-[#157b03] focus:ring-2 focus:ring-[#157b03]"
+                className="mt-1 w-5 h-5 rounded border-gray-300 text-[#154212] focus:ring-2 focus:ring-[#154212]"
                 required
               />
-              <span className="text-white text-sm">
+              <span className="text-gray-700 text-sm leading-relaxed">
                 ฉันยอมรับและเข้าใจเกี่ยวกับนโยบายการคุ้มครองข้อมูลส่วนบุคคล (PDPA) *
               </span>
             </label>
@@ -323,15 +323,15 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-white text-[#157b03] font-bold py-3 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-8"
+            className="w-full bg-[#154212] text-white font-bold py-3 rounded-lg hover:bg-[#0d3308] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-8"
           >
             {loading ? 'กำลังลงทะเบียน...' : 'ลงทะเบียน'}
           </button>
 
           {/* Already have account */}
-          <div className="text-center">
-            <span className="text-white text-sm">มีบัญชีอยู่แล้ว? </span>
-            <Link href="/profile" className="text-white underline font-medium text-sm hover:text-gray-200">
+          <div className="text-center pt-4">
+            <span className="text-gray-600 text-sm">มีบัญชีอยู่แล้ว? </span>
+            <Link href="/profile" className="text-[#154212] underline font-medium text-sm hover:text-[#0d3308]">
               เข้าสู่ระบบ
             </Link>
           </div>

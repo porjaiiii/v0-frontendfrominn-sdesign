@@ -9,6 +9,9 @@ function doPost(e) {
     if (payload.action === 'registerUser') {
       Logger.log('→ Routing to registerUser');
       return registerUser(payload);
+    } else if (payload.action === 'getUser') {
+      Logger.log('→ Routing to getUser');
+      return getUser(payload);
     }
 
     Logger.log('ERROR: Unknown action:', payload.action);
@@ -112,6 +115,132 @@ function registerUser(payload) {
 
   } catch (error) {
     Logger.log('ERROR in registerUser:', error.toString());
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function getUser(payload) {
+  try {
+    Logger.log('===== GET USER =====');
+    
+    if (!payload.lineUserId) {
+      Logger.log('ERROR: lineUserId not provided');
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'error',
+        message: 'lineUserId is required'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Registration');
+    
+    if (!sheet) {
+      Logger.log('ERROR: Sheet "Registration" NOT FOUND');
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'error',
+        message: 'Sheet Registration not found'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    Logger.log('Searching for LINE ID:', payload.lineUserId);
+    
+    const lastColumn = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    const headerRow = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+    
+    // Find LINE User ID column
+    const lineUserIdColumnIndex = headerRow.findIndex(h => h === 'LINE User ID');
+    
+    if (lineUserIdColumnIndex === -1) {
+      Logger.log('ERROR: LINE User ID column not found. Headers:', JSON.stringify(headerRow));
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'error',
+        message: 'LINE User ID column not found'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Search for user row
+    let userRow = null;
+    let userRowIndex = -1;
+    
+    for (let i = 2; i <= lastRow; i++) {
+      const row = sheet.getRange(i, 1, 1, lastColumn).getValues()[0];
+      if (row[lineUserIdColumnIndex] === payload.lineUserId) {
+        userRow = row;
+        userRowIndex = i;
+        break;
+      }
+    }
+
+    if (!userRow) {
+      Logger.log('User not found for LINE ID:', payload.lineUserId);
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'error',
+        message: 'User not found'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    Logger.log('Found user at row:', userRowIndex);
+
+    // Map row to profile object
+    const profile = {};
+    for (let i = 0; i < headerRow.length; i++) {
+      const header = headerRow[i];
+      const value = userRow[i];
+
+      switch (header) {
+        case 'LINE User ID':
+          profile.lineUserId = value;
+          break;
+        case 'User ID':
+          profile.userId = value;
+          break;
+        case 'PDPA Consent':
+          profile.pdpaConsent = value;
+          break;
+        case 'ชื่อ-นามสกุล':
+          profile.fullName = value;
+          profile.name = value;
+          break;
+        case 'เบอร์ติดต่อ':
+          profile.phoneNumber = value;
+          break;
+        case 'เพศ':
+          profile.gender = value;
+          break;
+        case 'ช่วงอายุ':
+          profile.ageRange = value;
+          profile.age = value;
+          break;
+        case 'ประเภทผู้ใช้งาน':
+          profile.userType = value;
+          profile.type = value;
+          break;
+        case 'ตำบล':
+          profile.subdistrict = value;
+          break;
+        case 'อาชีพ':
+          profile.occupation = value;
+          break;
+        case 'วันที่สมัคร':
+          profile.registrationDate = value;
+          break;
+      }
+    }
+
+    Logger.log('Profile mapped:', JSON.stringify(profile));
+    Logger.log('SUCCESS! User found:', profile.name);
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'success',
+      data: profile
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    Logger.log('ERROR in getUser:', error.toString());
     return ContentService.createTextOutput(JSON.stringify({
       status: 'error',
       message: error.toString()

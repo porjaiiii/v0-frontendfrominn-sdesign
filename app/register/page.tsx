@@ -110,11 +110,6 @@ export default function RegisterPage() {
         subdistrict: '',
         occupation: '',
       })
-
-      // Redirect after 2 seconds
-      setTimeout(() => {
-        window.location.href = '/'
-      }, 2000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการลงทะเบียน')
     } finally {
@@ -135,7 +130,14 @@ export default function RegisterPage() {
             </div>
             <h2 className="text-2xl font-bold text-[#154212] mb-3">ลงทะเบียนสำเร็จ</h2>
             <p className="text-gray-600 mb-2">ยินดีต้อนรับสู่ Digital Wasted Account</p>
-            <p className="text-sm text-gray-500">กำลังเปลี่ยนไปยังหน้าหลัก...</p>
+            <p className="text-sm text-gray-500 mb-6">คุณได้ลงทะเบียนเรียบร้อยแล้ว</p>
+            
+            <Link 
+              href="/" 
+              className="inline-block bg-[#154212] text-white font-bold py-3 px-8 rounded-lg hover:bg-[#0d3308] transition-colors"
+            >
+              กลับไปหน้าหลัก
+            </Link>
           </div>
         </div>
       </div>

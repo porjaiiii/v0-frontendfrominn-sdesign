@@ -108,9 +108,12 @@ export default function RewardsPage() {
             >
               ประวัติการสะสมแนน
             </Link>
-            <button className="px-4 py-1.5 bg-white rounded-lg text-sm font-medium text-[#154212] hover:bg-[#f5f5f5] transition-colors">
+            <Link 
+              href="/donate"
+              className="px-4 py-1.5 bg-white rounded-lg text-sm font-medium text-[#154212] hover:bg-[#f5f5f5] transition-colors"
+            >
               บริจาคคะแนน
-            </button>
+            </Link>
           </div>
         </div>
 

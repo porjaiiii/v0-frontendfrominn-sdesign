@@ -116,14 +116,10 @@ export default function ProfileViewPage() {
               )}
             </div>
 
-            {/* User Info Center */}
+            {/* User Info - Name and Gender */}
             <div className="flex-1">
-             
-          
-              
-            
-              
-             
+              <p className="font-bold text-[#154212] text-sm mb-1">{profile.name || '-'}</p>
+              <p className="text-xs text-[#666666]">{profile.gender || '-'}</p>
             </div>
 
             {/* Total Weight Right */}
@@ -143,8 +139,8 @@ export default function ProfileViewPage() {
               <p className="font-bold text-[#154212]">{profile.age || '-'} ปี</p>
             </div>
             <div className="border-t border-[#e5e5e5] pt-2">
-              <p className="text-[#666666] mb-1">เพศ</p>
-              <p className="font-bold text-[#154212]">{profile.gender || '-'}</p>
+              <p className="text-[#666666] mb-1">ประเภท</p>
+              <p className="font-bold text-[#154212]">{profile.type || '-'}</p>
             </div>
             <div className="border-t border-[#e5e5e5] pt-2">
               <p className="text-[#666666] mb-1">สำนัก</p>

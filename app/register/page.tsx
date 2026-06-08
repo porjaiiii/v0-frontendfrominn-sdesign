@@ -8,24 +8,44 @@ import { useLiffContext } from '@/lib/liff-context'
 import { generateUserIdFromLineId } from '@/lib/user-id-generator'
 
 const OCCUPATIONS = [
-  'นักเรียน',
-  'นักศึกษา',
-  'พนักงานเอกชน',
-  'ข้าราชการ',
+  'ผู้ใช้งานกรอกอาชีพตนเอง',
+  'ผู้ประกอบการ (ร้านค้า/โฮมสเตย์)',
   'เกษตรกร',
-  'ผู้ประกอบการ',
-  'อื่น ๆ',
+  'ข้าราชการ/พนักงานของรัฐ',
+  'พนักงานบริษัทเอกชน',
+  'รับจ้างทั่วไป',
+  'นักเรียน/นักศึกษา',
+  'ผู้เกษียณอายุ/ว่างงาน',
+  'อื่นๆ (ไม่ต้องระบุ)',
 ]
 
 const SUBDISTRICTS = [
-  'ท่าน้ำ',
-  'วัฒนา',
-  'คลองเตย',
-  'สถลา',
-  'ดุสิต',
-  'บ้านเก่า',
-  'พญาไท',
+  'ทรงคนอง',
+  'บางกระสอบ',
+  'บางน้ำผึ้ง',
+  'บางยอ',
+  'บางกอบัว',
+  'บางกะเจ้า',
   'อื่น ๆ',
+]
+
+const GENDERS = [
+  'ชาย',
+  'หญิง',
+  'LGBTQ+',
+  'ไม่ระบุ',
+]
+
+const AGE_RANGES = [
+  'ต่ำกว่า 25',
+  '26-45',
+  '46-60',
+  '61 ปีขึ้นไป',
+]
+
+const USER_TYPES = [
+  'คนในชุมชนคุ้งบางกะเจ้า',
+  'นักท่องเที่ยว',
 ]
 
 export default function RegisterPage() {
@@ -246,9 +266,9 @@ export default function RegisterPage() {
               required
             >
               <option value="">-- เลือกเพศ --</option>
-              <option value="ชาย">ชาย</option>
-              <option value="หญิง">หญิง</option>
-              <option value="อื่น ๆ">อื่น ๆ</option>
+              {GENDERS.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
             </select>
           </div>
 
@@ -263,13 +283,9 @@ export default function RegisterPage() {
               required
             >
               <option value="">-- เลือกช่วงอายุ --</option>
-              <option value="ต่ำกว่า 15 ปี">ต่ำกว่า 15 ปี</option>
-              <option value="15-20 ปี">15-20 ปี</option>
-              <option value="21-30 ปี">21-30 ปี</option>
-              <option value="31-40 ปี">31-40 ปี</option>
-              <option value="41-50 ปี">41-50 ปี</option>
-              <option value="51-60 ปี">51-60 ปี</option>
-              <option value="มากกว่า 60 ปี">มากกว่า 60 ปี</option>
+              {AGE_RANGES.map(age => (
+                <option key={age} value={age}>{age}</option>
+              ))}
             </select>
           </div>
 
@@ -283,10 +299,9 @@ export default function RegisterPage() {
               className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
             >
               <option value="">-- เลือกประเภท --</option>
-              <option value="บุคคลทั่วไป">บุคคลทั่วไป</option>
-              <option value="ชุมชน">ชุมชน</option>
-              <option value="องค์กร">องค์กร</option>
-              <option value="อื่น ๆ">อื่น ๆ</option>
+              {USER_TYPES.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
             </select>
           </div>
 

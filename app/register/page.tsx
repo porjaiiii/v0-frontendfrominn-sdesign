@@ -1,9 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
+import { useLiffContext } from '@/lib/liff-context'
+import { generateUserIdFromLineId } from '@/lib/user-id-generator'
 
 const OCCUPATIONS = [
   'นักเรียน',
@@ -27,6 +29,7 @@ const SUBDISTRICTS = [
 ]
 
 export default function RegisterPage() {
+  const { profile } = useLiffContext()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -42,6 +45,20 @@ export default function RegisterPage() {
     subdistrict: '',
     occupation: '',
   })
+
+  // Auto-populate from LINE profile on component mount
+  useEffect(() => {
+    if (profile?.userId) {
+      console.log('[v0] Profile loaded, auto-populating form with LINE ID:', profile.userId)
+      const generatedUserId = generateUserIdFromLineId(profile.userId)
+      setFormData(prev => ({
+        ...prev,
+        lineUserId: profile.userId,
+        userId: generatedUserId,
+        fullName: profile.displayName || '',
+      }))
+    }
+  }, [profile])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -169,11 +186,11 @@ export default function RegisterPage() {
               type="text"
               name="lineUserId"
               value={formData.lineUserId}
-              onChange={handleChange}
               placeholder="LINE User ID"
-              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
-              required
+              readOnly
+              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-gray-100 text-gray-900 placeholder-gray-400 outline-none cursor-not-allowed"
             />
+            <p className="text-xs text-gray-500 mt-1">ดึงมาจากบัญชี LINE ของคุณโดยอัตโนมัติ</p>
           </div>
 
           {/* User ID */}
@@ -183,10 +200,11 @@ export default function RegisterPage() {
               type="text"
               name="userId"
               value={formData.userId}
-              onChange={handleChange}
               placeholder="User ID"
-              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors"
+              readOnly
+              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-gray-100 text-gray-900 placeholder-gray-400 outline-none cursor-not-allowed"
             />
+            <p className="text-xs text-gray-500 mt-1">สร้างขึ้นโดยอัตโนมัติจากบัญชี LINE</p>
           </div>
 
           {/* Full Name */}

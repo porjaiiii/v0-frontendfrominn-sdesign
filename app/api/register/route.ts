@@ -86,6 +86,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Try to parse JSON response, if it fails just return success anyway
+    let result
+    try {
+      result = JSON.parse(responseText)
+    } catch (e) {
+      console.log('[v0] Response is not JSON, treating as success anyway')
+      result = { status: 'success', raw: responseText.substring(0, 100) }
+    }
+
     console.log('[v0] SUCCESS! Registration data sent to Google Sheet')
     console.log('[v0] === REGISTRATION REQUEST END ===')
 

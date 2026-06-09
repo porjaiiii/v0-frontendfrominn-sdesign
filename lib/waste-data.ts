@@ -35,10 +35,35 @@ export const WASTE_SUBTYPES: Record<WasteType, WasteSubType[]> = {
 }
 
 export const REWARDS = [
+  // --- ข้อมูลเดิมของท่าน (4 อย่าง) ---
   { id: 1, name: 'มาม่า รสแซ่บ', description: 'แพ็ก 5 ซอง', points: 30, image: '/images/rewards/mama.jpg' },
   { id: 2, name: 'ไข่ไก่สด (เบอเล็ก)', description: 'แพ็ก 10 ฟอง', points: 37, image: '/images/rewards/eggs.jpg' },
   { id: 3, name: 'ข้าวสารขาว (เสาไห้)', description: 'ถุง 5 กิโลกรัม', points: 110, image: '/images/rewards/rice-white.jpg' },
   { id: 4, name: 'ข้าวหอมมะลิ 100%', description: 'ถุง 5 กิโลกรัม', points: 200, image: '/images/rewards/rice-jasmine.jpg' },
+
+  // --- เพิ่มเติมจาก Sheet รวมเป็น 15 อย่าง ---
+  // Tier 1
+  { id: 5, name: 'ปรุงทิพย์เกลือป่น', description: 'ขนาด 500 กรัม', points: 7, image: '/images/rewards/salt-prungthip.jpg' },
+  { id: 6, name: 'สบู่ก้อน', description: 'สบู่ทำความสะอาดผิวกาย 1 ก้อน', points: 9, image: '/images/rewards/soap.jpg' },
+
+  // Tier 2
+  { id: 7, name: 'ผงปรุงรสฟ้าไทย', description: 'ขนาด 75 กรัม', points: 14, image: '/images/rewards/fahthai-seasoning.jpg' },
+  { id: 8, name: 'นมไทยเดนมาร์ก', description: 'รสจืด ขนาด 250 มล.', points: 11, image: '/images/rewards/thai-denmark-milk.jpg' },
+  { id: 9, name: 'ภูเขาทอง ซีอิ๊วขาว', description: 'ขนาด 200 มล.', points: 14, image: '/images/rewards/golden-mountain-soy-sauce.jpg' },
+  { id: 10, name: 'ไลปอนเอฟ น้ำยาล้างจาน', description: 'ขนาด 450 มล.', points: 20, image: '/images/rewards/lipon-f.jpg' },
+
+  // Tier 3
+  { id: 11, name: 'ไฮเตอร์น้ำยาซักผ้าขาว', description: 'สีฟ้า ขนาด 600 ซีซี.', points: 29, image: '/images/rewards/haiter-blue.jpg' },
+  { id: 12, name: 'ยาสีฟัน', description: 'สูตรฟันสะอาดสดชื่น 1 หลอด', points: 42, image: '/images/rewards/toothpaste.jpg' },
+
+  // Tier 4
+  { id: 13, name: 'คาราบาวแดง', description: 'เครื่องดื่มชูกำลัง แพ็ค 10 ขวด', points: 88, image: '/images/rewards/carabao-dang.jpg' },
+
+  // Tier 5
+  { id: 14, name: 'SHARP หม้อหุงข้าวชาร์ป', description: 'ขนาด 1.1 ลิตร รุ่น KSH-D11', points: 705, image: '/images/rewards/sharp-rice-cooker.jpg' },
+
+  // Tier 6
+  { id: 15, name: 'ทองคำแท้หนึ่งสลึง', description: 'ทองคำแผ่นหรือทองรูปพรรณ (ราคาปัจจุบัน)', points: 18600, image: '/images/rewards/gold-one-salung.jpg' }
 ]
 
 export const LEADERBOARD = [

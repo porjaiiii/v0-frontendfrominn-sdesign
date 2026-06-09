@@ -26,12 +26,12 @@ export const WASTE_SUBTYPES: Record<WasteType, WasteSubType[]> = {
   aluminum: [
     { id: 'can', name: 'กระป๋องอลูมิเนียม', image: '/images/waste/aluminum-can.svg' },
     { id: 'plate', name: 'ฝาอลูมิเนียม', image: '/images/waste/aluminum-plate.svg' },
-    { id: 'scrap', name: 'เศษอลูมิเนียมอื่นๆ', image: '/images/waste/aluminum-scrap.svg' },
+    { id: 'scrap', name: 'เศษอลูมิเนียม', image: '/images/waste/aluminum-scrap.svg' },
   ],
-  // oil: [
-  //   { id: 'cooking', name: 'น้ำมันพืชใช้แล้ว', image: '/images/waste/oil-cooking.svg' },
-  //   { id: 'motor', name: 'น้ำมันเครื่องใช้แล้ว', image: '/images/waste/oil-motor.svg' },
-  // ],
+  oil: [
+    { id: 'cooking', name: 'น้ำมันพืชใช้แล้ว', image: '/images/waste/oil-cooking.svg' },
+    { id: 'motor', name: 'น้ำมันเครื่องใช้แล้ว', image: '/images/waste/oil-motor.svg' },
+  ],  
 }
 
 export const REWARDS = [

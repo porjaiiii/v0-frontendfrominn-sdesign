@@ -203,7 +203,9 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
       <div className="bg-white rounded-2xl p-4 border border-[#e5e5e5]">
         {/* Header row */}
         <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#e5e5e5]">
-          <span className="text-base">&#9728;</span>
+          <div className="relative w-5 h-5 shrink-0">
+            <Image src="/icons/tabler-icon-bulb.png" alt="คำแนะนำ" fill className="object-contain" />
+          </div>
           <span className="text-sm font-medium text-[#444444]">คำแนะนำในการแนบรูปถ่าย</span>
         </div>
 

@@ -358,7 +358,7 @@ export default function RegisterPage() {
           <div className="relative w-16 h-16 drop-shadow-lg">
             <Image src="/mascot.png" alt="ผู้ช่วยลงทะเบียน" fill className="object-contain" />
           </div>
-          <span className="text-[10px] bg-[#154212] text-white font-medium px-2 py-0.5 rounded-full shadow whitespace-nowrap">
+          <span className="text-[15px] bg-[#154212] text-white font-medium px-2 py-0.5 rounded-full shadow whitespace-nowrap">
             มาครั้งแรก?
           </span>
         </button>
@@ -392,7 +392,7 @@ export default function RegisterPage() {
                 required
               />
               <span className="text-gray-800 text-sm leading-relaxed font-medium">
-                ฉันยอมรับนโยบายการคุ้มครองข้อมูลส���วนบุคคล (PDPA) *
+                ฉันยอมรับนโยบายการคุ้มครองข้อมูลส่วนบุคคล (PDPA) *
               </span>
             </label>
             {/* Expand toggle */}

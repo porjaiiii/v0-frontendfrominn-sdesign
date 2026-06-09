@@ -16,6 +16,7 @@ export default function ProfileViewPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [totalWeight, setTotalWeight] = useState(0)
+  const [sortMode, setSortMode] = useState<'date' | 'weight'>('date')
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -128,10 +129,35 @@ export default function ProfileViewPage() {
           </span>
         </div>
 
+        {/* Sort buttons */}
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={() => setSortMode('date')}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+              sortMode === 'date'
+                ? 'bg-[#154212] text-white border-[#154212]'
+                : 'bg-white text-[#154212] border-[#154212]'
+            }`}
+          >
+            เรียงตามวันที่ล่าสุด
+          </button>
+          <button
+            onClick={() => setSortMode('weight')}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+              sortMode === 'weight'
+                ? 'bg-[#154212] text-white border-[#154212]'
+                : 'bg-white text-[#154212] border-[#154212]'
+            }`}
+          >
+            เรียงตามน้ำหนักมากสุด
+          </button>
+        </div>
+
         {/* Waste Cart */}
         <WasteCart
           userId={profile.lineUserId || lineUserId}
           onTotalWeightChange={setTotalWeight}
+          sortMode={sortMode}
         />
       </main>
     </div>

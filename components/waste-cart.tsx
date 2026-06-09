@@ -19,9 +19,10 @@ interface WasteRecord {
 interface WasteCartProps {
   userId: string
   onTotalWeightChange?: (weight: number) => void
+  sortMode?: 'date' | 'weight'
 }
 
-export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
+export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: WasteCartProps) {
   const [records, setRecords] = useState<WasteRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -80,8 +81,10 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
           })
         })
         
-        // Calculate total weight
-        const calculatedTotal = mappedRecords.reduce((sum, r) => sum + r.weight_kg, 0)
+        // Calculate total weight from pending records only
+        const calculatedTotal = mappedRecords
+          .filter((r: WasteRecord) => r.status === 'pending')
+          .reduce((sum: number, r: WasteRecord) => sum + r.weight_kg, 0)
         setTotalWeight(calculatedTotal)
         if (onTotalWeightChange) {
           onTotalWeightChange(calculatedTotal)
@@ -214,6 +217,14 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
 
   const pendingRecords = records.filter(r => r.status === 'pending')
 
+  const sortedRecords = [...pendingRecords].sort((a, b) => {
+    if (sortMode === 'weight') {
+      return b.weight_kg - a.weight_kg
+    }
+    // default: sort by latest date
+    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  })
+
   return (
     <div className="space-y-3">
       {/* Detail Modal */}
@@ -226,12 +237,12 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
         isEditing={isEditingMode}
       />
 
-      {pendingRecords.length === 0 ? (
+      {sortedRecords.length === 0 ? (
         <div className="py-8 text-center">
           <p className="text-[#999999]">ยังไม่มีรายการขยะที่รอยืนยัน</p>
         </div>
       ) : (
-        pendingRecords.map((record, index) => (
+        sortedRecords.map((record, index) => (
           <WasteCard
             key={index}
             record={record}

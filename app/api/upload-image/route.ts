@@ -5,23 +5,31 @@ const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzti99z_
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { base64Data, fileName, userId } = body
+    const { base64Data, fileName, userId, wasteType, weight } = body
 
-    console.log('[v0] Received image upload request:', { fileName, userId, dataSize: base64Data?.length })
+    console.log('[v0] Received image upload request:', { fileName, userId, wasteType, weight, dataSize: base64Data?.length })
 
-    if (!base64Data || !fileName || !userId) {
+    if (!base64Data || !userId) {
       console.log('[v0] Missing required fields for image upload')
       return NextResponse.json(
-        { error: 'Missing required fields (base64Data, fileName, userId)' },
+        { error: 'Missing required fields (base64Data, userId)' },
         { status: 400 }
       )
     }
+
+    // สร้างชื่อไฟล์ใหม่: userId_wasteType_weight_timestamp.jpg
+    const timestamp = Date.now()
+    const generatedFileName = wasteType && weight 
+      ? `${userId}_${wasteType}_${weight}_${timestamp}.jpg`
+      : `${userId}_${timestamp}.jpg`
+
+    console.log('[v0] Generated filename:', generatedFileName)
 
     // ส่งข้อมูลรูปไปยัง Google Apps Script เพื่อบันทึกลง Google Drive
     const payload = {
       action: 'uploadImage',
       base64Data,
-      fileName,
+      fileName: generatedFileName,
       userId,
       timestamp: new Date().toISOString(),
     }
@@ -57,12 +65,10 @@ export async function POST(request: NextRequest) {
     const result = await response.json()
     console.log('[v0] Image uploaded successfully - Full response:', JSON.stringify(result, null, 2))
     
-    // 🟩 [ปรับปรุงจุดที่ 1] ดักจับค่าลิงก์รูปภาพทั้งแบบ camelCase และ snake_case เพื่อความปลอดภัย
     const finalImageUrl = result.imageUrl || result.image_url
 
     console.log('[v0] finalImageUrl value:', finalImageUrl)
 
-    // 🟩 [ปรับปรุงจุดที่ 2] ถ้าตรวจสอบแล้วว่าผลลัพธ์สำเร็จ แต่ดันไม่มี URL รูปภาพกลับมา ให้แจ้งเตือนทันที
     if (!finalImageUrl) {
       console.error('[v0] Upload response error - no imageUrl found in result object')
       return NextResponse.json(
@@ -77,14 +83,13 @@ export async function POST(request: NextRequest) {
     console.log('[v0] Returning to client:', {
       success: true,
       imageUrl: finalImageUrl,
-      fileName: result.fileName || fileName,
+      fileName: generatedFileName,
     })
 
-    // ส่งข้อมูลกลับไปหาฝั่งหน้าจอ (UI Client)
     return NextResponse.json({
       success: true,
       imageUrl: finalImageUrl,
-      fileName: result.fileName || fileName,
+      fileName: generatedFileName,
     })
     
   } catch (error) {

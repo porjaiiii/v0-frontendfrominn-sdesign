@@ -81,8 +81,10 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
           })
         })
         
-        // Calculate total weight
-        const calculatedTotal = mappedRecords.reduce((sum, r) => sum + r.weight_kg, 0)
+        // Calculate total weight from pending records only
+        const calculatedTotal = mappedRecords
+          .filter((r: WasteRecord) => r.status === 'pending')
+          .reduce((sum: number, r: WasteRecord) => sum + r.weight_kg, 0)
         setTotalWeight(calculatedTotal)
         if (onTotalWeightChange) {
           onTotalWeightChange(calculatedTotal)

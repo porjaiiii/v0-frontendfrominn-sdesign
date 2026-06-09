@@ -9,12 +9,12 @@ import { useLiffContext } from '@/lib/liff-context'
 interface WeightInputProps {
   value: number
   onChange: (value: number) => void
+  noWeight?: boolean
+  onNoWeightChange?: (noWeight: boolean) => void
   unit?: string
 }
 
-export function WeightInput({ value, onChange, unit = 'กก.' }: WeightInputProps) {
-  const [noWeight, setNoWeight] = useState(false)
-
+export function WeightInput({ value, onChange, noWeight = false, onNoWeightChange, unit = 'กก.' }: WeightInputProps) {
   const adjustWeight = (amount: number) => {
     const newValue = Math.max(0, Math.round((value + amount) * 10) / 10)
     onChange(newValue)
@@ -38,7 +38,7 @@ export function WeightInput({ value, onChange, unit = 'กก.' }: WeightInputPr
           type="checkbox"
           checked={noWeight}
           onChange={(e) => {
-            setNoWeight(e.target.checked)
+            onNoWeightChange?.(e.target.checked)
             if (e.target.checked) onChange(0)
           }}
           className="w-5 h-5 rounded border-2 border-[#154212] text-[#154212] accent-[#154212]"
@@ -53,8 +53,10 @@ export function WeightInput({ value, onChange, unit = 'กก.' }: WeightInputPr
           onClick={() => adjustWeight(-1.0)}
           disabled={noWeight}
           className={cn(
-            'w-12 h-12 rounded-full flex items-center justify-center transition-all',
-            'bg-[#999999] hover:bg-[#888888] disabled:bg-[#cccccc] disabled:cursor-not-allowed'
+            'w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0',
+            noWeight
+              ? 'bg-[#cccccc] cursor-not-allowed'
+              : 'bg-[#154212] hover:bg-[#0d3308]'
           )}
         >
           <Minus className="w-6 h-6 text-white" />
@@ -67,7 +69,7 @@ export function WeightInput({ value, onChange, unit = 'กก.' }: WeightInputPr
           onChange={handleInputChange}
           disabled={noWeight}
           className={cn(
-            'w-48 text-center text-4xl font-semibold py-4 px-6 rounded-3xl border-2',
+            'w-40 text-center text-3xl font-semibold py-4 px-4 rounded-3xl border-2',
             'border-[#cccccc] focus:border-[#154212] focus:outline-none',
             'bg-white',
             noWeight && 'bg-[#f5f5f5] text-[#999999]'
@@ -81,8 +83,10 @@ export function WeightInput({ value, onChange, unit = 'กก.' }: WeightInputPr
           onClick={() => adjustWeight(1.0)}
           disabled={noWeight}
           className={cn(
-            'w-12 h-12 rounded-full flex items-center justify-center transition-all',
-            'bg-[#999999] hover:bg-[#888888] disabled:bg-[#cccccc] disabled:cursor-not-allowed'
+            'w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0',
+            noWeight
+              ? 'bg-[#cccccc] cursor-not-allowed'
+              : 'bg-[#154212] hover:bg-[#0d3308]'
           )}
         >
           <Plus className="w-6 h-6 text-white" />
@@ -193,53 +197,51 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
   return (
     <div className="space-y-6">
       {/* Title */}
-      <h2 className="text-xl font-semibold text-[#154212]">แบบรูปถ่าย</h2>
+      <h2 className="text-xl font-semibold text-[#154212]">แนบรูปถ่าย</h2>
 
       {/* Requirements info box */}
-      <div className="bg-[#f5f5f5] rounded-2xl p-4 space-y-3 border border-[#e5e5e5]">
-        <div className="flex items-start gap-3">
-          <div className="text-xl">☀️</div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-[#154212] mb-3">
-              คำแนะนำในการถ่ายรูปแบบรูปถ่าย
-            </p>
-            
-            {/* Reference image */}
-            {referenceImage && (
-              <div className="mb-3">
-                <div className="w-full aspect-square bg-white rounded-xl overflow-hidden relative border border-[#e5e5e5]">
-                  <Image
-                    src={referenceImage}
-                    alt="ตัวอย่าง"
-                    fill
-                    className="object-contain p-2"
-                  />
-                </div>
-              </div>
-            )}
+      <div className="bg-white rounded-2xl p-4 border border-[#e5e5e5]">
+        {/* Header row */}
+        <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#e5e5e5]">
+          <span className="text-base">&#9728;</span>
+          <span className="text-sm font-medium text-[#444444]">คำแนะนำในการแนบรูปถ่าย</span>
+        </div>
 
-            {/* Checkboxes for requirements */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={requirements.bagPreserved}
-                  onChange={() => handleRequirementChange('bagPreserved')}
-                  className="w-5 h-5 rounded border-2 border-[#154212] text-[#154212] accent-[#154212]"
-                />
-                <span className="text-sm text-[#444444]">เก็บถุงขยะ</span>
-              </label>
-              
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={requirements.evidenceVisible}
-                  onChange={() => handleRequirementChange('evidenceVisible')}
-                  className="w-5 h-5 rounded border-2 border-[#154212] text-[#154212] accent-[#154212]"
-                />
-                <span className="text-sm text-[#444444]">เติมเลขบันหลักฐานชั้นอย่างชัดเจน ชัดเจน</span>
-              </label>
+        {/* Image + checkboxes side by side */}
+        <div className="flex items-start gap-3">
+          {/* Reference image */}
+          {referenceImage && (
+            <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden relative border border-[#e5e5e5] bg-[#f5f5f5]">
+              <Image
+                src={referenceImage}
+                alt="ตัวอย่าง"
+                fill
+                className="object-cover"
+              />
             </div>
+          )}
+
+          {/* Checkboxes for requirements */}
+          <div className="flex-1 space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={requirements.bagPreserved}
+                onChange={() => handleRequirementChange('bagPreserved')}
+                className="w-5 h-5 rounded border-2 border-[#154212] accent-[#154212]"
+              />
+              <span className="text-sm text-[#444444]">เห็นถุงขยะ</span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={requirements.evidenceVisible}
+                onChange={() => handleRequirementChange('evidenceVisible')}
+                className="w-5 h-5 rounded border-2 border-[#154212] accent-[#154212] mt-0.5 shrink-0"
+              />
+              <span className="text-sm text-[#444444] leading-snug">เห็นเลขน้ำหนักบนตราชั่ง ชัดเจน</span>
+            </label>
           </div>
         </div>
       </div>
@@ -247,11 +249,12 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
       {/* Photo upload area */}
       <div>
         <label className={cn(
-          'w-full aspect-square rounded-2xl overflow-hidden relative cursor-pointer',
+          'w-full rounded-2xl cursor-pointer',
           'border-2 border-dashed transition-colors flex flex-col items-center justify-center',
-          imageUrl 
-            ? 'border-[#154212] bg-[#f0fdf0]' 
-            : 'border-[#cccccc] bg-[#f5f5f5] hover:border-[#154212]',
+          'py-10',
+          imageUrl
+            ? 'border-[#154212] bg-[#f0fdf0]'
+            : 'border-[#aaaaaa] bg-white hover:border-[#154212]',
           isUploading && 'opacity-75 cursor-wait'
         )}>
           <input
@@ -268,21 +271,20 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
               <span className="text-xs font-medium text-[#666666]">กำลังอัพโหลด...</span>
             </div>
           ) : imageUrl ? (
-            <Image
-              src={imageUrl}
-              alt="หลักฐาน"
-              fill
-              className="object-cover"
-              onError={(e) => {
-                console.log('[v0] Image display error, may be Google Drive URL')
-              }}
-            />
+            <div className="relative w-full h-40">
+              <Image
+                src={imageUrl}
+                alt="หลักฐาน"
+                fill
+                className="object-contain rounded-xl"
+              />
+            </div>
           ) : (
-            <div className="flex flex-col items-center justify-center text-[#999999]">
-              <Camera className="w-12 h-12 mb-2" />
-              <span className="text-sm font-medium">ถ่ายรูป</span>
-              <span className="text-xs text-[#666666] mt-1">
-                (กรุณาถ่ายรูปให้ชัดเจน)
+            <div className="flex flex-col items-center justify-center text-[#666666]">
+              <Camera className="w-10 h-10 mb-3 text-[#888888]" />
+              <span className="text-sm font-semibold text-[#333333]">ถ่ายรูปขยะ</span>
+              <span className="text-xs text-[#666666] mt-1 text-center px-4">
+                (กรุณาถ่ายรูปขยะพร้อม<br />ตัวเลขน้ำหนัก)
               </span>
             </div>
           )}

@@ -37,6 +37,7 @@ export default function HomePage() {
   const [selectedType, setSelectedType] = useState<WasteType | null>(null)
   const [selectedSubType, setSelectedSubType] = useState<WasteSubType | null>(null)
   const [weight, setWeight] = useState(0)
+  const [noWeight, setNoWeight] = useState(false)
   const [imageEvidence, setImageEvidence] = useState<string | null>(null)
   const [showResult, setShowResult] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -68,7 +69,7 @@ export default function HomePage() {
   }
 
   const handleNext = () => {
-    if (step === 3 && weight > 0) {
+    if (step === 3 && (weight > 0 || noWeight)) {
       setShowResult(true)
     }
   }
@@ -114,24 +115,30 @@ export default function HomePage() {
 
       const result = await response.json()
       console.log('[v0] Waste submitted successfully:', result)
-      
+
       // รีเซ็ต form
       setStep(1)
       setSelectedType(null)
       setSelectedSubType(null)
       setWeight(0)
+      setNoWeight(false)
       setImageEvidence(null)
-      alert('บันทึกข้อมูลสำเร็จ!')
     } catch (error) {
       console.error('[v0] Error submitting waste:', error)
-      alert('ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่')
+      // Still reset form even on error
+      setStep(1)
+      setSelectedType(null)
+      setSelectedSubType(null)
+      setWeight(0)
+      setNoWeight(false)
+      setImageEvidence(null)
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleSubmit = () => {
-    // ไม่ต้องทำอะไร เพราะ handleShowQR แล้ว reset form
+    // unused
   }
 
   const getStepTitle = () => {
@@ -243,6 +250,8 @@ export default function HomePage() {
             <WeightInput
               value={weight}
               onChange={setWeight}
+              noWeight={noWeight}
+              onNoWeightChange={setNoWeight}
             />
 
             <ImageEvidence
@@ -269,19 +278,20 @@ export default function HomePage() {
                   setSelectedType(null)
                   setSelectedSubType(null)
                   setWeight(0)
+                  setNoWeight(false)
                   setImageEvidence(null)
                 }}
                 className="px-6 py-2.5 rounded-full font-semibold border-2 border-[#154212] text-[#154212] text-sm hover:bg-[#f0fdf0] transition-colors"
               >
                 ข้าม
               </button>
-              
+
               <button
                 onClick={handleNext}
-                disabled={weight <= 0}
+                disabled={weight <= 0 && !noWeight}
                 className={cn(
                   'px-6 py-2.5 rounded-full font-semibold text-sm transition-colors',
-                  weight > 0
+                  weight > 0 || noWeight
                     ? 'bg-[#154212] text-white hover:bg-[#0d3308]'
                     : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
                 )}

@@ -250,6 +250,8 @@ export default function HomePage() {
               onImageChange={setImageEvidence}
               referenceImage="/placeholder.svg?height=120&width=120&query=weighing scale with recycling items example"
               referenceLabel="ตัวอย่างการชั่ง"
+              wasteType={selectedType || ''}
+              weight={weight}
             />
           </div>
         )}

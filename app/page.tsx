@@ -209,42 +209,46 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Step 2: Select Sub Type */}
-        {step === 2 && selectedType && (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {WASTE_SUBTYPES[selectedType].map((subType) => (
-            <button
-                  key={subType.id}
-                  onClick={() => handleSubTypeSelect(subType)}
-                  className={cn(
-                    // ปรับตรงนี้: ต้องกำหนดความกว้างให้ปุ่มด้วย (เช่น w-[calc(50%-6px)] บนมือถือ และ sm:w-[calc(50%-8px)] หรือกำหนดขนาดคงที่)
-                    'w-[calc(50%-6px)] sm:w-[160px]', 
-                    'flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all',
-                    'bg-white hover:border-[#157b03] hover:shadow-lg',
-                    selectedSubType?.id === subType.id 
-                      ? 'border-[#157b03] shadow-lg bg-[#f0fdf0]' 
-                      : 'border-black/20 shadow-[0_0_24px_rgba(0,0,0,0.25)]',
-                    'aspect-[3/4]'
-                  )}
-                >
-                <div className="w-full aspect-square relative mb-2 rounded-lg overflow-hidden bg-[#f5f5f5] max-w-[90px]">
-                  <Image
-                    src={getSubTypeImage(selectedType, subType.id)}
-                    alt={subType.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <span className="text-xs sm:text-sm font-semibold text-black text-center whitespace-pre-line leading-tight">
-                  {subType.name}
-                </span>
-                {subType.description && (
-                  <span className="text-[10px] sm:text-xs text-[#666666]">{subType.description}</span>
-                )}
-              </button>
-            ))}
-          </div>
+       {/* Step 2: Select Sub Type */}
+{step === 2 && selectedType && (
+  /* เปลี่ยนตรงนี้: จาก grid เป็น flex flex-wrap และจัดกึ่งกลางด้วย justify-center */
+  <div className="flex flex-wrap justify-center gap-3 sm:gap-4 w-full">
+    {WASTE_SUBTYPES[selectedType].map((subType) => (
+      <button
+        key={subType.id}
+        onClick={() => handleSubTypeSelect(subType)}
+        className={cn(
+          /* ปรับขนาดปุ่ม (Width):
+            - จอมือถือเล็ก (Mobile): ใช้ w-[calc(50%-6px)] เพื่อให้แบ่ง 2 คอลัมน์พอดี (หักลบ gap-3 ออกครึ่งนึง)
+            - จอคอม/แท็บเล็ต (sm ขึ้นไป): เปลี่ยนเป็นกว้างคงที่ sm:w-[160px] หรือจะปรับตามใจชอบได้เลยครับ
+          */
+          'w-[calc(50%-6px)] sm:w-[160px]', 
+          'flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all',
+          'bg-white hover:border-[#157b03] hover:shadow-lg',
+          selectedSubType?.id === subType.id 
+            ? 'border-[#157b03] shadow-lg bg-[#f0fdf0]' 
+            : 'border-black/20 shadow-[0_0_24px_rgba(0,0,0,0.25)]',
+          'aspect-[3/4]'
         )}
+      >
+        <div className="w-full aspect-square relative mb-2 rounded-lg overflow-hidden bg-[#f5f5f5] max-w-[90px]">
+          <Image
+            src={getSubTypeImage(selectedType, subType.id)}
+            alt={subType.name}
+            fill
+            className="object-cover"
+          />
+        </div>
+        <span className="text-xs sm:text-sm font-semibold text-black text-center whitespace-pre-line leading-tight">
+          {subType.name}
+        </span>
+        {subType.description && (
+          <span className="text-[10px] sm:text-xs text-[#666666]">{subType.description}</span>
+        )}
+      </button>
+    ))}
+  </div>
+)}
 
         {/* Step 3: Weight and Evidence */}
         {step === 3 && selectedSubType && (

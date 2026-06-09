@@ -134,7 +134,7 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
             },
             body: JSON.stringify({
               base64Data: base64String.split(',')[1], // ลบ data:image/jpeg;base64, ออก
-              fileName: `waste_${profile?.userId || 'unknown'}_${Date.now()}.jpg`,
+              fileName: `${profile?.userId || 'unknown'}_${wasteType || 'unknown'}_${weight || 0}_${Date.now()}.jpg`,
               userId: profile?.userId || 'unknown',
               wasteType: wasteType || '',
               weight: weight || 0,

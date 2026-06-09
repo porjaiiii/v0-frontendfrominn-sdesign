@@ -213,18 +213,20 @@ export default function HomePage() {
         {step === 2 && selectedType && (
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {WASTE_SUBTYPES[selectedType].map((subType) => (
-              <button
-                key={subType.id}
-                onClick={() => handleSubTypeSelect(subType)}
-                className={cn(
-                  'flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all',
-                  'bg-white hover:border-[#157b03] hover:shadow-lg',
-                  selectedSubType?.id === subType.id 
-                    ? 'border-[#157b03] shadow-lg bg-[#f0fdf0]' 
-                    : 'border-black/20 shadow-[0_0_24px_rgba(0,0,0,0.25)]',
-                  'aspect-[3/4]'
-                )}
-              >
+            <button
+                  key={subType.id}
+                  onClick={() => handleSubTypeSelect(subType)}
+                  className={cn(
+                    // ปรับตรงนี้: ต้องกำหนดความกว้างให้ปุ่มด้วย (เช่น w-[calc(50%-6px)] บนมือถือ และ sm:w-[calc(50%-8px)] หรือกำหนดขนาดคงที่)
+                    'w-[calc(50%-6px)] sm:w-[160px]', 
+                    'flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all',
+                    'bg-white hover:border-[#157b03] hover:shadow-lg',
+                    selectedSubType?.id === subType.id 
+                      ? 'border-[#157b03] shadow-lg bg-[#f0fdf0]' 
+                      : 'border-black/20 shadow-[0_0_24px_rgba(0,0,0,0.25)]',
+                    'aspect-[3/4]'
+                  )}
+                >
                 <div className="w-full aspect-square relative mb-2 rounded-lg overflow-hidden bg-[#f5f5f5] max-w-[90px]">
                   <Image
                     src={getSubTypeImage(selectedType, subType.id)}

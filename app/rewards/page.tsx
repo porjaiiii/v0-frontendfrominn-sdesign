@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Heart, ShoppingCart } from 'lucide-react'
+import { Heart } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
@@ -73,7 +73,9 @@ export default function RewardsPage() {
                 className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors flex items-center justify-center"
                 title="ดูตะกร้า"
               >
-                <ShoppingCart size={20} />
+                <div className="relative w-5 h-5">
+                  <Image src="/icons/tabler-icon-add-cart.png" alt="ตะกร้า" fill className="object-contain brightness-0 invert" />
+                </div>
               </Link>
               {cartCount > 0 && (
                 <motion.div
@@ -206,7 +208,9 @@ export default function RewardsPage() {
                             : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
                         )}
                       >
-                        <ShoppingCart size={16} />
+                        <div className="relative w-4 h-4">
+                          <Image src="/icons/tabler-icon-add-cart.png" alt="ตะกร้า" fill className="object-contain" />
+                        </div>
                       </motion.button>
                     </div>
                   </div>

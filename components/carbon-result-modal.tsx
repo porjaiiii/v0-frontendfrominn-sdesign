@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 interface CarbonResultModalProps {
   isOpen: boolean
@@ -90,7 +91,9 @@ export function CarbonResultModal({
 
             {/* Tree comparison box */}
             <div className="bg-[#f5f5f5] rounded-2xl p-4 flex items-center gap-3">
-              <div className="text-3xl shrink-0">&#127795;&#127795;</div>
+              <div className="relative w-10 h-10 shrink-0">
+                <Image src="/icons/tabler-icon-plant.png" alt="ต้นไม้" fill className="object-contain" />
+              </div>
               <p className="text-sm text-[#444444] leading-snug">
                 เทียบเท่ากับคุณช่วยบางเจ้า<br />
                 ปลูกต้นไม้เพิ่ม {treesEquivalent} ต้นแล้ว!

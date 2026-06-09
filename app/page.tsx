@@ -239,7 +239,7 @@ export default function HomePage() {
 
         {/* Step 3: Weight and Evidence */}
         {step === 3 && selectedSubType && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <WeightInput
               value={weight}
               onChange={setWeight}
@@ -253,37 +253,44 @@ export default function HomePage() {
               wasteType={selectedType || ''}
               weight={weight}
             />
+
+            {/* Bottom navigation buttons */}
+            <div className="flex items-center justify-between gap-3">
+              <button
+                onClick={handleBack}
+                className="px-6 py-2.5 rounded-full font-semibold text-[#154212] text-sm hover:text-[#0d3308] transition-colors"
+              >
+                ย้อนกลับ
+              </button>
+              
+              <button
+                onClick={() => {
+                  setStep(1)
+                  setSelectedType(null)
+                  setSelectedSubType(null)
+                  setWeight(0)
+                  setImageEvidence(null)
+                }}
+                className="px-6 py-2.5 rounded-full font-semibold border-2 border-[#154212] text-[#154212] text-sm hover:bg-[#f0fdf0] transition-colors"
+              >
+                ข้าม
+              </button>
+              
+              <button
+                onClick={handleNext}
+                disabled={weight <= 0}
+                className={cn(
+                  'px-6 py-2.5 rounded-full font-semibold text-sm transition-colors',
+                  weight > 0
+                    ? 'bg-[#154212] text-white hover:bg-[#0d3308]'
+                    : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+                )}
+              >
+                บันทึก
+              </button>
+            </div>
           </div>
         )}
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-between items-center mt-6">
-          {step > 1 ? (
-            <button
-              onClick={handleBack}
-              className="ml-8 font-semibold text-[#154212] hover:text-[#0d3308] transition-colors text-sm sm:text-base"
-            >
-              ย้อนกลับ
-            </button>
-          ) : (
-            <div />
-          )}
-          
-          {step === 3 && (
-            <button
-              onClick={handleNext}
-              disabled={weight <= 0}
-              className={cn(
-                'px-8 py-2.5 rounded-full font-semibold transition-colors text-sm sm:text-base',
-                weight > 0
-                  ? 'bg-[#154212] text-white hover:bg-[#0d3308]'
-                  : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
-              )}
-            >
-              ถัดไป
-            </button>
-          )}
-        </div>
       </main>
 
       {/* Carbon Result Modal */}

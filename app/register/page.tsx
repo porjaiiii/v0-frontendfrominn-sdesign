@@ -39,12 +39,12 @@ const TOUR_STEPS = [
   {
     fieldId: 'field-fullName',
     title: 'ชื่อ-นามสกุล',
-    message: 'เริ่มต้นด้วยการกรอกชื่อและนามสกุลของคุณครับ ใส่ชื่อจริงเพื่อให้เจ้าหน้าที่ติดต่อได้นะครับ',
+    message: 'เริ่มต้นด้วยการกรอกชื่อนามสกุลของท่าน',
   },
   {
     fieldId: 'field-phoneNumber',
     title: 'เบอร์ติดต่อ',
-    message: 'กรอกเบอร์โทรศัพท์ที่ติดต่อได้ครับ เจ้าหน้าที่จะใช้เบอร์นี้ในการประสานงานกับคุณ',
+    message: 'กรอกเบอร์โทรศัพท์ที่ติดต่อได้ครับ เจ้าหน้าที่จะใช้เบอร์นี้เมื่อจำเป็นต้องติดต่อกับท่าน',
   },
   {
     fieldId: 'field-gender',
@@ -69,7 +69,7 @@ const TOUR_STEPS = [
   {
     fieldId: 'field-occupation',
     title: 'อาชีพ',
-    message: 'ฟิลด์สุดท้ายแล้วครับ! เลือกอาชีพที่ตรงกับคุณ แล้วกด "ลงทะเบียน" ได้เลยครับ',
+    message: 'เลือกอาชีพที่ตรงกับคุณ แล้วกด "ลงทะเบียน" ได้เลยครับ',
   },
 ]
 
@@ -358,7 +358,7 @@ export default function RegisterPage() {
           <div className="relative w-16 h-16 drop-shadow-lg">
             <Image src="/mascot.png" alt="ผู้ช่วยลงทะเบียน" fill className="object-contain" />
           </div>
-          <span className="text-[10px] bg-[#154212] text-white font-medium px-2 py-0.5 rounded-full shadow whitespace-nowrap">
+          <span className="text-[15px] bg-[#154212] text-white font-medium px-2 py-0.5 rounded-full shadow whitespace-nowrap">
             มาครั้งแรก?
           </span>
         </button>
@@ -392,7 +392,7 @@ export default function RegisterPage() {
                 required
               />
               <span className="text-gray-800 text-sm leading-relaxed font-medium">
-                ฉันยอมรับนโยบายการคุ้มครองข้อมูลส���วนบุคคล (PDPA) *
+                ฉันยอมรับนโยบายการคุ้มครองข้อมูลส่วนบุคคล (PDPA) *
               </span>
             </label>
             {/* Expand toggle */}

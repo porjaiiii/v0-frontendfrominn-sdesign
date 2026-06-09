@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronDown, ChevronUp, X } from 'lucide-react'
@@ -92,7 +92,8 @@ export default function RegisterPage() {
   const [pdpaExpanded, setPdpaExpanded] = useState(false)
   const [showTour, setShowTour] = useState(false)
   const [tourStep, setTourStep] = useState(0)
-  const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null)
+  // bubblePos stores the final fixed-position coords for the bubble
+  const [bubblePos, setBubblePos] = useState<{ top: number; bottom: number; useBottom: boolean } | null>(null)
   const tourStarted = useRef(false)
 
   const [formData, setFormData] = useState({
@@ -120,24 +121,56 @@ export default function RegisterPage() {
     }
   }, [profile])
 
-  // Update highlight rect whenever tour step changes
+  const measureBubble = useCallback(() => {
+    if (!showTour) return
+    const step = TOUR_STEPS[tourStep]
+    if (!step) return
+    const el = document.getElementById(step.fieldId)
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const vh = window.innerHeight
+    const BUBBLE_HEIGHT = 160 // approximate bubble height in px
+    const GAP = 12
+
+    // Prefer placing bubble ABOVE the field; fall back to below
+    if (rect.top >= BUBBLE_HEIGHT + GAP) {
+      // place above: use bottom = vh - rect.top + GAP (distance from bottom of screen)
+      setBubblePos({ top: 0, bottom: vh - rect.top + GAP, useBottom: true })
+    } else {
+      // place below the field
+      setBubblePos({ top: rect.bottom + GAP, bottom: 0, useBottom: false })
+    }
+  }, [showTour, tourStep])
+
+  // Scroll field into view then measure position after scroll settles
   useEffect(() => {
     if (!showTour) return
     const step = TOUR_STEPS[tourStep]
     if (!step) return
     const el = document.getElementById(step.fieldId)
-    if (el) {
-      const rect = el.getBoundingClientRect()
-      setHighlightRect(rect)
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      // Re-measure after scroll settles
-      const timeout = setTimeout(() => {
-        const updated = el.getBoundingClientRect()
-        setHighlightRect(updated)
-      }, 400)
-      return () => clearTimeout(timeout)
+    if (!el) return
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+    // Measure immediately (for cases where no scroll is needed)
+    measureBubble()
+
+    // Re-measure after scroll animation (~400ms) and again at 700ms to be sure
+    const t1 = setTimeout(measureBubble, 400)
+    const t2 = setTimeout(measureBubble, 700)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [tourStep, showTour, measureBubble])
+
+  // Re-measure on window resize/scroll while tour is open
+  useEffect(() => {
+    if (!showTour) return
+    window.addEventListener('resize', measureBubble)
+    window.addEventListener('scroll', measureBubble, { passive: true })
+    return () => {
+      window.removeEventListener('resize', measureBubble)
+      window.removeEventListener('scroll', measureBubble)
     }
-  }, [tourStep, showTour])
+  }, [showTour, measureBubble])
 
   const startTour = () => {
     tourStarted.current = true
@@ -153,7 +186,7 @@ export default function RegisterPage() {
     }
   }
 
-  const closeTour = () => setShowTour(false)
+  const closeTour = () => { setShowTour(false); setBubblePos(null) }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -212,14 +245,17 @@ export default function RegisterPage() {
   }
 
   const inputClass = (fieldId: string) =>
-    `w-full px-4 py-3 rounded-lg border bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-colors ${
+    `w-full px-4 py-3 rounded-lg border bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all ${
       showTour && TOUR_STEPS[tourStep]?.fieldId === fieldId
-        ? 'border-[#154212] ring-2 ring-[#154212] relative z-[60]'
+        ? 'border-[#154212]'
         : 'border-[#e5e5e5]'
     }`
 
+  // Highlighted field sits above the dark overlay
   const fieldWrapClass = (fieldId: string) =>
-    showTour && TOUR_STEPS[tourStep]?.fieldId === fieldId ? 'relative z-[60]' : ''
+    showTour && TOUR_STEPS[tourStep]?.fieldId === fieldId
+      ? 'relative z-[60] rounded-lg ring-4 ring-[#154212]/40 bg-white'
+      : ''
 
   if (success) {
     return (
@@ -251,7 +287,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-white pb-24">
       <PageHeader />
 
-      {/* Tour overlay — dark backdrop with cutout effect via box-shadow */}
+      {/* Tour overlay — dark backdrop */}
       {showTour && (
         <div
           className="fixed inset-0 z-50 pointer-events-none"
@@ -259,25 +295,28 @@ export default function RegisterPage() {
         />
       )}
 
-      {/* Tour bubble — rendered fixed, positioned near highlighted field */}
-      {showTour && highlightRect && (
+      {/* Tour bubble — fixed, dynamically positioned above or below the target field */}
+      {showTour && bubblePos && (
         <div
           className="fixed z-[70] pointer-events-auto"
-          style={{
-            bottom: `calc(100vh - ${highlightRect.top + window.scrollY}px + 16px)`,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            maxWidth: '320px',
-            width: 'calc(100vw - 32px)',
-          }}
+          style={
+            bubblePos.useBottom
+              ? { bottom: bubblePos.bottom, left: '50%', transform: 'translateX(-50%)', maxWidth: 320, width: 'calc(100vw - 32px)' }
+              : { top: bubblePos.top, left: '50%', transform: 'translateX(-50%)', maxWidth: 320, width: 'calc(100vw - 32px)' }
+          }
         >
           <div className="bg-white rounded-2xl shadow-2xl p-4 relative">
-            {/* Arrow pointing down toward the field */}
-            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-0 h-0"
-              style={{ borderLeft: '10px solid transparent', borderRight: '10px solid transparent', borderTop: '12px solid white' }}
-            />
+            {/* Arrow: points down when bubble is above field, up when below */}
+            {bubblePos.useBottom ? (
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-0 h-0"
+                style={{ borderLeft: '10px solid transparent', borderRight: '10px solid transparent', borderTop: '12px solid white' }}
+              />
+            ) : (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-0 h-0"
+                style={{ borderLeft: '10px solid transparent', borderRight: '10px solid transparent', borderBottom: '12px solid white' }}
+              />
+            )}
             <div className="flex items-start gap-3">
-              {/* Mascot */}
               <div className="shrink-0 w-14 h-14 relative">
                 <Image src="/mascot.png" alt="mascot" fill className="object-contain" />
               </div>
@@ -308,28 +347,29 @@ export default function RegisterPage() {
         </div>
       )}
 
+      {/* Mascot guide button — fixed to bottom-right edge */}
+      {!showTour && (
+        <button
+          type="button"
+          onClick={startTour}
+          className="fixed bottom-6 right-4 z-40 flex flex-col items-center gap-1 group"
+          aria-label="เปิดคู่มือการลงทะเบียน"
+        >
+          <div className="relative w-16 h-16 drop-shadow-lg">
+            <Image src="/mascot.png" alt="ผู้ช่วยลงทะเบียน" fill className="object-contain" />
+          </div>
+          <span className="text-[10px] bg-[#154212] text-white font-medium px-2 py-0.5 rounded-full shadow whitespace-nowrap">
+            มาครั้งแรก?
+          </span>
+        </button>
+      )}
+
       {/* Form */}
       <div className="max-w-md mx-auto px-4 py-6">
-        {/* Header + mascot guide trigger */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-[#154212] mb-1">ลงทะเบียน</h1>
-            <p className="text-gray-500 text-sm">กรุณากรอกข้อมูลของคุณให้ครบถ้วน</p>
-          </div>
-          {/* Mascot guide button */}
-          <button
-            type="button"
-            onClick={startTour}
-            className="flex flex-col items-center gap-1 group"
-            aria-label="เปิดคู่มือการลงทะเบียน"
-          >
-            <div className="relative w-14 h-14">
-              <Image src="/mascot.png" alt="ผู้ช่วยลงทะเบียน" fill className="object-contain" />
-            </div>
-            <span className="text-[10px] text-[#154212] font-medium whitespace-nowrap">
-              มาครั้งแรก?
-            </span>
-          </button>
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-[#154212] mb-1">ลงทะเบียน</h1>
+          <p className="text-gray-500 text-sm">กรุณากรอกข้อมูลของคุณให้ครบถ้วน</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -352,7 +392,7 @@ export default function RegisterPage() {
                 required
               />
               <span className="text-gray-800 text-sm leading-relaxed font-medium">
-                ฉันยอมรับนโยบายการคุ้มครองข้อมูลส่วนบุคคล (PDPA) *
+                ฉันยอมรับนโยบายการคุ้มครองข้อมูลส���วนบุคคล (PDPA) *
               </span>
             </label>
             {/* Expand toggle */}

@@ -9,29 +9,29 @@ export const WASTE_TYPES: { id: WasteType; name: string; icon: string }[] = [
 
 export const WASTE_SUBTYPES: Record<WasteType, WasteSubType[]> = {
   plastic: [
-    { id: 'pet', name: 'ขวดน้ำใสพลาสติก', description: '(PET)', image: '/images/waste/plastic-pet.svg' },
-    { id: 'hdpe', name: 'ขวดน้ำขุ่นพลาสติก', description: '(HDPE)', image: '/images/waste/plastic-hdpe.svg' },
-    { id: 'ldpe', name: 'ขวดน้ำมันเครื่อง', description: '(HDPE)', image: '/images/waste/plastic-ldpe.svg' },
-    { id: 'pp', name: 'ถุงพลาสติก', description: '(LDPE)', image: '/images/waste/plastic-pp.svg' },
+    { id: 'pet', name: 'ขวดน้ำพลาสติกใส', description: '(PET)', image: '/images/waste/plastic-pet.svg' },
+    { id: 'hdpe', name: 'ขวดน้ำพลาสติกขุ่น', description: '(HDPE)', image: '/images/waste/plastic-hdpe.svg' },
+    { id: 'ldpe', name: 'ฝาขวดน้ำพลาสติก', description: '(HDPE)', image: '/images/waste/plastic-ldpe.svg' },
+    // { id: 'pp', name: 'ถุงพลาสติก', description: '(LDPE)', image: '/images/waste/plastic-pp.svg' },
   ],
   paper: [
     { id: 'cardboard', name: 'กระดาษลัง', image: '/images/waste/paper-cardboard.svg' },
-    { id: 'newspaper', name: 'กระดาษกล่องสินค้า', image: '/images/waste/paper-newspaper.svg' },
-    { id: 'mixed', name: 'กระดาษผสมอื่นๆ\nนอกจากที่ระบุ', image: '/images/waste/paper-mixed.svg' },
+    { id: 'a4', name: 'กระดาษสีขาว/(A4)', image: '/images/waste/paper-newspaper.svg' },
+    { id: 'mixed', name: 'กระดาษนิตยสาร\nหนังสือพิมพ์', image: '/images/waste/paper-mixed.svg' },
   ],
   glass: [
-    { id: 'clear', name: 'ขวดแก้วใส/\nแก้วสีเขียว (เบียร์)', image: '/images/waste/glass-clear.svg' },
-    { id: 'colored', name: 'ขวดแก้วสี', image: '/images/waste/glass-colored.svg' },
+    { id: 'clear', name: 'ขวดแก้วชนิดเดียวกัน/\nครบลัง', image: '/images/waste/glass-clear.svg' },
+    { id: 'colored', name: 'ขวดแก้วรวม', image: '/images/waste/glass-colored.svg' },
   ],
   aluminum: [
     { id: 'can', name: 'กระป๋องอลูมิเนียม', image: '/images/waste/aluminum-can.svg' },
     { id: 'plate', name: 'ฝาอลูมิเนียม', image: '/images/waste/aluminum-plate.svg' },
-    { id: 'scrap', name: 'กระดาษอลูมิเนียม', image: '/images/waste/aluminum-scrap.svg' },
+    { id: 'scrap', name: 'เศษอลูมิเนียมอื่นๆ', image: '/images/waste/aluminum-scrap.svg' },
   ],
-  oil: [
-    { id: 'cooking', name: 'น้ำมันพืชใช้แล้ว', image: '/images/waste/oil-cooking.svg' },
-    { id: 'motor', name: 'น้ำมันเครื่องใช้แล้ว', image: '/images/waste/oil-motor.svg' },
-  ],
+  // oil: [
+  //   { id: 'cooking', name: 'น้ำมันพืชใช้แล้ว', image: '/images/waste/oil-cooking.svg' },
+  //   { id: 'motor', name: 'น้ำมันเครื่องใช้แล้ว', image: '/images/waste/oil-motor.svg' },
+  // ],
 }
 
 export const REWARDS = [

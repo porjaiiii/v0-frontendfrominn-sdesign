@@ -36,26 +36,19 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
   useEffect(() => {
     const fetchRecords = async () => {
       try {
-        console.log('[v0] Fetching waste records for userId:', userId)
         setLoading(true)
         const response = await fetch(`/api/waste/records?user_id=${userId}`)
-        
-        console.log('[v0] API response status:', response.status)
         
         if (!response.ok) {
           throw new Error('Failed to fetch waste records')
         }
 
         const data = await response.json()
-        console.log('[v0] Waste records data received:', data)
         
         // Filter records สำหรับ user นี้เท่านั้น
         const filteredRecords = (data.records || []).filter(
-          (record: any) => record[1] === userId  // Index 1 คือ user_id จากชีท
+          (record: any) => record[1] === userId
         )
-        
-        console.log('[v0] Filtered records count:', filteredRecords.length)
-        console.log('[v0] Original records count:', data.records?.length)
         
         // Map records จาก array format ใน Google Sheet
         const mappedRecords = filteredRecords.map((record: any) => ({
@@ -71,16 +64,8 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
           notes: record[9],
         }))
         
-        console.log('[v0] Mapped records:', mappedRecords)
-        mappedRecords.forEach((record, idx) => {
-          console.log(`[v0] Record ${idx}:`, {
-            type: record.waste_type,
-            weight: record.weight_kg,
-            imageUrl: record.image_url,
-            status: record.status
-          })
-        })
-        
+        setRecords(mappedRecords)
+
         // Calculate total weight from pending records only
         const calculatedTotal = mappedRecords
           .filter((r: WasteRecord) => r.status === 'pending')
@@ -89,10 +74,7 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
         if (onTotalWeightChange) {
           onTotalWeightChange(calculatedTotal)
         }
-        
-        setRecords(mappedRecords)
       } catch (err) {
-        console.error('[v0] Error fetching waste records:', err)
         setError('ไม่สามารถดึงข้อมูลขยะได้')
       } finally {
         setLoading(false)
@@ -107,28 +89,25 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
   const handleConfirmRecord = async (record: WasteRecord) => {
     try {
       setIsConfirming(true)
-      console.log('[v0] Confirming waste record:', record)
       
-      // Remove the record from the list
-      setRecords(records.filter(r => 
-        !(r.timestamp === record.timestamp && r.user_id === record.user_id)
-      ))
-      
-      // Recalculate total weight
       const newRecords = records.filter(r => 
         !(r.timestamp === record.timestamp && r.user_id === record.user_id)
       )
-      const newTotal = newRecords.reduce((sum, r) => sum + r.weight_kg, 0)
+      setRecords(newRecords)
+      
+      // Recalculate total weight from pending records only
+      const newTotal = newRecords
+        .filter(r => r.status === 'pending')
+        .reduce((sum, r) => sum + r.weight_kg, 0)
       setTotalWeight(newTotal)
       if (onTotalWeightChange) {
         onTotalWeightChange(newTotal)
       }
       
-      // Close modal
       setIsModalOpen(false)
       setSelectedRecord(null)
     } catch (err) {
-      console.error('[v0] Error confirming record:', err)
+      // silent
     } finally {
       setIsConfirming(false)
     }
@@ -145,8 +124,6 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
     try {
       const recordId = `${record.timestamp}-${record.user_id}`
       setSavingRecordId(recordId)
-      console.log('[v0] Saving waste record (update status to done):', record)
-      
       // Call API to update record - change status from pending to done
       const response = await fetch('/api/waste/update', {
         method: 'PUT',
@@ -158,24 +135,19 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
 
       if (!response.ok) {
         const error = await response.json()
-        console.error('[v0] API error:', error)
         alert('เกิดข้อผิดพลาดในการบันทึก: ' + (error.error || 'Unknown error'))
         return
       }
 
-      const result = await response.json()
-      console.log('[v0] Save API response:', result)
-      
-      // Remove the record from the list
-      setRecords(records.filter(r => 
-        !(r.timestamp === record.timestamp && r.user_id === record.user_id)
-      ))
-      
-      // Recalculate total weight
       const newRecords = records.filter(r => 
         !(r.timestamp === record.timestamp && r.user_id === record.user_id)
       )
-      const newTotal = newRecords.reduce((sum, r) => sum + r.weight_kg, 0)
+      setRecords(newRecords)
+
+      // Recalculate total weight from pending records only
+      const newTotal = newRecords
+        .filter(r => r.status === 'pending')
+        .reduce((sum, r) => sum + r.weight_kg, 0)
       setTotalWeight(newTotal)
       if (onTotalWeightChange) {
         onTotalWeightChange(newTotal)

@@ -1,10 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
-import { Leaf, Trash2, ChevronRight, ArrowDownUp } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
 import { WasteDetailModal } from './waste-detail-modal'
 import { WasteCard } from './waste-card'
 
@@ -25,27 +21,16 @@ interface WasteCartProps {
   onTotalWeightChange?: (weight: number) => void
 }
 
-const WASTE_TYPE_COLORS: Record<string, string> = {
-  plastic: 'bg-[#e8f3e6] text-[#154212]',
-  paper: 'bg-[#fff4e6] text-[#8b6f47]',
-  glass: 'bg-[#e8f0f7] text-[#1a4d8f]',
-  aluminum: 'bg-[#f0f0f0] text-[#666666]',
-  oil: 'bg-[#fff9e6] text-[#c4a300]',
-}
-
 export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
   const [records, setRecords] = useState<WasteRecord[]>([])
-  const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [totalWeight, setTotalWeight] = useState(0)
   const [selectedRecord, setSelectedRecord] = useState<WasteRecord | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
-  const [sortByWeight, setSortByWeight] = useState(false)
   const [savingRecordId, setSavingRecordId] = useState<string | null>(null)
   const [isEditingMode, setIsEditingMode] = useState(false)
-  const router = useRouter()
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -103,7 +88,6 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
         }
         
         setRecords(mappedRecords)
-        setStats(data.stats || null)
       } catch (err) {
         console.error('[v0] Error fetching waste records:', err)
         setError('ไม่สามารถดึงข้อมูลขยะได้')
@@ -228,8 +212,10 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
     )
   }
 
+  const pendingRecords = records.filter(r => r.status === 'pending')
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Detail Modal */}
       <WasteDetailModal
         record={selectedRecord}
@@ -240,76 +226,21 @@ export function WasteCart({ userId, onTotalWeightChange }: WasteCartProps) {
         isEditing={isEditingMode}
       />
 
-      {/* Filter pending records only */}
-      {(() => {
-        const pendingRecords = records.filter(r => r.status === 'pending')
-        const displayRecords = sortByWeight 
-          ? [...pendingRecords].sort((a, b) => b.weight_kg - a.weight_kg) 
-          : pendingRecords
-
-        return (
-          <>
-            {/* Distribution Progress Bar - Smaller */}
-            {pendingRecords.length > 0 && totalWeight > 0 && (
-              <div className="bg-white rounded-2xl border border-[#e5e5e5] p-4">
-                <p className="text-xs font-semibold text-[#666666] mb-2">สัดส่วนของแต่ละรายการ</p>
-                <div className="flex h-3 rounded-full overflow-hidden border border-[#e5e5e5]">
-                  {displayRecords.map((record, index) => {
-                    const percentage = (record.weight_kg / totalWeight) * 100
-                    const colors = ['bg-[#6fc061]', 'bg-[#4a9c3a]', 'bg-[#2d7e1a]', 'bg-[#1a5c0f]', 'bg-[#0d3a08]']
-                    const color = colors[index % colors.length]
-                    return (
-                      <div
-                        key={index}
-                        className={`${color} transition-all`}
-                        style={{ width: `${percentage}%` }}
-                        title={`${record.waste_type}: ${record.weight_kg} kg (${percentage.toFixed(1)}%)`}
-                      />
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Records List */}
-            <div className="bg-white rounded-2xl overflow-hidden border border-[#e5e5e5]">
-              <div className="p-4 border-b border-[#e5e5e5] flex items-center justify-between">
-                <h3 className="font-bold text-lg text-[#154212]">
-                  รายการขยะที่รอบันทึก ({pendingRecords.length})
-                </h3>
-                {pendingRecords.length > 0 && (
-                  <button
-                    onClick={() => setSortByWeight(!sortByWeight)}
-                    className="flex items-center gap-1 px-3 py-1 bg-[#f0f9e8] text-[#154212] rounded-lg hover:bg-[#e0f1d0] transition-colors border border-[#d4e9c1]"
-                    title="เรียงลำดับน้ำหนักจากมากไปน้อย"
-                  >
-                    <ArrowDownUp size={16} />
-                    <span className="text-xs font-semibold">เรียงลำดับ</span>
-                  </button>
-                )}
-              </div>
-
-              {pendingRecords.length === 0 ? (
-                <div className="p-8 text-center">
-                  <p className="text-[#999999]">ยังไม่มีการบันทึกขยะที่รอบันทึก</p>
-                </div>
-              ) : (
-                <div className="space-y-4 p-4">
-                  {displayRecords.map((record, index) => (
-                    <WasteCard
-                      key={index}
-                      record={record}
-                      onEdit={handleEditRecord}
-                      onSave={handleSaveRecord}
-                      isSaving={savingRecordId === `${record.timestamp}-${record.user_id}`}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        )
-      })()}
+      {pendingRecords.length === 0 ? (
+        <div className="py-8 text-center">
+          <p className="text-[#999999]">ยังไม่มีรายการขยะที่รอยืนยัน</p>
+        </div>
+      ) : (
+        pendingRecords.map((record, index) => (
+          <WasteCard
+            key={index}
+            record={record}
+            onEdit={handleEditRecord}
+            onSave={handleSaveRecord}
+            isSaving={savingRecordId === `${record.timestamp}-${record.user_id}`}
+          />
+        ))
+      )}
     </div>
   )
 }

@@ -102,9 +102,11 @@ interface ImageEvidenceProps {
   onImageChange: (url: string | null) => void
   referenceImage?: string
   referenceLabel?: string
+  wasteType?: string
+  weight?: number
 }
 
-export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referenceLabel }: ImageEvidenceProps) {
+export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referenceLabel, wasteType, weight }: ImageEvidenceProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { profile } = useLiffContext()
@@ -134,6 +136,8 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
               base64Data: base64String.split(',')[1], // ลบ data:image/jpeg;base64, ออก
               fileName: `waste_${profile?.userId || 'unknown'}_${Date.now()}.jpg`,
               userId: profile?.userId || 'unknown',
+              wasteType: wasteType || '',
+              weight: weight || 0,
               mimeType: 'image/jpeg'
             })
           })

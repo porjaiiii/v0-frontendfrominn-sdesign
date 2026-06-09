@@ -99,7 +99,7 @@ export default function HomePage() {
           user_id: userId,
           waste_type: selectedType,
           waste_subtype: selectedSubType?.id,
-          weight_kg: weight,
+          weight_kg: noWeight ? -1 : weight,
           image_url: imageEvidence || null,
           notes: '',
         }),
@@ -308,6 +308,7 @@ export default function HomePage() {
         isOpen={showResult}
         onClose={() => setShowResult(false)}
         carbonAmount={calculatedCarbon}
+        noWeight={noWeight}
         pointsEarned={Math.round(calculatedCarbon * 10)}
         onNext={handleShowQR}
       />

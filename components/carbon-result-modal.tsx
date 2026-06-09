@@ -7,6 +7,7 @@ interface CarbonResultModalProps {
   isOpen: boolean
   onClose: () => void
   carbonAmount: number
+  noWeight?: boolean
   pointsEarned?: number
   showQR?: boolean
   qrData?: string
@@ -18,6 +19,7 @@ export function CarbonResultModal({
   isOpen,
   onClose,
   carbonAmount,
+  noWeight = false,
   pointsEarned = 100,
   showQR = false,
   qrData,
@@ -48,10 +50,9 @@ export function CarbonResultModal({
           <h2 className="text-lg font-semibold text-[#154212]">บันทึกข้อมูลสำเร็จ</h2>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-6 space-y-6">
-          {/* Success message with leaf icon */}
-          <div className="flex flex-col items-center text-center gap-3">
+        {noWeight ? (
+          /* Simple popup when weight is unknown */
+          <div className="px-6 py-8 flex flex-col items-center text-center gap-4">
             <div className="text-4xl">&#127807;</div>
             <p className="text-sm text-[#555555] leading-relaxed">
               ระบบได้บันทึกข้อมูลเรียบร้อยแล้ว<br />
@@ -59,31 +60,44 @@ export function CarbonResultModal({
               เจ้าหน้าที่จะเข้าดำเนินการเก็บและรับขยะในภายหลัง
             </p>
           </div>
-
-          {/* Carbon summary */}
-          <div className="space-y-2">
-            <h3 className="text-2xl font-bold text-[#154212]">สรุปผลคาร์บอน</h3>
-            <p className="text-sm text-[#555555]">คุณช่วยลดการปล่อยก๊าซเรือนกระจกได้</p>
-
-            {/* Big number */}
-            <div className="text-center py-4">
-              <span className="text-7xl font-bold text-[#154212] leading-none">
-                {carbonAmount.toFixed(0)}
-              </span>
+        ) : (
+          /* Full carbon summary when weight is known */
+          <div className="px-6 py-6 space-y-6">
+            {/* Success message with leaf icon */}
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="text-4xl">&#127807;</div>
+              <p className="text-sm text-[#555555] leading-relaxed">
+                ระบบได้บันทึกข้อมูลเรียบร้อยแล้ว<br />
+                ขอบคุณที่ส่งข้อมูลเข้ามา<br />
+                เจ้าหน้าที่จะเข้าดำเนินการเก็บและรับขยะในภายหลัง
+              </p>
             </div>
 
-            <p className="text-center text-2xl font-semibold text-[#444444]">kgCO2e</p>
-          </div>
+            {/* Carbon summary */}
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-[#154212]">สรุปผลคาร์บอน</h3>
+              <p className="text-sm text-[#555555]">คุณช่วยลดการปล่อยก๊าซเรือนกระจกได้</p>
 
-          {/* Tree comparison box */}
-          <div className="bg-[#f5f5f5] rounded-2xl p-4 flex items-center gap-3">
-            <div className="text-3xl shrink-0">&#127795;&#127795;</div>
-            <p className="text-sm text-[#444444] leading-snug">
-              เทียบเท่ากับคุณช่วยบางเจ้า<br />
-              ปลูกต้นไม้เพิ่ม {treesEquivalent} ต้นแล้ว!
-            </p>
+              {/* Big number */}
+              <div className="text-center py-4">
+                <span className="text-7xl font-bold text-[#154212] leading-none">
+                  {carbonAmount.toFixed(0)}
+                </span>
+              </div>
+
+              <p className="text-center text-2xl font-semibold text-[#444444]">kgCO2e</p>
+            </div>
+
+            {/* Tree comparison box */}
+            <div className="bg-[#f5f5f5] rounded-2xl p-4 flex items-center gap-3">
+              <div className="text-3xl shrink-0">&#127795;&#127795;</div>
+              <p className="text-sm text-[#444444] leading-snug">
+                เทียบเท่ากับคุณช่วยบางเจ้า<br />
+                ปลูกต้นไม้เพิ่ม {treesEquivalent} ต้นแล้ว!
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Footer buttons */}
         <div className="px-6 pb-8 flex gap-3">

@@ -246,14 +246,13 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
         </div>
       </div>
 
-      {/* Photo upload area */}
-      <div>
+      {/* Photo upload area — square box aligned left */}
+      <div className="flex items-start gap-4">
         <label className={cn(
-          'w-full rounded-2xl cursor-pointer',
+          'w-36 h-36 shrink-0 rounded-2xl cursor-pointer overflow-hidden relative',
           'border-2 border-dashed transition-colors flex flex-col items-center justify-center',
-          'py-10',
           imageUrl
-            ? 'border-[#154212] bg-[#f0fdf0]'
+            ? 'border-[#154212]'
             : 'border-[#aaaaaa] bg-white hover:border-[#154212]',
           isUploading && 'opacity-75 cursor-wait'
         )}>
@@ -267,32 +266,37 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
           />
           {isUploading ? (
             <div className="flex flex-col items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-[#154212] mb-2" />
+              <Loader2 className="w-7 h-7 animate-spin text-[#154212] mb-1" />
               <span className="text-xs font-medium text-[#666666]">กำลังอัพโหลด...</span>
             </div>
           ) : imageUrl ? (
-            <div className="relative w-full h-40">
-              <Image
-                src={imageUrl}
-                alt="หลักฐาน"
-                fill
-                className="object-contain rounded-xl"
-              />
-            </div>
+            <Image
+              src={imageUrl}
+              alt="หลักฐาน"
+              fill
+              className="object-cover"
+            />
           ) : (
-            <div className="flex flex-col items-center justify-center text-[#666666]">
-              <Camera className="w-10 h-10 mb-3 text-[#888888]" />
-              <span className="text-sm font-semibold text-[#333333]">ถ่ายรูปขยะ</span>
-              <span className="text-xs text-[#666666] mt-1 text-center px-4">
-                (กรุณาถ่ายรูปขยะพร้อม<br />ตัวเลขน้ำหนัก)
+            <div className="flex flex-col items-center justify-center text-[#666666] px-2">
+              <Camera className="w-9 h-9 mb-2 text-[#888888]" />
+              <span className="text-xs font-semibold text-[#333333] text-center">ถ่ายรูปขยะ</span>
+              <span className="text-[10px] text-[#666666] mt-1 text-center leading-tight">
+                (กรุณาถ่ายรูปขยะพร้อมตัวเลขน้ำหนัก)
               </span>
             </div>
           )}
         </label>
-        {error && (
-          <span className="text-xs text-[#c06161] mt-2 font-medium block text-center">{error}</span>
+
+        {/* Helper text next to box */}
+        {!imageUrl && !isUploading && (
+          <p className="text-xs text-[#888888] leading-relaxed pt-1">
+            กดที่กรอบเพื่อถ่ายรูปหรือเลือกรูปจากคลัง
+          </p>
         )}
       </div>
+      {error && (
+        <span className="text-xs text-[#c06161] mt-2 font-medium block">{error}</span>
+      )}
     </div>
   )
 }

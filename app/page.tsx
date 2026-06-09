@@ -209,40 +209,53 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Step 2: Select Sub Type */}
-        {step === 2 && selectedType && (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {WASTE_SUBTYPES[selectedType].map((subType) => (
-              <button
-                key={subType.id}
-                onClick={() => handleSubTypeSelect(subType)}
-                className={cn(
-                  'flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all',
-                  'bg-white hover:border-[#157b03] hover:shadow-lg',
-                  selectedSubType?.id === subType.id 
-                    ? 'border-[#157b03] shadow-lg bg-[#f0fdf0]' 
-                    : 'border-black/20 shadow-[0_0_24px_rgba(0,0,0,0.25)]',
-                  'aspect-[3/4]'
-                )}
-              >
-                <div className="w-full aspect-square relative mb-2 rounded-lg overflow-hidden bg-[#f5f5f5] max-w-[90px]">
-                  <Image
-                    src={getSubTypeImage(selectedType, subType.id)}
-                    alt={subType.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <span className="text-xs sm:text-sm font-semibold text-black text-center whitespace-pre-line leading-tight">
-                  {subType.name}
-                </span>
-                {subType.description && (
-                  <span className="text-[10px] sm:text-xs text-[#666666]">{subType.description}</span>
-                )}
-              </button>
-            ))}
+       {/* Step 2: Select Sub Type */}
+{step === 2 && selectedType && (
+  <div className="space-y-6">
+    <div className="flex flex-wrap justify-center gap-3 sm:gap-4 w-full">
+      {WASTE_SUBTYPES[selectedType].map((subType) => (
+        <button
+          key={subType.id}
+          onClick={() => handleSubTypeSelect(subType)}
+          className={cn(
+            'w-[calc(50%-6px)] sm:w-[160px]',
+            'flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all',
+            'bg-white hover:border-[#157b03] hover:shadow-lg',
+            selectedSubType?.id === subType.id
+              ? 'border-[#157b03] shadow-lg bg-[#f0fdf0]'
+              : 'border-black/20 shadow-[0_0_24px_rgba(0,0,0,0.25)]',
+            'aspect-[3/4]'
+          )}
+        >
+          <div className="w-full aspect-square relative mb-2 rounded-lg overflow-hidden bg-[#f5f5f5] max-w-[90px]">
+            <Image
+              src={getSubTypeImage(selectedType, subType.id)}
+              alt={subType.name}
+              fill
+              className="object-cover"
+            />
           </div>
-        )}
+          <span className="text-xs sm:text-sm font-semibold text-black text-center whitespace-pre-line leading-tight">
+            {subType.name}
+          </span>
+          {subType.description && (
+            <span className="text-[10px] sm:text-xs text-[#666666]">{subType.description}</span>
+          )}
+        </button>
+      ))}
+    </div>
+
+    {/* Back button */}
+    <div className="flex items-center">
+      <button
+        onClick={handleBack}
+        className="px-6 py-2.5 rounded-full font-semibold text-[#154212] text-sm hover:text-[#0d3308] transition-colors"
+      >
+        ย้อนกลับ
+      </button>
+    </div>
+  </div>
+)}
 
         {/* Step 3: Weight and Evidence */}
         {step === 3 && selectedSubType && (

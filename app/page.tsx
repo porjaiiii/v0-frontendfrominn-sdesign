@@ -270,7 +270,7 @@ export default function HomePage() {
             <ImageEvidence
               imageUrl={imageEvidence}
               onImageChange={setImageEvidence}
-              referenceImage="/placeholder.svg?height=120&width=120&query=weighing scale with recycling items example"
+              referenceImage="/images/weighing-scale-example.png"
               referenceLabel="ตัวอย่างการชั่ง"
               wasteType={selectedType || ''}
               weight={weight}

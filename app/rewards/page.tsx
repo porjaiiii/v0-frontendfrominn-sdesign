@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Heart } from 'lucide-react'
+import { Heart, CheckCircle2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
@@ -13,13 +13,45 @@ import { cn } from '@/lib/utils'
 import { usePoints } from '@/lib/points-context'
 
 export default function RewardsPage() {
-  const { points: userPoints, loading: pointsLoading } = usePoints()
+  const { points: userPoints, loading: pointsLoading, spendPoints } = usePoints()
   const { addToCart, cartCount } = useCart()
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [mounted, setMounted] = useState(false)
   const [clickedButton, setClickedButton] = useState<number | null>(null)
   const buttonRefs = useRef<{ [key: number]: HTMLButtonElement | null }>({})
   const [showBadge, setShowBadge] = useState(false)
+
+  // Direct "แลกเลย" redeem (single item, no cart)
+  const [redeemTarget, setRedeemTarget] = useState<typeof REWARDS[number] | null>(null)
+  const [processing, setProcessing] = useState(false)
+  const [redeemError, setRedeemError] = useState<string | null>(null)
+  const [redeemSuccess, setRedeemSuccess] = useState(false)
+
+  const openRedeem = (reward: typeof REWARDS[number]) => {
+    setRedeemTarget(reward)
+    setRedeemError(null)
+    setRedeemSuccess(false)
+  }
+
+  const handleConfirmRedeem = async () => {
+    if (!redeemTarget) return
+    setRedeemError(null)
+    if (redeemTarget.points > userPoints) {
+      setRedeemError('คะแนนของคุณไม่เพียงพอ')
+      return
+    }
+    setProcessing(true)
+    const result = await spendPoints(redeemTarget.points, {
+      category: 'reward',
+      items: [{ name: redeemTarget.name, quantity: 1, points: redeemTarget.points }],
+    })
+    setProcessing(false)
+    if (result.success) {
+      setRedeemSuccess(true)
+    } else {
+      setRedeemError(result.message || 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่')
+    }
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('favorites')
@@ -110,7 +142,7 @@ export default function RewardsPage() {
               href="/history"
               className="px-4 py-1.5 bg-white rounded-lg text-sm font-medium text-[#154212] hover:bg-[#f5f5f5] transition-colors"
             >
-              ประวัติการสะสมแนน
+              ประวัติการสะสมคะแนน
             </Link>
             <Link 
               href="/donate"
@@ -185,6 +217,7 @@ export default function RewardsPage() {
                     {/* Action Buttons */}
                     <div className="flex gap-2">
                       <button
+                        onClick={() => openRedeem(reward)}
                         disabled={!canRedeem}
                         className={cn(
                           'flex-[7] py-2 rounded-lg text-sm font-medium transition-colors',
@@ -222,6 +255,85 @@ export default function RewardsPage() {
           </div>
         </div>
       </main>
+
+      {/* Direct redeem modal (แลกเลย — single item, no cart) */}
+      {redeemTarget && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-end z-50"
+          onClick={() => setRedeemTarget(null)}
+        >
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            className="w-full max-w-md mx-auto bg-white rounded-t-3xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {redeemSuccess ? (
+              <div className="flex flex-col items-center text-center py-4">
+                <CheckCircle2 size={64} className="text-[#157b03] mb-3" />
+                <h2 className="text-xl font-bold text-[#154212] mb-1">แลกของรางวัลสำเร็จ!</h2>
+                <p className="text-sm text-[#666666] mb-1">
+                  {redeemTarget.name} · ใช้ไป {redeemTarget.points.toLocaleString()} คะแนน
+                </p>
+                <p className="text-sm text-[#666666] mb-5">
+                  คะแนนคงเหลือ {userPoints.toLocaleString()} คะแนน
+                </p>
+                <button
+                  onClick={() => setRedeemTarget(null)}
+                  className="w-full py-3 bg-[#154212] text-white font-bold rounded-lg hover:bg-[#0d3308] transition-colors"
+                >
+                  เสร็จสิ้น
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-14 h-14 relative bg-[#f5f5f5] rounded-lg overflow-hidden flex-shrink-0">
+                    <Image src={redeemTarget.image} alt={redeemTarget.name} fill className="object-cover" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-[#154212]">{redeemTarget.name}</h2>
+                    <p className="text-sm text-[#157b03] font-semibold">{redeemTarget.points.toLocaleString()} คะแนน</p>
+                  </div>
+                </div>
+                <p className="text-sm text-[#666666] mb-1">ยืนยันการแลกของรางวัลนี้?</p>
+                <p className="text-sm font-semibold text-[#154212] mb-4">
+                  คะแนนของคุณ: {pointsLoading ? '…' : userPoints.toLocaleString()} คะแนน
+                </p>
+
+                {redeemError && (
+                  <div className="text-xs text-[#cc0000] bg-[#fff0f0] border border-[#ffb3b3] rounded-lg px-3 py-2 mb-3">
+                    {redeemError}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setRedeemTarget(null)}
+                    disabled={processing}
+                    className="flex-1 py-3 border-2 border-[#e5e5e5] text-[#154212] font-bold rounded-lg hover:bg-[#f5f5f5] transition-colors disabled:opacity-50"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    onClick={handleConfirmRedeem}
+                    disabled={processing || pointsLoading}
+                    className={cn(
+                      'flex-1 py-3 font-bold rounded-lg transition-colors',
+                      processing || pointsLoading
+                        ? 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+                        : 'bg-[#154212] text-white hover:bg-[#0d3308]'
+                    )}
+                  >
+                    {processing ? 'กำลังแลก…' : 'ยืนยัน'}
+                  </button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        </div>
+      )}
 
       {/* <BottomNav /> */}
     </div>

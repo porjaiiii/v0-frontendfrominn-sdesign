@@ -98,7 +98,8 @@ function txToHistoryItem(tx: Transaction): HistoryItem | null {
 // Spend detail rows -> rich reward/donation entries.
 function spendDetailToItem(d: SpendDetailRow): HistoryItem {
   const date = parseTs(d.timestamp)
-  const verb = d.category === 'donate' ? 'บริจาคให้' : 'แลกของรางวัล'
+  const isDonate = d.category === 'donate'
+  const verb = isDonate ? 'บริจาคให้' : 'แลกของรางวัล'
   return {
     id: `${d.tx_id}-${d.item_name}`,
     ts: date.getTime(),
@@ -108,7 +109,8 @@ function spendDetailToItem(d: SpendDetailRow): HistoryItem {
     title: `${verb} ${d.item_name}`,
     color: TYPE_COLOR.reward,
     quantity: Number(d.quantity) || 1,
-    status: d.status || '',
+    // Donations complete instantly — they don't have a delivery status.
+    status: isDonate ? 'บริจาคสำเร็จ' : (d.status || 'เตรียมจัดส่งในรอบถัดไป'),
     pointsSpent: Number(d.points) || 0,
     category: d.category,
   }

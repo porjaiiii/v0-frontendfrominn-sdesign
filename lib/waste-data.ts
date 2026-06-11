@@ -63,7 +63,7 @@ export const REWARDS = [
   { id: 14, name: 'SHARP หม้อหุงข้าวชาร์ป', description: 'ขนาด 1.1 ลิตร รุ่น KSH-D11', points: 705, image: '/images/rewards/sharp-rice-cooker.jpg' },
 
   // Tier 6
-  { id: 15, name: 'ทองคำแท้หนึ่งสลึง', description: 'ทองคำแผ่นหรือทองรูปพรรณ (ราคาปัจจุบัน)', points: 18600, image: '/images/rewards/gold-one-salung.jpg' }
+  { id: 15, name: 'ทองคำแท้หนึ่งสลึง', description: 'ทองคำแผ่นหรือทองรูปพรรณ (ราคาปัจจุบัน)', points: 18600, image: '/images/rewards/gold-one-salung.png' }
 ]
 
 export const LEADERBOARD = [

@@ -46,15 +46,15 @@ export function CarbonResultModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 sm:items-center sm:p-4">
       <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm overflow-hidden">
-        {/* Success header */}
-        <div className="px-6 pt-6 pb-4 border-b border-[#e5e5e5]">
+        {/* Success header with seedling icon on top */}
+        <div className="px-6 pt-6 pb-4 border-b border-[#e5e5e5] flex flex-col items-center gap-2">
+          <div className="text-4xl">&#127807;</div>
           <h2 className="text-lg font-semibold text-[#154212]">บันทึกข้อมูลสำเร็จ</h2>
         </div>
 
         {noWeight ? (
           /* Simple popup when weight is unknown */
           <div className="px-6 py-8 flex flex-col items-center text-center gap-4">
-            <div className="text-4xl">&#127807;</div>
             <p className="text-sm text-[#555555] leading-relaxed">
               ระบบได้บันทึกข้อมูลเรียบร้อยแล้ว<br />
               ขอบคุณที่ส่งข้อมูลเข้ามา<br />
@@ -64,9 +64,8 @@ export function CarbonResultModal({
         ) : (
           /* Full carbon summary when weight is known */
           <div className="px-6 py-6 space-y-6">
-            {/* Success message with leaf icon */}
+            {/* Success message */}
             <div className="flex flex-col items-center text-center gap-3">
-              <div className="text-4xl">&#127807;</div>
               <p className="text-sm text-[#555555] leading-relaxed">
                 ระบบได้บันทึกข้อมูลเรียบร้อยแล้ว<br />
                 ขอบคุณที่ส่งข้อมูลเข้ามา<br />
@@ -89,10 +88,10 @@ export function CarbonResultModal({
               <p className="text-center text-2xl font-semibold text-[#444444]">kgCO2e</p>
             </div>
 
-            {/* Tree comparison box */}
+            {/* Tree comparison box with 3D tree image */}
             <div className="bg-[#f5f5f5] rounded-2xl p-4 flex items-center gap-3">
-              <div className="relative w-10 h-10 shrink-0">
-                <Image src="/icons/tabler-icon-plant.png" alt="ต้นไม้" fill className="object-contain" />
+              <div className="relative w-14 h-14 shrink-0">
+                <Image src="/images/trees-3d.png" alt="ต้นไม้" fill className="object-contain" />
               </div>
               <p className="text-sm text-[#444444] leading-snug">
                 เทียบเท่ากับคุณช่วยบางเจ้า<br />

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/page-header'
 import { cn } from '@/lib/utils'
-import { Leaf, MapPin } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import Link from 'next/link'
 import type { RankingEntry } from '@/app/api/ranking/route'
 import { useLiffContext } from '@/lib/liff-context'
@@ -38,6 +38,12 @@ const tabs = [
   { id: 'all', label: 'ทั้งหมด' },
   { id: 'district', label: 'ตำบล' },
 ]
+
+// Black-and-white logo used as the fallback when a user has no profile picture.
+const LOGO_PLACEHOLDER = '/images/icon/logo.png'
+function isMissingAvatar(url?: string): boolean {
+  return !url || url.includes('placeholder')
+}
 
 export default function RankingPage() {
   const [activeTab, setActiveTab] = useState('all')
@@ -168,13 +174,6 @@ export default function RankingPage() {
     return `${showFirstN(firstPart, 2)} ${showLastN(lastPart, 2)}`
   }
 
-  const getStarFilter = (rank: number) => {
-    if (rank === 1) return 'sepia(1) saturate(6) hue-rotate(20deg) brightness(1)'
-    if (rank === 2) return 'grayscale(1) brightness(0.9) contrast(1.2)'
-    if (rank === 3) return 'sepia(1) saturate(5) hue-rotate(-10deg) brightness(0.95)'
-    return 'none'
-  }
-
   const top3 = [displayLeaderboard[1], displayLeaderboard[0], displayLeaderboard[2]]
   const listEntries = displayLeaderboard.filter(u => u.rank >= 4)
 
@@ -184,8 +183,8 @@ export default function RankingPage() {
 
       <main className="max-w-md mx-auto px-4 py-4">
         {/* Page Title */}
-        <h1 className="text-lg font-semibold text-[#154212] flex items-center gap-2 mb-4">
-          <span className="text-[#666666]">{'<'}</span> ยอดสะสมและอันดับ
+        <h1 className="text-2xl font-bold text-[#154212] mb-4">
+          อันดับผู้รักษ์โลก
         </h1>
 
         {/* Current User Stats Card */}
@@ -224,14 +223,6 @@ export default function RankingPage() {
 
         {/* Leaderboard Section */}
         <div className="space-y-3">
-          {/* Section heading */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-[#154212] flex items-center gap-2">
-              <Leaf className="w-5 h-5 text-[#157b03]" />
-              อันดับผู้รักษ์โลก : ต้นแมงลางตลิ่ง
-            </h2>
-          </div>
-
           {/* Sample data notice */}
           {isSampleData && !isLoading && (
             <div className="text-xs text-[#999] bg-[#fffbe6] border border-[#ffe58f] rounded-lg px-3 py-2">
@@ -258,37 +249,48 @@ export default function RankingPage() {
           {!isLoading && (
             <>
               {/* Podium for Top 3 */}
-              <div className="flex items-end justify-center gap-4 mb-2">
+              <div className="flex items-end justify-center gap-2 mb-2">
                 {top3.map((u) => {
                   if (!u) return null
                   const podiumHeight = u.rank === 1 ? 150 : 110
                   const gradient = u.rank === 1
-                    ? 'linear-gradient(180deg,#fff7c9,#ffd24d)'
+                    ? 'linear-gradient(180deg,#fff7c9,#ffd24d)'   // gold
                     : u.rank === 2
-                    ? 'linear-gradient(180deg,#eef6ff,#bcd7ff)'
-                    : 'linear-gradient(180deg,#ffe9e9,#ff9a9a)'
-                  const starFilter = getStarFilter(u.rank)
+                    ? 'linear-gradient(180deg,#f7f7f7,#c4c4c4)'   // silver
+                    : 'linear-gradient(180deg,#ffe9e9,#ff9a9a)'   // bronze/red
+                  // Tint the dark pentagon badge to match its podium color (slightly darker for legibility)
+                  const badgeTint = u.rank === 1
+                    ? 'brightness(0) saturate(100%) invert(68%) sepia(52%) saturate(680%) hue-rotate(358deg) brightness(92%) contrast(101%)'  // gold
+                    : u.rank === 2
+                    ? 'brightness(0) saturate(100%) invert(70%)'                                                                                // silver
+                    : 'brightness(0) saturate(100%) invert(44%) sepia(72%) saturate(1600%) hue-rotate(-12deg) brightness(85%)'                 // bronze/red
                   const isPodiumCurrent = liffProfile != null && u.lineUserId === liffProfile.userId
+                  const avatarMissing = isMissingAvatar(u.avatar)
                   return (
                     <div key={u.rank} ref={isPodiumCurrent ? currentUserRowRef : undefined} className="flex flex-col items-center relative">
-                      <div className="w-16 h-16 rounded-full bg-[#0f3b14] overflow-hidden relative mb-2 shadow-md">
-                        <Image src={u.avatar} alt={u.name} fill className="object-cover" />
+                      <div className={cn('w-16 h-16 rounded-full overflow-hidden relative mb-2 shadow-md', avatarMissing ? 'bg-[#eef0ee]' : 'bg-[#0f3b14]')}>
+                        <Image
+                          src={avatarMissing ? LOGO_PLACEHOLDER : u.avatar}
+                          alt={u.name}
+                          fill
+                          className={avatarMissing ? 'object-contain p-2 grayscale opacity-70' : 'object-cover'}
+                        />
                       </div>
                       <div className="text-sm font-medium text-[#154212] mb-2 text-center">
                         {obfuscateName(u.name, u.rank === currentUser.rank || u.name === currentUser.name || u.lineUserId === liffProfile?.userId)}
                       </div>
                       <div
-                        className="w-24 rounded-t-lg flex flex-col items-center justify-start gap-1 shadow-inner"
+                        className="w-28 rounded-t-lg flex flex-col items-center justify-start gap-1 shadow-inner"
                         style={{ height: podiumHeight, background: gradient, paddingTop: '10%' }}
                       >
                         <div className="w-8 h-8 flex items-center justify-center">
                           <Image
-                            src="/images/icon/Michelin-Star--Streamline-Tabler.svg"
-                            alt={`star-${u.rank}`}
-                            width={20}
-                            height={20}
+                            src={`/images/icon/tabler-icon-pentagon-number-${u.rank}.png`}
+                            alt={`rank-${u.rank}`}
+                            width={28}
+                            height={28}
                             className="object-contain"
-                            style={{ filter: starFilter }}
+                            style={{ filter: badgeTint }}
                           />
                         </div>
                         <div className="flex flex-col items-center justify-center">
@@ -348,12 +350,12 @@ export default function RankingPage() {
                             <div className="w-8 h-8 rounded-full bg-[#f5f5f5] flex items-center justify-center text-sm font-semibold text-[#154212]">
                               {displayUser.rank}
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-[#d9d9d9] overflow-hidden relative flex-shrink-0">
+                            <div className={cn('w-10 h-10 rounded-full overflow-hidden relative flex-shrink-0', isMissingAvatar(displayUser.avatar) ? 'bg-[#eef0ee]' : 'bg-[#d9d9d9]')}>
                               <Image
-                                src={displayUser.avatar}
+                                src={isMissingAvatar(displayUser.avatar) ? LOGO_PLACEHOLDER : displayUser.avatar}
                                 alt={displayUser.name}
                                 fill
-                                className="object-cover"
+                                className={isMissingAvatar(displayUser.avatar) ? 'object-contain p-1.5 grayscale opacity-70' : 'object-cover'}
                               />
                             </div>
                             <div className="flex-1 min-w-0">

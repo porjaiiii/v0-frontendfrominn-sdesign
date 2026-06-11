@@ -69,9 +69,26 @@ export function PointsProvider({ children }: { children: ReactNode }) {
       })
       const data = await res.json()
       if (data?.success && data.account) {
+        // The account's total_points can drift from the actual spendable balance
+        // in points_monthly (e.g. hand-edited cells). Resync so the number shown
+        // == the number that can actually be spent. Otherwise the UI shows
+        // "enough points" but the server rejects the spend as "Not enough points".
+        let spendablePoints = toNumber(data.account.total_points)
+        try {
+          const syncRes = await fetch('/api/points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'resync_balance', user_id: uid }),
+          })
+          const syncData = await syncRes.json()
+          if (syncData?.success) spendablePoints = toNumber(syncData.total_points)
+        } catch {
+          // Resync failed — fall back to the account's stored total.
+        }
+
         setAccount({
           user_id: data.account.user_id,
-          total_points: toNumber(data.account.total_points),
+          total_points: spendablePoints,
           total_weight: toNumber(data.account.total_weight),
           total_co2: toNumber(data.account.total_co2),
           tier: data.account.tier ?? '',

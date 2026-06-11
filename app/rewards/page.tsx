@@ -10,10 +10,10 @@ import { PageHeader } from '@/components/page-header'
 import { REWARDS } from '@/lib/waste-data'
 import { useCart } from '@/lib/cart-context'
 import { cn } from '@/lib/utils'
-import { MOCK_USER } from '@/lib/mock-user'
+import { usePoints } from '@/lib/points-context'
 
 export default function RewardsPage() {
-  const userPoints = MOCK_USER.points
+  const { points: userPoints, loading: pointsLoading } = usePoints()
   const { addToCart, cartCount } = useCart()
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [mounted, setMounted] = useState(false)
@@ -100,7 +100,9 @@ export default function RewardsPage() {
 
           <p className="text-sm text-white/80 mb-2">คะแนนแสะสมของคุณ</p>
           <div className="flex items-baseline gap-2 mb-4">
-            <span className="text-5xl font-bold text-white">{userPoints}</span>
+            <span className="text-5xl font-bold text-white">
+              {pointsLoading ? '…' : userPoints.toLocaleString()}
+            </span>
             <span className="text-lg text-white/80">คะแนน</span>
           </div>
           <div className="flex gap-2">

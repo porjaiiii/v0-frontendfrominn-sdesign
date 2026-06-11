@@ -88,7 +88,7 @@ export default function RankingPage() {
     const params = new URLSearchParams()
     if (liffProfile?.userId) params.set('userId', liffProfile.userId)
     if (liffProfile?.displayName) params.set('name', liffProfile.displayName)
-    const url = `/api/ranking${params.toString() ? `?${params}` : ''}`
+    const url = `/api/points/ranking${params.toString() ? `?${params}` : ''}`
     fetch(url, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {

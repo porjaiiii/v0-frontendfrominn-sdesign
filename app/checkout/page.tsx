@@ -38,7 +38,14 @@ export default function CheckoutPage() {
     }
 
     setProcessing(true)
-    const result = await spendPoints(totalPointsNeeded)
+    const result = await spendPoints(totalPointsNeeded, {
+      category: 'reward',
+      items: cartItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        points: item.points * item.quantity,
+      })),
+    })
     setProcessing(false)
 
     if (result.success) {

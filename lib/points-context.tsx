@@ -23,6 +23,20 @@ export interface PointsAccount {
 interface SpendResult {
   success: boolean
   message?: string
+  tx_id?: string
+}
+
+/** One line item recorded against a spend (reward purchase or donation). */
+export interface SpendItem {
+  name: string
+  quantity: number
+  points: number
+}
+
+/** Extra detail logged to the spend_details sheet, grouped under one tx_id. */
+export interface SpendDetail {
+  category: 'reward' | 'donate'
+  items: SpendItem[]
 }
 
 interface PointsContextType {
@@ -38,8 +52,12 @@ interface PointsContextType {
   isReal: boolean
   /** Re-fetch the account balance from the sheet. */
   refresh: () => Promise<void>
-  /** Spend points (FIFO) via the Apps Script, then refresh the balance. */
-  spendPoints: (amount: number) => Promise<SpendResult>
+  /**
+   * Spend points (FIFO) via the Apps Script, then refresh the balance.
+   * Optionally pass `detail` to record what was bought/donated against the
+   * transaction id in the spend_details sheet.
+   */
+  spendPoints: (amount: number, detail?: SpendDetail) => Promise<SpendResult>
 }
 
 const PointsContext = createContext<PointsContextType | undefined>(undefined)
@@ -117,19 +135,25 @@ export function PointsProvider({ children }: { children: ReactNode }) {
   }, [userId, loadAccount])
 
   const spendPoints = useCallback(
-    async (amount: number): Promise<SpendResult> => {
+    async (amount: number, detail?: SpendDetail): Promise<SpendResult> => {
       if (!userId) return { success: false, message: 'ไม่พบบัญชีผู้ใช้ (กรุณาเข้าสู่ระบบผ่าน LINE)' }
       if (!amount || amount <= 0) return { success: false, message: 'จำนวนคะแนนไม่ถูกต้อง' }
       try {
         const res = await fetch('/api/points', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'spend_points', user_id: userId, points: amount }),
+          body: JSON.stringify({
+            action: 'spend_points',
+            user_id: userId,
+            points: amount,
+            category: detail?.category,
+            items: detail?.items,
+          }),
         })
         const data = await res.json()
         if (data?.success) {
           await loadAccount(userId) // resync balance after spending
-          return { success: true }
+          return { success: true, tx_id: data.tx_id }
         }
         return { success: false, message: data?.message || 'ไม่สามารถใช้คะแนนได้' }
       } catch (err) {

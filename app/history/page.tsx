@@ -9,22 +9,36 @@ import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { useLiffContext } from '@/lib/liff-context'
 
+// One color per type, shared by the filter chips and the timeline dots so they
+// always match. recycle = blue, points = green, reward = yellow.
+const TYPE_COLOR: Record<string, string> = {
+  recycle: 'bg-[#89b9ea]',
+  points: 'bg-[#b6ebad]',
+  reward: 'bg-[#f9e7b0]',
+}
+
 // Filter tabs
 const FILTERS = [
   { id: 'all', label: 'ทั้งหมด', icon: null },
-  { id: 'recycle', label: 'รีไซเคิล', icon: Recycle, color: 'bg-[#b6ebad]' },
-  { id: 'reward', label: 'แลกรางวัล', icon: Gift, color: 'bg-[#f9e7b0]' },
-  { id: 'points', label: 'คะแนน', icon: Coins, color: 'bg-[#89b9ea]' },
+  { id: 'recycle', label: 'รีไซเคิล', icon: Recycle, color: TYPE_COLOR.recycle },
+  { id: 'reward', label: 'แลกรางวัล', icon: Gift, color: TYPE_COLOR.reward },
+  { id: 'points', label: 'คะแนน', icon: Coins, color: TYPE_COLOR.points },
 ]
 
 type HistoryItem = {
   id: string
+  ts?: number         // epoch ms, for chronological sorting across sources
   date: string
   time: string
-  type: string
+  type: string        // 'recycle' | 'points' | 'reward'
   title: string
   color: string
   hasDetail?: boolean
+  // reward-specific (from spend_details)
+  quantity?: number
+  status?: string
+  pointsSpent?: number
+  category?: 'reward' | 'donate'
 }
 
 // A single transaction row from /api/points?action=get_transactions
@@ -37,38 +51,67 @@ type Transaction = {
   timestamp: string
 }
 
+// A single spend line from /api/points?action=get_spend_details
+type SpendDetailRow = {
+  tx_id: string
+  category: 'reward' | 'donate'
+  item_name: string
+  quantity: number
+  points: number
+  status: string
+  timestamp: string
+}
+
 const THAI_MONTHS = [
   'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
 ]
-
-const TYPE_COLOR: Record<string, string> = {
-  points: 'bg-[#b6ebad]',
-  recycle: 'bg-[#f9e7b0]',
-  reward: 'bg-[#89b9ea]',
-}
 
 // Script timestamps look like "2026-06-11 13:03:14" (Bangkok). Parse safely.
 function parseTs(ts: string): Date {
   return new Date(String(ts).replace(' ', 'T'))
 }
 
-function txToHistoryItem(tx: Transaction): HistoryItem {
+function fmtDate(d: Date) {
+  return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`
+}
+function fmtTime(d: Date) {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// Earn transactions -> recycle / points entries. (Spends are handled by
+// spend_details so we can show item names + status, so 'spend' is skipped here.)
+function txToHistoryItem(tx: Transaction): HistoryItem | null {
+  if (tx.type === 'spend') return null
   const d = parseTs(tx.timestamp)
-  const date = `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`
-  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  const base = { id: tx.tx_id, ts: d.getTime(), date: fmtDate(d), time: fmtTime(d) }
   const weight = Number(tx.weight) || 0
 
-  // spend -> reward redemption
-  if (tx.type === 'spend') {
-    return { id: tx.tx_id, date, time, type: 'reward', title: `แลกรางวัลจากคะแนน ${tx.points} คะแนน`, color: TYPE_COLOR.reward }
-  }
   // earn with recycled weight -> recycle entry (has detail)
   if (weight > 0) {
-    return { id: tx.tx_id, date, time, type: 'recycle', title: `เก็บของรีไซเคิล ${weight} KG`, color: TYPE_COLOR.recycle, hasDetail: true }
+    return { ...base, type: 'recycle', title: `เก็บของรีไซเคิล ${weight} KG`, color: TYPE_COLOR.recycle, hasDetail: true }
   }
   // earn without weight (e.g. bonus) -> points entry
-  return { id: tx.tx_id, date, time, type: 'points', title: `คุณมีคะแนนสะสมเพิ่ม ${tx.points} คะแนน`, color: TYPE_COLOR.points }
+  return { ...base, type: 'points', title: `คุณมีคะแนนสะสมเพิ่ม ${tx.points} คะแนน`, color: TYPE_COLOR.points }
+}
+
+// Spend detail rows -> rich reward/donation entries.
+function spendDetailToItem(d: SpendDetailRow): HistoryItem {
+  const date = parseTs(d.timestamp)
+  const verb = d.category === 'donate' ? 'บริจาคให้' : 'แลกของรางวัล'
+  return {
+    id: `${d.tx_id}-${d.item_name}`,
+    ts: date.getTime(),
+    date: fmtDate(date),
+    time: fmtTime(date),
+    type: 'reward',
+    title: `${verb} ${d.item_name}`,
+    color: TYPE_COLOR.reward,
+    quantity: Number(d.quantity) || 1,
+    status: d.status || '',
+    pointsSpent: Number(d.points) || 0,
+    category: d.category,
+  }
 }
 
 // Mock history data with time
@@ -79,7 +122,7 @@ const historyData: HistoryItem[] = [
     time: '14:30',
     type: 'points',
     title: 'คุณมีคะแนนสะสมเพิ่ม 21 คะแนน',
-    color: 'bg-[#b6ebad]',
+    color: TYPE_COLOR.points,
   },
   {
     id: '2',
@@ -87,7 +130,7 @@ const historyData: HistoryItem[] = [
     time: '12:15',
     type: 'recycle',
     title: 'เก็บของรีไซเคิล 7.95 KG',
-    color: 'bg-[#f9e7b0]',
+    color: TYPE_COLOR.recycle,
     hasDetail: true,
   },
   {
@@ -96,7 +139,7 @@ const historyData: HistoryItem[] = [
     time: '10:00',
     type: 'reward',
     title: 'แลกรางวัลจากคะแนน 35 คะแนน',
-    color: 'bg-[#89b9ea]',
+    color: TYPE_COLOR.reward,
   },
   {
     id: '4',
@@ -104,7 +147,7 @@ const historyData: HistoryItem[] = [
     time: '09:30',
     type: 'points',
     title: 'คุณมีคะแนนสะสมเพิ่ม 21 คะแนน',
-    color: 'bg-[#b6ebad]',
+    color: TYPE_COLOR.points,
   },
   {
     id: '5',
@@ -112,7 +155,7 @@ const historyData: HistoryItem[] = [
     time: '16:45',
     type: 'recycle',
     title: 'เก็บของรีไซเคิล 7.95 KG',
-    color: 'bg-[#f9e7b0]',
+    color: TYPE_COLOR.recycle,
     hasDetail: true,
   },
   {
@@ -121,7 +164,7 @@ const historyData: HistoryItem[] = [
     time: '11:20',
     type: 'points',
     title: 'คุณมีคะแนนสะสมเพิ่ม 21 คะแนน',
-    color: 'bg-[#b6ebad]',
+    color: TYPE_COLOR.points,
   },
   {
     id: '7',
@@ -129,7 +172,7 @@ const historyData: HistoryItem[] = [
     time: '08:00',
     type: 'recycle',
     title: 'เก็บของรีไซเคิล 7.95 KG',
-    color: 'bg-[#f9e7b0]',
+    color: TYPE_COLOR.recycle,
     hasDetail: true,
   },
 ]
@@ -159,21 +202,36 @@ export default function HistoryPage() {
   const [activeFilter, setActiveFilter] = useState('all')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [transactions, setTransactions] = useState<Transaction[] | null>(null)
+  const [spendDetails, setSpendDetails] = useState<SpendDetailRow[] | null>(null)
 
-  // Pull this user's real transactions from the points sheet.
+  // Pull this user's real transactions + spend details from the points sheet.
   useEffect(() => {
     const userId = liffProfile?.userId
     if (!userId) return
     const controller = new AbortController()
-    fetch(`/api/points?action=get_transactions&user_id=${encodeURIComponent(userId)}`, { signal: controller.signal })
+    const q = encodeURIComponent(userId)
+
+    fetch(`/api/points?action=get_transactions&user_id=${q}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => setTransactions(data?.success ? (data.transactions as Transaction[]) : []))
       .catch(err => { if (err.name !== 'AbortError') setTransactions([]) })
+
+    fetch(`/api/points?action=get_spend_details&user_id=${q}`, { signal: controller.signal })
+      .then(res => res.json())
+      .then(data => setSpendDetails(data?.success ? (data.details as SpendDetailRow[]) : []))
+      .catch(err => { if (err.name !== 'AbortError') setSpendDetails([]) })
+
     return () => controller.abort()
   }, [liffProfile?.userId])
 
-  // Use real transactions when we have them; otherwise fall back to the mockup.
-  const realItems = (transactions ?? []).map(txToHistoryItem)
+  // Earn -> recycle/points entries; spend_details -> rich reward entries.
+  const earnItems = (transactions ?? [])
+    .map(txToHistoryItem)
+    .filter((i): i is HistoryItem => i !== null)
+  const rewardItems = (spendDetails ?? []).map(spendDetailToItem)
+  const realItems = [...earnItems, ...rewardItems].sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0))
+
+  // Use real data when we have any; otherwise fall back to the mockup.
   const sourceData = realItems.length > 0 ? realItems : historyData
 
   const filteredData = activeFilter === 'all'
@@ -233,50 +291,73 @@ export default function HistoryPage() {
 
               {/* Timeline Items */}
               <div className="ml-[3px] border-l-2 border-[#e5e5e5] pl-5 space-y-3">
-                {items.map((item, index) => (
-                  <div 
+                {items.map((item) => (
+                  <div
                     key={item.id}
                     className="relative"
                   >
                     {/* Timeline dot */}
                     <div className="absolute -left-[25px] top-3 w-3 h-3 rounded-full bg-white border-2 border-[#154212]" />
-                    
-                    {/* Card */}
-                    <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#e5e5e5]">
-                      {/* Colored indicator */}
-                      <div className={cn('w-10 h-10 rounded-full flex-shrink-0', item.color)} />
-                      
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-[#154212] font-medium mb-0.5">{formatTime(item.time)}</p>
-                        <p className="text-sm text-[#444444]">{item.title}</p>
-                      </div>
-                      
-                      {/* Three-dot menu */}
-                      {item.hasDetail && (
-                        <div className="relative">
-                          <button 
-                            onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
-                            className="p-1 rounded-full hover:bg-[#f5f5f5]"
-                          >
-                            <MoreVertical className="w-5 h-5 text-[#999999]" />
-                          </button>
-                          
-                          {/* Dropdown menu */}
-                          {openMenuId === item.id && (
-                            <div className="absolute right-0 top-8 bg-white border border-[#e5e5e5] rounded-lg shadow-lg z-10 py-1 min-w-[160px]">
-                              <Link
-                                href={`/history/${item.id}`}
-                                className="block px-4 py-2 text-sm text-[#444444] hover:bg-[#f5f5f5]"
-                                onClick={() => setOpenMenuId(null)}
-                              >
-                                ดูรายละเอียด
-                              </Link>
-                            </div>
-                          )}
+
+                    {item.type === 'reward' ? (
+                      /* Rich reward / donation card */
+                      <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-[#e5e5e5]">
+                        <div className={cn('w-10 h-10 rounded-full flex-shrink-0', item.color)} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-[#154212] font-medium mb-0.5">{formatTime(item.time)}</p>
+                          <p className="text-sm font-medium text-[#444444] mb-1.5">
+                            {item.title} {item.quantity ? `× ${item.quantity}` : ''}
+                          </p>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs text-[#666666]">อัพเดต {item.date} {formatTime(item.time)}</p>
+                            <span className="text-xs bg-[#f5f5f5] rounded px-2 py-0.5 text-[#444444] flex-shrink-0">
+                              จำนวน {item.quantity ?? 1}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-[#666666] truncate">
+                              สถานะ : {item.status || 'เตรียมจัดส่งในรอบถัดไป'}
+                            </p>
+                            <p className="text-sm font-bold text-[#c06161] flex-shrink-0 ml-2">
+                              -{(item.pointsSpent ?? 0).toLocaleString()} คะแนน
+                            </p>
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      /* Simple recycle / points card */
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#e5e5e5]">
+                        <div className={cn('w-10 h-10 rounded-full flex-shrink-0', item.color)} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-[#154212] font-medium mb-0.5">{formatTime(item.time)}</p>
+                          <p className="text-sm text-[#444444]">{item.title}</p>
+                        </div>
+
+                        {/* Three-dot menu (recycle detail) */}
+                        {item.hasDetail && (
+                          <div className="relative">
+                            <button
+                              onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                              className="p-1 rounded-full hover:bg-[#f5f5f5]"
+                            >
+                              <MoreVertical className="w-5 h-5 text-[#999999]" />
+                            </button>
+
+                            {openMenuId === item.id && (
+                              <div className="absolute right-0 top-8 bg-white border border-[#e5e5e5] rounded-lg shadow-lg z-10 py-1 min-w-[160px]">
+                                <Link
+                                  href={`/history/${item.id}`}
+                                  className="block px-4 py-2 text-sm text-[#444444] hover:bg-[#f5f5f5]"
+                                  onClick={() => setOpenMenuId(null)}
+                                >
+                                  ดูรายละเอียด
+                                </Link>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

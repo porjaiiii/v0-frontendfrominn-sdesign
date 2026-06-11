@@ -95,7 +95,10 @@ export default function DonatePage() {
       return
     }
     setProcessing(true)
-    const result = await spendPoints(donateAmount)
+    const result = await spendPoints(donateAmount, {
+      category: 'donate',
+      items: [{ name: selectedDonation.name, quantity: 1, points: donateAmount }],
+    })
     setProcessing(false)
     if (result.success) {
       setSuccess(true)

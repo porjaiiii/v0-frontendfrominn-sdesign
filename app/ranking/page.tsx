@@ -385,7 +385,7 @@ export default function RankingPage() {
           )}
         </div>
       </main>
-
+      {/* test */}
       {/* Sticky placement card — shown when current user is not visible in the leaderboard */}
       {!isLoading && stickyRank > 0 && !isCurrentUserInView && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-white pt-3 pb-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">

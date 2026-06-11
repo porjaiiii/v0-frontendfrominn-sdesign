@@ -388,16 +388,18 @@ export default function RankingPage() {
 
       {/* Sticky placement card — shown when current user is not visible in the leaderboard */}
       {!isLoading && stickyRank > 0 && !isCurrentUserInView && (
-        <div className="fixed bottom-24 left-0 right-0 max-w-md mx-auto px-4 z-50">
-          <div className="bg-[#d4edda] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg">
-            <span className="text-base font-bold text-[#154212] w-8 text-center flex-shrink-0">{stickyRank}</span>
-            <div className="w-10 h-10 rounded-full overflow-hidden relative flex-shrink-0">
-              <Image src={currentUser.avatar} alt="คุณ" fill className="object-cover" />
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white pt-3 pb-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+          <div className="max-w-md mx-auto px-4">
+            <div className="bg-[#d4edda] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
+              <span className="text-base font-bold text-[#154212] w-8 text-center flex-shrink-0">{stickyRank}</span>
+              <div className="w-10 h-10 rounded-full overflow-hidden relative flex-shrink-0">
+                <Image src={currentUser.avatar} alt="คุณ" fill className="object-cover" />
+              </div>
+              <p className="text-sm font-semibold text-[#154212] flex-1">คุณ</p>
+              <p className="text-sm font-bold text-[#154212]">
+                {currentUser.carbon} <span className="font-medium">kgCO2</span>
+              </p>
             </div>
-            <p className="text-sm font-semibold text-[#154212] flex-1">คุณ</p>
-            <p className="text-sm font-bold text-[#154212]">
-              {currentUser.carbon} <span className="font-medium">kgCO2</span>
-            </p>
           </div>
         </div>
       )}

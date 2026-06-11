@@ -9,6 +9,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { useState } from 'react'
 import { useLiffContext } from '@/lib/liff-context'
 import { useApp } from '@/lib/app-context'
+import { usePoints } from '@/lib/points-context'
 import { MOCK_USER } from '@/lib/mock-user'
 import { Button } from '@/components/ui/button'
 import QRCode from 'qrcode'
@@ -32,6 +33,7 @@ export default function ProfilePage() {
   
   const { isReady, isLoggedIn, profile: liffProfile, scanCode, openExternalBrowser, isInClient } = useLiffContext()
   const { userProfile } = useApp()
+  const { carbon: dbCarbon, weight: dbWeight } = usePoints()
   
   // Generate QR code with full URL when userId is available
   useEffect(() => {
@@ -102,10 +104,12 @@ export default function ProfilePage() {
     phone: fetchedProfile?.phone || '',
   }
 
+  // CO2 and recycled weight come from the points database (total_co2 / total_weight).
+  // Trees planted has no DB field yet, so keep the mock figure.
   const stats = {
-    co2Reduced: MOCK_USER.carbon,
+    co2Reduced: dbCarbon,
     treesPlanted: MOCK_USER.treesPlanted,
-    totalRecycled: MOCK_USER.totalRecycled,
+    totalRecycled: dbWeight,
   }
 
   const recycleData = [

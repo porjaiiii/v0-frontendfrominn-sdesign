@@ -8,7 +8,6 @@ import { Leaf, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import type { RankingEntry } from '@/app/api/ranking/route'
 import { useLiffContext } from '@/lib/liff-context'
-import { MOCK_USER } from '@/lib/mock-user'
 
 type LeaderboardEntry = {
   rank: number
@@ -18,8 +17,6 @@ type LeaderboardEntry = {
   location: string
   avatar: string
 }
-
-const MOCK_CURRENT_USER_ID = MOCK_USER.lineUserId
 
 // Sub-districts of บางกะเจ้า (คลองสาน, พระประแดง)
 const BANGKACHAO_SUBDISTRICTS = [
@@ -37,19 +34,6 @@ function isBangkachaoSubdistrict(location: string): boolean {
   return BANGKACHAO_SUBDISTRICTS.some(s => normalized === s || normalized.includes(s))
 }
 
-const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 0, name: 'สมชาย ใจดี', carbon: 256.5, location: 'ตำบลบางกะเจ้า', avatar: '/placeholder.svg?height=40&width=40&query=thai man avatar' },
-  { rank: 0, name: 'สมหญิง รักษ์โลก', carbon: 234.3, location: 'ตำบลบางน้ำผึ้ง', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar' },
-  { rank: 0, name: 'มนัส เกื้อกูล', carbon: 112.4, location: 'ตำบลบางกอบัว', avatar: '/placeholder.svg?height=40&width=40&query=thai person avatar' },
-  { rank: 0, name: 'กมลา ตาวุดีมี', carbon: 89, location: '', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 2' },
-  { rank: 0, name: 'สมหญิง รักษ์โลก', carbon: 78, location: 'ตำบลบางกระสอบ', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 3' },
-  { rank: 0, name: 'วรรณา เจริญสุข', carbon: 76, location: 'ตำบลบางยอ', avatar: '/placeholder.svg?height=40&width=40&query=thai woman avatar 4' },
-  { rank: 0, name: 'ประยุทธ รุ่งเรือง', carbon: 74, location: 'ตำบลทรงคะนอง', avatar: '/placeholder.svg?height=40&width=40&query=thai man avatar 2' },
-  { rank: 0, lineUserId: MOCK_CURRENT_USER_ID, name: MOCK_USER.name, carbon: MOCK_USER.carbon, location: MOCK_USER.location, avatar: MOCK_USER.avatar },
-]
-  .sort((a, b) => b.carbon - a.carbon)
-  .map((e, i) => ({ ...e, rank: i + 1 }))
-
 const tabs = [
   { id: 'all', label: 'ทั้งหมด' },
   { id: 'district', label: 'ตำบล' },
@@ -57,9 +41,8 @@ const tabs = [
 
 export default function RankingPage() {
   const [activeTab, setActiveTab] = useState('all')
-  const [dataMode, setDataMode] = useState<'mock' | 'real'>('mock')
   const [realLeaderboard, setRealLeaderboard] = useState<LeaderboardEntry[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [isSampleData, setIsSampleData] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [isCurrentUserInView, setIsCurrentUserInView] = useState(false)
@@ -81,7 +64,6 @@ export default function RankingPage() {
   const { profile: liffProfile } = useLiffContext()
 
   useEffect(() => {
-    if (dataMode !== 'real') return
     const controller = new AbortController()
     setIsLoading(true)
     setFetchError(null)
@@ -113,12 +95,12 @@ export default function RankingPage() {
       })
       .finally(() => setIsLoading(false))
     return () => controller.abort()
-  }, [dataMode, liffProfile?.userId])
+  }, [liffProfile?.userId])
 
-  const baseLeaderboard = dataMode === 'mock' ? MOCK_LEADERBOARD : realLeaderboard
+  const baseLeaderboard = realLeaderboard
 
   // Patch the logged-in user's name/avatar from LIFF (API falls back to ผู้ใช้ X when profile sheet lacks the entry)
-  const leaderboard = dataMode === 'real' && liffProfile
+  const leaderboard = liffProfile
     ? baseLeaderboard.map(e =>
         e.lineUserId === liffProfile.userId
           ? { ...e, name: liffProfile.displayName, avatar: liffProfile.pictureUrl ?? e.avatar }
@@ -126,21 +108,17 @@ export default function RankingPage() {
       )
     : baseLeaderboard
 
-  const currentUserEntry = dataMode === 'real' && liffProfile
+  const currentUserEntry = liffProfile
     ? baseLeaderboard.find(u => u.lineUserId === liffProfile.userId)
     : undefined
 
-  const mockUserRank = MOCK_LEADERBOARD.find(e => e.lineUserId === MOCK_CURRENT_USER_ID)?.rank ?? 0
-
-  const currentUser = dataMode === 'mock'
-    ? { rank: mockUserRank, name: MOCK_USER.name, carbon: MOCK_USER.carbon, avatar: MOCK_USER.avatar, location: MOCK_USER.location }
-    : {
-        rank: currentUserEntry?.rank ?? 0,
-        name: liffProfile?.displayName ?? 'ผู้ใช้',
-        carbon: currentUserEntry?.carbon ?? 0,
-        avatar: liffProfile?.pictureUrl ?? '/placeholder-user.jpg',
-        location: currentUserEntry?.location ?? '',
-      }
+  const currentUser = {
+    rank: currentUserEntry?.rank ?? 0,
+    name: liffProfile?.displayName ?? 'ผู้ใช้',
+    carbon: currentUserEntry?.carbon ?? 0,
+    avatar: liffProfile?.pictureUrl ?? '/placeholder-user.jpg',
+    location: currentUserEntry?.location ?? '',
+  }
 
   // For district tab, filter to entries from the 6 บางกะเจ้า sub-districts and re-rank from 1
   const displayLeaderboard = activeTab === 'district'
@@ -151,9 +129,7 @@ export default function RankingPage() {
 
   // Rank shown in the sticky — uses district rank when in ตำบล tab, overall rank otherwise
   const currentUserDisplayEntry = displayLeaderboard.find(e =>
-    dataMode === 'mock'
-      ? e.lineUserId === MOCK_CURRENT_USER_ID
-      : liffProfile != null && e.lineUserId === liffProfile.userId
+    liffProfile != null && e.lineUserId === liffProfile.userId
   )
   const stickyRank = currentUserDisplayEntry?.rank ?? currentUser.rank
 
@@ -248,47 +224,23 @@ export default function RankingPage() {
 
         {/* Leaderboard Section */}
         <div className="space-y-3">
-          {/* Section heading + data mode toggle */}
+          {/* Section heading */}
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-[#154212] flex items-center gap-2">
               <Leaf className="w-5 h-5 text-[#157b03]" />
               อันดับผู้รักษ์โลก : ต้นแมงลางตลิ่ง
             </h2>
-            <div className="flex items-center gap-1 bg-[#f0f0f0] rounded-full p-0.5">
-              <button
-                onClick={() => setDataMode('mock')}
-                className={cn(
-                  'text-xs px-3 py-1 rounded-full transition-all',
-                  dataMode === 'mock'
-                    ? 'bg-[#154212] text-white shadow-sm'
-                    : 'text-[#666666] hover:text-[#154212]'
-                )}
-              >
-                ตัวอย่าง
-              </button>
-              <button
-                onClick={() => setDataMode('real')}
-                className={cn(
-                  'text-xs px-3 py-1 rounded-full transition-all',
-                  dataMode === 'real'
-                    ? 'bg-[#154212] text-white shadow-sm'
-                    : 'text-[#666666] hover:text-[#154212]'
-                )}
-              >
-                ข้อมูลจริง
-              </button>
-            </div>
           </div>
 
           {/* Sample data notice */}
-          {dataMode === 'real' && isSampleData && !isLoading && (
+          {isSampleData && !isLoading && (
             <div className="text-xs text-[#999] bg-[#fffbe6] border border-[#ffe58f] rounded-lg px-3 py-2">
-              กำลังแสดงข้อมูลตัวอย่าง — ยังไม่มีข้อมูลในชีต &quot;point&quot;
+              กำลังแสดงข้อมูลตัวอย่าง — ยังไม่มีข้อมูลในระบบคะแนน
             </div>
           )}
 
           {/* Fetch error notice */}
-          {dataMode === 'real' && fetchError && !isLoading && (
+          {fetchError && !isLoading && (
             <div className="text-xs text-[#cc0000] bg-[#fff0f0] border border-[#ffb3b3] rounded-lg px-3 py-2">
               {fetchError}
             </div>
@@ -316,8 +268,7 @@ export default function RankingPage() {
                     ? 'linear-gradient(180deg,#eef6ff,#bcd7ff)'
                     : 'linear-gradient(180deg,#ffe9e9,#ff9a9a)'
                   const starFilter = getStarFilter(u.rank)
-                  const isPodiumCurrent = u.lineUserId === MOCK_CURRENT_USER_ID ||
-                    (liffProfile != null && u.lineUserId === liffProfile.userId)
+                  const isPodiumCurrent = liffProfile != null && u.lineUserId === liffProfile.userId
                   return (
                     <div key={u.rank} ref={isPodiumCurrent ? currentUserRowRef : undefined} className="flex flex-col items-center relative">
                       <div className="w-16 h-16 rounded-full bg-[#0f3b14] overflow-hidden relative mb-2 shadow-md">
@@ -380,9 +331,7 @@ export default function RankingPage() {
                   ) : (
                     <div className="space-y-2">
                       {listEntries.map((user) => {
-                        const isCurrent = dataMode === 'mock'
-                          ? user.lineUserId === MOCK_CURRENT_USER_ID
-                          : liffProfile != null && user.lineUserId === liffProfile.userId
+                        const isCurrent = liffProfile != null && user.lineUserId === liffProfile.userId
                         const displayUser = isCurrent
                           ? { ...user, name: currentUser.name, avatar: currentUser.avatar }
                           : user

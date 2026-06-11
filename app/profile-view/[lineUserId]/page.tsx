@@ -74,7 +74,7 @@ export default function ProfileViewPage() {
         <h1 className="text-3xl font-extrabold text-[#154212] text-balance">ข้อมูลการสแกน</h1>
 
         {/* Profile Card */}
-        <div className="bg-white rounded-xl border border-[#b0b0b0] p-4 shadow-sm">
+        <div className="bg-white rounded-xl border border-[#154212] p-4 shadow-sm">
           {/* Top row: avatar + name/gender */}
           <div className="flex items-start gap-3 mb-4">
             <div className="flex-shrink-0 w-16 h-16 rounded-full overflow-hidden border-2 border-[#154212] bg-[#e8f5e4]">
@@ -90,9 +90,9 @@ export default function ProfileViewPage() {
             </div>
 
             <div>
-              <p className="text-xs text-[#666666] mb-0.5">ชื่อ-นามสกุล</p>
-              <p className="font-bold text-[#154212] text-sm">{profile.name || '-'}</p>
-              <p className="text-xs text-[#666666] mt-1">เพศ <span className="font-semibold text-[#154212]">{profile.gender || '-'}</span></p>
+              <p className="text-xs 154212-[#666666] mb-0.5">ชื่อ-นามสกุล</p>
+              <p className="font-bold text-[#222222] text-sm">{profile.name || '-'}</p>
+              <p className="text-xs 154212-[#666666] mt-1">เพศ <span className="font-semibold text-[#222222]">{profile.gender || '-'}</span></p>
             </div>
           </div>
 
@@ -100,22 +100,22 @@ export default function ProfileViewPage() {
           <div className="grid grid-cols-2 gap-0">
             {/* อายุ */}
             <div className="border-t border-[#cccccc] pt-3 pb-3 pr-3">
-              <p className="text-xs text-[#444444] mb-1">อายุ</p>
+              <p className="text-xs text-[#154212] mb-1">อายุ</p>
               <p className="text-sm font-bold text-[#222222]">{profile.age ? `${profile.age} ปี` : '-'}</p>
             </div>
             {/* ประเภท */}
             <div className="border-t border-[#cccccc] pt-3 pb-3 pl-3 border-l border-l-[#cccccc]">
-              <p className="text-xs text-[#444444] mb-1">ประเภท</p>
+              <p className="text-xs text-[#154212] mb-1">ประเภท</p>
               <p className="text-sm font-bold text-[#222222]">{profile.type || '-'}</p>
             </div>
             {/* ตำบล */}
             <div className="border-t border-[#cccccc] pt-3 pr-3">
-              <p className="text-xs text-[#444444] mb-1">ตำบล</p>
+              <p className="text-xs text-[#154212] mb-1">ตำบล</p>
               <p className="text-sm font-bold text-[#222222]">{profile.subdistrict || '-'}</p>
             </div>
             {/* อาชีพ */}
             <div className="border-t border-[#cccccc] pt-3 pl-3 border-l border-l-[#cccccc]">
-              <p className="text-xs text-[#444444] mb-1">อาชีพ</p>
+              <p className="text-xs text-[#154212] mb-1">อาชีพ</p>
               <p className="text-sm font-bold text-[#222222]">{profile.occupation || '-'}</p>
             </div>
           </div>

@@ -63,18 +63,18 @@ export function WasteCard({ record, onEdit, onSave, isSaving = false }: WasteCar
         {/* Info Section */}
         <div className="flex-1 space-y-2 pt-1">
           <div className="flex justify-between items-start gap-2">
-            <span className="text-xs text-[#444444] whitespace-nowrap">ประเภทขยะ</span>
-            <span className="text-xs font-bold text-[#154212] text-right">{wasteTypeThai}</span>
+            <span className="text-xs text-[#154212] whitespace-nowrap">ประเภทขยะ</span>
+            <span className="text-xs font-bold text-[#444444] text-right">{wasteTypeThai}</span>
           </div>
 
           <div className="flex justify-between items-start gap-2">
-            <span className="text-xs text-[#444444] whitespace-nowrap">ประเภทย่อย</span>
-            <span className="text-xs font-bold text-[#154212] text-right leading-tight">{record.waste_subtype}</span>
+            <span className="text-xs text-[#154212] whitespace-nowrap">ประเภทย่อย</span>
+            <span className="text-xs font-bold text-[#444444] text-right leading-tight">{record.waste_subtype}</span>
           </div>
 
           <div className="flex justify-between items-start gap-2">
-            <span className="text-xs text-[#444444] whitespace-nowrap">ระบุน้ำหนัก (กก.)</span>
-            <span className="text-xs font-bold text-[#154212]">{record.weight_kg}</span>
+            <span className="text-xs text-[#154212] whitespace-nowrap">ระบุน้ำหนัก (กก.)</span>
+            <span className="text-xs font-bold text-[#444444]">{record.weight_kg}</span>
           </div>
         </div>
       </div>

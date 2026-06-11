@@ -16,8 +16,8 @@ export const WASTE_SUBTYPES: Record<WasteType, WasteSubType[]> = {
   ],
   paper: [
     { id: 'cardboard', name: 'กระดาษลัง', image: '/images/waste/paper-cardboard.svg' },
-    { id: 'a4', name: 'กระดาษสีขาว/(A4)', image: '/images/waste/paper-newspaper.svg' },
-    { id: 'mixed', name: 'กระดาษนิตยสาร\nหนังสือพิมพ์', image: '/images/waste/paper-mixed.svg' },
+    { id: 'a4', name: 'กระดาษสีขาว/(A4)', image: '/images/waste/paper-mixed-paper.svg' },
+    { id: 'mixed', name: 'กระดาษนิตยสาร\nหนังสือพิมพ์', image: '/images/waste/paper-newspaper.svg' },
   ],
   glass: [
     { id: 'clear', name: 'ขวดแก้วชนิดเดียวกัน/\nครบลัง', image: '/images/waste/glass-clear.svg' },

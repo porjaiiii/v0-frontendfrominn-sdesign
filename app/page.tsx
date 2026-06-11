@@ -158,8 +158,8 @@ export default function HomePage() {
       'ldpe': '/images/waste/ldpe.jpg',
       'pp': '/images/waste/pp.jpg',
       'cardboard': '/images/waste/cardboard.jpg',
-      'newspaper': '/images/waste/newspaper.jpg',
-      'mixed': '/images/waste/mixed-paper.jpg',
+      'mixed': '/images/waste/newspaper.jpg',
+      'a4': '/images/waste/mixed-paper.jpg',
       'clear': '/images/waste/clear-glass.jpg',
       'colored': '/images/waste/colored-glass.jpg',
       'can': '/images/waste/aluminum-can.jpg',
@@ -270,7 +270,7 @@ export default function HomePage() {
             <ImageEvidence
               imageUrl={imageEvidence}
               onImageChange={setImageEvidence}
-              referenceImage="/placeholder.svg?height=120&width=120&query=weighing scale with recycling items example"
+              referenceImage="/images/weighing-scale-example.png"
               referenceLabel="ตัวอย่างการชั่ง"
               wasteType={selectedType || ''}
               weight={weight}

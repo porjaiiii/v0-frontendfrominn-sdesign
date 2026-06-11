@@ -105,10 +105,11 @@ export default function ProfilePage() {
   }
 
   // CO2 and recycled weight come from the points database (total_co2 / total_weight).
-  // Trees planted has no DB field yet, so keep the mock figure.
+  // Trees planted is derived from CO2: ~5 kgCO2 ≈ 1 tree (same formula as the
+  // carbon result modal). Zero CO2 → zero trees.
   const stats = {
     co2Reduced: dbCarbon,
-    treesPlanted: MOCK_USER.treesPlanted,
+    treesPlanted: dbCarbon > 0 ? Math.max(1, Math.ceil(dbCarbon / 5)) : 0,
     totalRecycled: dbWeight,
   }
 

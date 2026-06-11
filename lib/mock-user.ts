@@ -1,18 +1,21 @@
+// Neutral placeholder shown while real data is loading (or when LIFF/DB data
+// isn't available). Kept intentionally generic so a user never sees someone
+// else's name/stats and thinks the app is broken.
 export const MOCK_USER = {
   lineUserId:    'mock-current-user',
-  name:          'สมชาย มั่นคงผล',
-  displayName:   'สมชาย มั่นคงผล',
+  name:          'กำลังโหลดข้อมูล...',
+  displayName:   'กำลังโหลดข้อมูล...',
   avatar:        '/placeholder-user.jpg',
 
-  gender:        'ชาย',
-  age:           '21-40 ปี',
-  type:          'ชาวบางกระเจ้า',
-  subdistrict:   'บางกอบัว',
-  location:      'ตำบลบางกอบัว',
-  occupation:    'เกษตรกร',
+  gender:        '-',
+  age:           '-',
+  type:          '-',
+  subdistrict:   '-',
+  location:      '',
+  occupation:    '-',
 
-  carbon:        67,
-  points:        6700,
-  treesPlanted:  6,
-  totalRecycled: 49.50,
+  carbon:        0,
+  points:        0,
+  treesPlanted:  0,
+  totalRecycled: 0,
 } as const

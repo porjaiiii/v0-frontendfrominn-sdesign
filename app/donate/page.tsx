@@ -4,8 +4,9 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { PageHeader } from '@/components/page-header'
-import { Heart } from 'lucide-react'
+import { Heart, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { usePoints } from '@/lib/points-context'
 
 interface DonationItem {
   id: number
@@ -58,8 +59,50 @@ const DONATIONS: DonationItem[] = [
 ]
 
 export default function DonatePage() {
+  const { points: userPoints, loading: pointsLoading, spendPoints } = usePoints()
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [selectedDonation, setSelectedDonation] = useState<DonationItem | null>(null)
+
+  // Donation modal state
+  const [amount, setAmount] = useState<number>(0)
+  const [customAmount, setCustomAmount] = useState('')
+  const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+
+  const donateAmount = customAmount ? Number(customAmount) : amount
+
+  const openDonation = (donation: DonationItem) => {
+    setSelectedDonation(donation)
+    setAmount(0)
+    setCustomAmount('')
+    setError(null)
+    setSuccess(false)
+  }
+
+  const closeModal = () => {
+    setSelectedDonation(null)
+  }
+
+  const handleConfirmDonation = async () => {
+    setError(null)
+    if (!donateAmount || donateAmount <= 0) {
+      setError('กรุณาเลือกจำนวนคะแนนที่ต้องการบริจาค')
+      return
+    }
+    if (donateAmount > userPoints) {
+      setError('คะแนนของคุณไม่เพียงพอ')
+      return
+    }
+    setProcessing(true)
+    const result = await spendPoints(donateAmount)
+    setProcessing(false)
+    if (result.success) {
+      setSuccess(true)
+    } else {
+      setError(result.message || 'ไม่สามารถบริจาคได้ กรุณาลองใหม่')
+    }
+  }
 
   const toggleFavorite = (id: number) => {
     const newFavorites = new Set(favorites)
@@ -179,7 +222,7 @@ export default function DonatePage() {
 
                   {/* Donate Button */}
                   <button
-                    onClick={() => setSelectedDonation(donation)}
+                    onClick={() => openDonation(donation)}
                     className="w-full bg-[#154212] hover:bg-[#0d3308] text-white font-bold py-2.5 rounded-lg transition-colors shadow-md hover:shadow-lg"
                   >
                     บริจาคเลย
@@ -195,7 +238,7 @@ export default function DonatePage() {
       {selectedDonation && (
         <div
           className="fixed inset-0 bg-black/50 flex items-end z-50"
-          onClick={() => setSelectedDonation(null)}
+          onClick={closeModal}
         >
           <motion.div
             initial={{ y: '100%' }}
@@ -205,44 +248,100 @@ export default function DonatePage() {
             className="w-full bg-white rounded-t-3xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4">
-              <h2 className="text-xl font-bold text-[#154212] mb-2">
-                {selectedDonation.name}
-              </h2>
-              <p className="text-sm text-[#666666]">
-                กรุณาเลือกจำนวนคะแนนที่ต้องการบริจาค
-              </p>
-            </div>
-
-            {/* Amount Input */}
-            <div className="space-y-3 mb-4">
-              {[10, 50, 100, 500].map((amount) => (
+            {success ? (
+              /* Success state after points were spent */
+              <div className="flex flex-col items-center text-center py-4">
+                <CheckCircle2 size={64} className="text-[#157b03] mb-3" />
+                <h2 className="text-xl font-bold text-[#154212] mb-1">ขอบคุณสำหรับการบริจาค!</h2>
+                <p className="text-sm text-[#666666] mb-1">
+                  คุณบริจาค {donateAmount.toLocaleString()} คะแนน ให้กับ {selectedDonation.name}
+                </p>
+                <p className="text-sm text-[#666666] mb-5">
+                  คะแนนคงเหลือ {userPoints.toLocaleString()} คะแนน
+                </p>
                 <button
-                  key={amount}
-                  className="w-full py-3 border-2 border-[#154212] text-[#154212] font-bold rounded-lg hover:bg-[#154212] hover:text-white transition-colors"
+                  onClick={closeModal}
+                  className="w-full py-3 bg-[#154212] text-white font-bold rounded-lg hover:bg-[#0d3308] transition-colors"
                 >
-                  บริจาค {amount} คะแนน
+                  เสร็จสิ้น
                 </button>
-              ))}
-              <input
-                type="number"
-                placeholder="ป้อนจำนวนแบบกำหนดเอง"
-                className="w-full px-4 py-3 border-2 border-[#e5e5e5] rounded-lg text-[#154212] placeholder-[#999999] focus:border-[#154212] focus:outline-none"
-              />
-            </div>
+              </div>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <h2 className="text-xl font-bold text-[#154212] mb-2">
+                    {selectedDonation.name}
+                  </h2>
+                  <p className="text-sm text-[#666666]">
+                    กรุณาเลือกจำนวนคะแนนที่ต้องการบริจาค
+                  </p>
+                  <p className="text-sm font-semibold text-[#154212] mt-1">
+                    คะแนนของคุณ: {pointsLoading ? '…' : userPoints.toLocaleString()} คะแนน
+                  </p>
+                </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setSelectedDonation(null)}
-                className="flex-1 py-3 border-2 border-[#e5e5e5] text-[#154212] font-bold rounded-lg hover:bg-[#f5f5f5] transition-colors"
-              >
-                ยกเลิก
-              </button>
-              <button className="flex-1 py-3 bg-[#154212] text-white font-bold rounded-lg hover:bg-[#0d3308] transition-colors">
-                ยืนยัน
-              </button>
-            </div>
+                {/* Amount Input */}
+                <div className="space-y-3 mb-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    {[10, 50, 100, 500].map((preset) => {
+                      const isSelected = !customAmount && amount === preset
+                      return (
+                        <button
+                          key={preset}
+                          onClick={() => { setAmount(preset); setCustomAmount(''); setError(null) }}
+                          className={cn(
+                            'w-full py-3 border-2 font-bold rounded-lg transition-colors',
+                            isSelected
+                              ? 'bg-[#154212] text-white border-[#154212]'
+                              : 'border-[#154212] text-[#154212] hover:bg-[#154212] hover:text-white'
+                          )}
+                        >
+                          {preset} คะแนน
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <input
+                    type="number"
+                    min={1}
+                    value={customAmount}
+                    onChange={(e) => { setCustomAmount(e.target.value); setAmount(0); setError(null) }}
+                    placeholder="ป้อนจำนวนแบบกำหนดเอง"
+                    className="w-full px-4 py-3 border-2 border-[#e5e5e5] rounded-lg text-[#154212] placeholder-[#999999] focus:border-[#154212] focus:outline-none"
+                  />
+                </div>
+
+                {/* Error notice */}
+                {error && (
+                  <div className="text-xs text-[#cc0000] bg-[#fff0f0] border border-[#ffb3b3] rounded-lg px-3 py-2 mb-3">
+                    {error}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={closeModal}
+                    disabled={processing}
+                    className="flex-1 py-3 border-2 border-[#e5e5e5] text-[#154212] font-bold rounded-lg hover:bg-[#f5f5f5] transition-colors disabled:opacity-50"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    onClick={handleConfirmDonation}
+                    disabled={processing || pointsLoading || !donateAmount}
+                    className={cn(
+                      'flex-1 py-3 font-bold rounded-lg transition-colors',
+                      processing || pointsLoading || !donateAmount
+                        ? 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+                        : 'bg-[#154212] text-white hover:bg-[#0d3308]'
+                    )}
+                  >
+                    {processing ? 'กำลังบริจาค…' : 'ยืนยัน'}
+                  </button>
+                </div>
+              </>
+            )}
           </motion.div>
         </div>
       )}

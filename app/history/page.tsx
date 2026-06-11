@@ -4,9 +4,10 @@ import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { ChevronLeft, MoreVertical, Recycle, Gift, Coins } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { useLiffContext } from '@/lib/liff-context'
 
 // Filter tabs
 const FILTERS = [
@@ -16,8 +17,62 @@ const FILTERS = [
   { id: 'points', label: 'คะแนน', icon: Coins, color: 'bg-[#89b9ea]' },
 ]
 
+type HistoryItem = {
+  id: string
+  date: string
+  time: string
+  type: string
+  title: string
+  color: string
+  hasDetail?: boolean
+}
+
+// A single transaction row from /api/points?action=get_transactions
+type Transaction = {
+  tx_id: string
+  type: string
+  points: number
+  co2: number
+  weight?: number
+  timestamp: string
+}
+
+const THAI_MONTHS = [
+  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
+]
+
+const TYPE_COLOR: Record<string, string> = {
+  points: 'bg-[#b6ebad]',
+  recycle: 'bg-[#f9e7b0]',
+  reward: 'bg-[#89b9ea]',
+}
+
+// Script timestamps look like "2026-06-11 13:03:14" (Bangkok). Parse safely.
+function parseTs(ts: string): Date {
+  return new Date(String(ts).replace(' ', 'T'))
+}
+
+function txToHistoryItem(tx: Transaction): HistoryItem {
+  const d = parseTs(tx.timestamp)
+  const date = `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  const weight = Number(tx.weight) || 0
+
+  // spend -> reward redemption
+  if (tx.type === 'spend') {
+    return { id: tx.tx_id, date, time, type: 'reward', title: `แลกรางวัลจากคะแนน ${tx.points} คะแนน`, color: TYPE_COLOR.reward }
+  }
+  // earn with recycled weight -> recycle entry (has detail)
+  if (weight > 0) {
+    return { id: tx.tx_id, date, time, type: 'recycle', title: `เก็บของรีไซเคิล ${weight} KG`, color: TYPE_COLOR.recycle, hasDetail: true }
+  }
+  // earn without weight (e.g. bonus) -> points entry
+  return { id: tx.tx_id, date, time, type: 'points', title: `คุณมีคะแนนสะสมเพิ่ม ${tx.points} คะแนน`, color: TYPE_COLOR.points }
+}
+
 // Mock history data with time
-const historyData = [
+const historyData: HistoryItem[] = [
   {
     id: '1',
     date: '27 พฤษภาคม 2569',
@@ -80,8 +135,8 @@ const historyData = [
 ]
 
 // Group data by date
-function groupByDate(data: typeof historyData) {
-  const groups: { [key: string]: typeof historyData } = {}
+function groupByDate(data: HistoryItem[]) {
+  const groups: { [key: string]: HistoryItem[] } = {}
   data.forEach(item => {
     if (!groups[item.date]) {
       groups[item.date] = []
@@ -100,12 +155,30 @@ function formatTime(time: string) {
 
 export default function HistoryPage() {
   const router = useRouter()
+  const { profile: liffProfile } = useLiffContext()
   const [activeFilter, setActiveFilter] = useState('all')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[] | null>(null)
 
-  const filteredData = activeFilter === 'all' 
-    ? historyData 
-    : historyData.filter(item => item.type === activeFilter)
+  // Pull this user's real transactions from the points sheet.
+  useEffect(() => {
+    const userId = liffProfile?.userId
+    if (!userId) return
+    const controller = new AbortController()
+    fetch(`/api/points?action=get_transactions&user_id=${encodeURIComponent(userId)}`, { signal: controller.signal })
+      .then(res => res.json())
+      .then(data => setTransactions(data?.success ? (data.transactions as Transaction[]) : []))
+      .catch(err => { if (err.name !== 'AbortError') setTransactions([]) })
+    return () => controller.abort()
+  }, [liffProfile?.userId])
+
+  // Use real transactions when we have them; otherwise fall back to the mockup.
+  const realItems = (transactions ?? []).map(txToHistoryItem)
+  const sourceData = realItems.length > 0 ? realItems : historyData
+
+  const filteredData = activeFilter === 'all'
+    ? sourceData
+    : sourceData.filter(item => item.type === activeFilter)
 
   const groupedData = groupByDate(filteredData)
 
@@ -212,7 +285,7 @@ export default function HistoryPage() {
         </div>
       </main>
 
-      <BottomNav />
+      {/* <BottomNav /> */}
     </div>
   )
 }

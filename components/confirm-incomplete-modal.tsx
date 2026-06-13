@@ -37,14 +37,20 @@ export function ConfirmIncompleteModal({ isOpen, onEdit, onConfirm }: ConfirmInc
           </div>
 
           {/* Bonus tip box */}
-          <div className="w-full bg-[#fffde7] border border-[#f5c518] rounded-xl px-4 py-3 text-left">
-            <p className="text-xs font-semibold text-[#b8860b] mb-1">
-              &#128081; กรอกครบ รับคะแนนเพิ่ม :
-            </p>
-            <p className="text-xs text-[#666666] leading-relaxed">
-              การระบุรายละเอียดขยะให้ครบถ้วนจะได้รับคะแนน<br />
-              สะสม เพิ่มเติมเป็นพิเศษซึ่งสามารถนำไปแลกรับของ<br />
-              รางวัลต่าง ๆ ได้
+          <div className="w-full bg-[#2d4a1e] rounded-2xl px-4 py-3 text-left">
+            <div className="flex items-center gap-2 mb-1.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/tabler-icon-mood-bitcoin-HLofjHsAUvOhEQ6Uow7dJJSnK5qv2O.png"
+                alt="mood bitcoin icon"
+                className="w-5 h-5 flex-shrink-0"
+              />
+              <p className="text-xs font-bold text-[#c8e86a]">
+                กรอกครบ รับคะแนนเพิ่ม :
+              </p>
+            </div>
+            <p className="text-xs text-white leading-relaxed">
+              การระบุรายละเอียดขยะให้ครบถ้วนจะได้รับคะแนนสะสม เพิ่มเติมเป็นพิเศษซึ่งสามารถนำไปแลกรับของรางวัลต่าง ๆ ได้
             </p>
           </div>
         </div>

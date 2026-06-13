@@ -110,8 +110,8 @@ export default function HomePage() {
         throw new Error('Failed to submit waste record')
       }
 
-      // Show success modal after saving
-      setShowSaveSuccess(true)
+      // Show the existing carbon result modal first
+      setShowResult(true)
     } catch (error) {
       console.error('[v0] Error submitting waste:', error)
     } finally {
@@ -143,45 +143,10 @@ export default function HomePage() {
     }
   }
 
-  const handleShowQR = async () => {
+  // Called when "เสร็จสิ้น" is pressed on CarbonResultModal
+  const handleShowQR = () => {
     setShowResult(false)
-    setIsSubmitting(true)
-
-    try {
-      const userId = liffContext?.profile?.userId || 'unknown-user'
-
-      const response = await fetch('/api/waste/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          waste_type: selectedType,
-          waste_subtype: selectedSubType?.id,
-          weight_kg: noWeight ? -1 : weight,
-          image_url: imageEvidence || null,
-          notes: '',
-        }),
-      })
-
-      if (!response.ok) throw new Error('Failed to submit waste record')
-
-      setStep(1)
-      setSelectedType(null)
-      setSelectedSubType(null)
-      setWeight(0)
-      setNoWeight(false)
-      setImageEvidence(null)
-    } catch (error) {
-      console.error('[v0] Error submitting waste:', error)
-      setStep(1)
-      setSelectedType(null)
-      setSelectedSubType(null)
-      setWeight(0)
-      setNoWeight(false)
-      setImageEvidence(null)
-    } finally {
-      setIsSubmitting(false)
-    }
+    setShowSaveSuccess(true)
   }
 
   const handleSubmit = () => {

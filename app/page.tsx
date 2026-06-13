@@ -7,6 +7,8 @@ import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
 import { WeightInput, ImageEvidence } from '@/components/weight-input'
 import { CarbonResultModal } from '@/components/carbon-result-modal'
+import { ConfirmIncompleteModal } from '@/components/confirm-incomplete-modal'
+import { SaveSuccessModal } from '@/components/save-success-modal'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
 import { type WasteType, type WasteSubType } from '@/lib/app-context'
 import { useLiffContext } from '@/lib/liff-context'
@@ -41,6 +43,8 @@ export default function HomePage() {
   const [imageEvidence, setImageEvidence] = useState<string | null>(null)
   const [showResult, setShowResult] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showConfirmIncomplete, setShowConfirmIncomplete] = useState(false)
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false)
 
   const calculatedCarbon = selectedType 
     ? weight * CARBON_FACTORS[selectedType]
@@ -68,33 +72,30 @@ export default function HomePage() {
     }
   }
 
-  const handleNext = () => {
-    if (step === 3 && (weight > 0 || noWeight)) {
-      setShowResult(true)
+  const isDataComplete = (weight > 0 || noWeight) && imageEvidence !== null
+
+  // Called when "บันทึก" button is pressed
+  const handleSaveClick = () => {
+    if (!isDataComplete) {
+      // Show confirmation popup for incomplete data
+      setShowConfirmIncomplete(true)
+    } else {
+      // Data is complete — save directly
+      handleDoSave()
     }
   }
 
-  const handleShowQR = async () => {
-    console.log('[v0] handleShowQR called')
-    setShowResult(false)
+  // Called when user confirms from incomplete-data popup OR data is complete
+  const handleDoSave = async () => {
+    setShowConfirmIncomplete(false)
     setIsSubmitting(true)
-    
+
     try {
-      // ดึง user_id จาก LIFF context - ใช้ profile แทน userProfile
       const userId = liffContext?.profile?.userId || 'unknown-user'
-      console.log('[v0] Submitting with userId:', userId)
-      console.log('[v0] Waste data:', { 
-        waste_type: selectedType, 
-        waste_subtype: selectedSubType?.id, 
-        weight_kg: weight 
-      })
-      
-      // เรียก API บันทึกขยะ
+
       const response = await fetch('/api/waste/submit', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
           waste_type: selectedType,
@@ -105,18 +106,65 @@ export default function HomePage() {
         }),
       })
 
-      console.log('[v0] API Response status:', response.status)
-
       if (!response.ok) {
-        const error = await response.json()
-        console.error('[v0] API Error:', error)
         throw new Error('Failed to submit waste record')
       }
 
-      const result = await response.json()
-      console.log('[v0] Waste submitted successfully:', result)
+      // Show success modal after saving
+      setShowSaveSuccess(true)
+    } catch (error) {
+      console.error('[v0] Error submitting waste:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
-      // รีเซ็ต form
+  // Called when user presses "กลับสู่ line" on success modal
+  const handleReturnToLine = () => {
+    setShowSaveSuccess(false)
+    // Reset form
+    setStep(1)
+    setSelectedType(null)
+    setSelectedSubType(null)
+    setWeight(0)
+    setNoWeight(false)
+    setImageEvidence(null)
+    // Close LIFF window to return to LINE
+    try {
+      liffContext?.closeWindow()
+    } catch (e) {
+      // Ignore if not in LIFF environment
+    }
+  }
+
+  const handleNext = () => {
+    if (step === 3 && (weight > 0 || noWeight)) {
+      setShowResult(true)
+    }
+  }
+
+  const handleShowQR = async () => {
+    setShowResult(false)
+    setIsSubmitting(true)
+
+    try {
+      const userId = liffContext?.profile?.userId || 'unknown-user'
+
+      const response = await fetch('/api/waste/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          waste_type: selectedType,
+          waste_subtype: selectedSubType?.id,
+          weight_kg: noWeight ? -1 : weight,
+          image_url: imageEvidence || null,
+          notes: '',
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to submit waste record')
+
       setStep(1)
       setSelectedType(null)
       setSelectedSubType(null)
@@ -125,7 +173,6 @@ export default function HomePage() {
       setImageEvidence(null)
     } catch (error) {
       console.error('[v0] Error submitting waste:', error)
-      // Still reset form even on error
       setStep(1)
       setSelectedType(null)
       setSelectedSubType(null)
@@ -284,39 +331,25 @@ export default function HomePage() {
               >
                 ย้อนกลับ
               </button>
-              
-              <button
-                onClick={() => {
-                  setStep(1)
-                  setSelectedType(null)
-                  setSelectedSubType(null)
-                  setWeight(0)
-                  setNoWeight(false)
-                  setImageEvidence(null)
-                }}
-                className="px-6 py-2.5 rounded-full font-semibold border-2 border-[#154212] text-[#154212] text-sm hover:bg-[#f0fdf0] transition-colors"
-              >
-                ข้าม
-              </button>
 
               <button
-                onClick={handleNext}
-                disabled={weight <= 0 && !noWeight}
+                onClick={handleSaveClick}
+                disabled={isSubmitting}
                 className={cn(
-                  'px-6 py-2.5 rounded-full font-semibold text-sm transition-colors',
-                  weight > 0 || noWeight
-                    ? 'bg-[#154212] text-white hover:bg-[#0d3308]'
-                    : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+                  'px-8 py-2.5 rounded-full font-semibold text-sm transition-colors',
+                  isSubmitting
+                    ? 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+                    : 'bg-[#154212] text-white hover:bg-[#0d3308]'
                 )}
               >
-                บันทึก
+                {isSubmitting ? 'กำลังบันทึก...' : 'บันทึก'}
               </button>
             </div>
           </div>
         )}
       </main>
 
-      {/* Carbon Result Modal */}
+      {/* Carbon Result Modal (legacy flow kept) */}
       <CarbonResultModal
         isOpen={showResult}
         onClose={() => setShowResult(false)}
@@ -326,6 +359,18 @@ export default function HomePage() {
         onNext={handleShowQR}
       />
 
+      {/* Confirm incomplete data popup */}
+      <ConfirmIncompleteModal
+        isOpen={showConfirmIncomplete}
+        onEdit={() => setShowConfirmIncomplete(false)}
+        onConfirm={handleDoSave}
+      />
+
+      {/* Save success popup — "กลับสู่ line" */}
+      <SaveSuccessModal
+        isOpen={showSaveSuccess}
+        onReturnToLine={handleReturnToLine}
+      />
 
       {/* <BottomNav /> */}
     </div>

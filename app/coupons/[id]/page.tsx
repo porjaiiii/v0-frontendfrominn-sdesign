@@ -98,83 +98,88 @@ export default function CouponDetailPage({
           <h1 className="text-lg font-bold text-[#154212]">คูปองของฉัน</h1>
         </div>
 
-        {/* Coupon card */}
-        <div className={cn('rounded-3xl overflow-visible shadow-xl', isUsed && 'opacity-60')}>
+        {/* Coupon card — outer wrapper gives room for the side notches */}
+        <div className={cn('relative mx-3', isUsed && 'opacity-60')}>
 
-          {/* ── Top: dark green section ── */}
-          <div className="bg-[#1e5c0e] rounded-t-3xl relative pt-0 pb-8 flex flex-col items-center overflow-hidden">
-
-            {/* Mascot peeking from top edge */}
-            <div className="relative w-full flex justify-start pl-4" style={{ height: 72 }}>
-              {/* dots on mascot face */}
-              <div className="absolute top-4 left-6 flex gap-1.5 z-10">
-                <div className="w-2 h-2 rounded-full bg-white/70" />
-                <div className="w-2 h-2 rounded-full bg-white/70" />
-              </div>
-              {/* Mascot image */}
-              <Image
-                src="/mascot.png"
-                alt="mascot"
-                width={90}
-                height={90}
-                className="absolute -top-3 left-3 object-contain drop-shadow-lg z-10"
-              />
-            </div>
-
-            {/* Title */}
-            <h2 className="text-2xl font-bold text-white mb-1 z-10">คูปองแลกรางวัล</h2>
-            {isUsed && (
-              <span className="text-xs font-semibold text-red-300 mb-1 z-10">ใช้งานแล้ว</span>
-            )}
-
-            {/* QR Code white card */}
-            <div className="bg-white rounded-3xl p-4 mt-5 mx-6 shadow-md flex items-center justify-center z-10">
-              <QRCanvas value={coupon.coupon_id} />
-            </div>
+          {/* ── Top ticket notch (left & right on the top seam) ── */}
+          <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none" style={{ top: 'calc(55% - 14px)' }}>
+            <div className="absolute -left-[14px] top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#f5f7f5]" />
+            <div className="absolute -right-[14px] top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#f5f7f5]" />
           </div>
 
-          {/* Ticket notch seam */}
-          <div className="relative bg-[#ccdece] h-5 flex items-center">
-            {/* Left notch */}
-            <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#f5f7f5]" />
-            {/* Right notch */}
-            <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#f5f7f5]" />
-            {/* Dashed line */}
-            <div className="w-full border-t-2 border-dashed border-white/60 mx-6" />
-          </div>
+          <div className="rounded-3xl overflow-hidden shadow-xl">
 
-          {/* ── Bottom: sage section ── */}
-          <div className="bg-[#ccdece] rounded-b-3xl px-5 pt-4 pb-6">
-            <p className="text-sm font-semibold text-[#4a7a4a] mb-3">รายละเอียด</p>
+            {/* ── Top: dark green section ── */}
+            <div className="bg-[#154212] relative flex flex-col items-center pb-8 overflow-hidden">
 
-            <div className="bg-[#dce8dc]/60 rounded-2xl p-3 flex items-center gap-4">
-              {/* Product image */}
-              <div className="w-20 h-20 relative rounded-xl overflow-hidden bg-white flex-shrink-0 border border-white/60 shadow-sm">
+              {/* Mascot — flipped upside-down, large, peeking from top */}
+              <div className="relative w-full flex justify-center" style={{ height: 120 }}>
                 <Image
-                  src={coupon.reward_image}
-                  alt={coupon.reward_name}
-                  fill
-                  className="object-cover"
+                  src="/mascot.png"
+                  alt="mascot"
+                  width={160}
+                  height={160}
+                  className="absolute -top-4 object-contain drop-shadow-lg"
+                  style={{ transform: 'scaleY(-1)' }}
                 />
               </div>
 
-              {/* Product info */}
-              <div className="flex-1 min-w-0">
-                <span className="inline-block px-4 py-1.5 bg-[#154212] text-white text-sm font-bold rounded-xl mb-2">
-                  {coupon.reward_name}
-                </span>
-                <p className="text-sm text-[#3a5c3a] font-medium">{coupon.reward_description}</p>
-                <p className="text-xs text-[#5a7a5a] mt-1">แลกเมื่อ {dateStr}</p>
+              {/* Title */}
+              <h2 className="text-2xl font-bold text-white mb-1 relative z-10">คูปองแลกรางวัล</h2>
+              {isUsed && (
+                <span className="text-xs font-semibold text-red-300 mb-1 relative z-10">ใช้งานแล้ว</span>
+              )}
+
+              {/* QR Code white card */}
+              <div className="bg-white rounded-3xl p-4 mt-5 mx-6 shadow-md flex items-center justify-center relative z-10">
+                <QRCanvas value={coupon.coupon_id} />
               </div>
             </div>
 
-            {/* Points used */}
-            <div className="mt-3 flex justify-between items-center px-1">
-              <span className="text-xs text-[#5a7a5a]">คะแนนที่ใช้แลก</span>
-              <span className="text-sm font-bold text-[#154212]">
-                {coupon.points_used.toLocaleString()} คะแนน
-              </span>
+            {/* ── Ticket seam between green and sage ── */}
+            <div className="relative bg-[#ccdece] h-6 flex items-center">
+              {/* Left notch on seam */}
+              <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#f5f7f5]" />
+              {/* Right notch on seam */}
+              <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#f5f7f5]" />
+              {/* Dashed divider */}
+              <div className="w-full border-t-2 border-dashed border-white/70 mx-8" />
             </div>
+
+            {/* ── Bottom: sage section ── */}
+            <div className="bg-[#ccdece] px-5 pt-4 pb-6">
+              <p className="text-sm font-semibold text-[#4a7a4a] mb-3">รายละเอียด</p>
+
+              <div className="bg-white/40 rounded-2xl p-3 flex items-center gap-4">
+                {/* Product image */}
+                <div className="w-20 h-20 relative rounded-xl overflow-hidden bg-white flex-shrink-0 border border-white/60 shadow-sm">
+                  <Image
+                    src={coupon.reward_image}
+                    alt={coupon.reward_name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+
+                {/* Product info */}
+                <div className="flex-1 min-w-0">
+                  <span className="inline-block px-4 py-1.5 bg-[#154212] text-white text-sm font-bold rounded-xl mb-2">
+                    {coupon.reward_name}
+                  </span>
+                  <p className="text-sm text-[#3a5c3a] font-medium">{coupon.reward_description}</p>
+                  <p className="text-xs text-[#5a7a5a] mt-1">แลกเมื่อ {dateStr}</p>
+                </div>
+              </div>
+
+              {/* Points used */}
+              <div className="mt-3 flex justify-between items-center px-1">
+                <span className="text-xs text-[#5a7a5a]">คะแนนที่ใช้แลก</span>
+                <span className="text-sm font-bold text-[#154212]">
+                  {coupon.points_used.toLocaleString()} คะแนน
+                </span>
+              </div>
+            </div>
+
           </div>
         </div>
 

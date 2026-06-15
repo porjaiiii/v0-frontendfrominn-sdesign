@@ -25,16 +25,35 @@ export async function GET(
     }
 
     console.log('[v0] Sending request to Google Apps Script:', GOOGLE_APPS_SCRIPT_URL)
-    
-    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
 
-    console.log('[v0] Google Apps Script response status:', response.status)
+    // Retry helper — GAS can return transient errors on cold start
+    const fetchWithRetry = async (retries = 2): Promise<Response> => {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 25_000) // 25 s per attempt
+        try {
+          const res = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          })
+          clearTimeout(timer)
+          console.log(`[v0] GAS attempt ${attempt} status:`, res.status)
+          return res
+        } catch (err: unknown) {
+          clearTimeout(timer)
+          const isAbort = err instanceof DOMException && err.name === 'AbortError'
+          console.warn(`[v0] GAS attempt ${attempt} failed (${isAbort ? 'timeout' : err}). Retries left: ${retries - attempt}`)
+          if (attempt === retries) throw err
+          // Short back-off before retry
+          await new Promise((r) => setTimeout(r, 1_000))
+        }
+      }
+      throw new Error('unreachable')
+    }
+
+    const response = await fetchWithRetry(2)
 
     if (!response.ok) {
       console.error('[v0] Failed to fetch from Google Apps Script:', response.statusText)

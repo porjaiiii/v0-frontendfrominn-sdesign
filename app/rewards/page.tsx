@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Heart, CheckCircle2 } from 'lucide-react'
+import { Heart, CheckCircle2, Ticket } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
@@ -11,10 +11,12 @@ import { REWARDS } from '@/lib/waste-data'
 import { useCart } from '@/lib/cart-context'
 import { cn } from '@/lib/utils'
 import { usePoints } from '@/lib/points-context'
+import { useCoupons } from '@/lib/coupon-context'
 
 export default function RewardsPage() {
   const { points: userPoints, loading: pointsLoading, spendPoints } = usePoints()
   const { addToCart, cartCount } = useCart()
+  const { addCoupon } = useCoupons()
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [mounted, setMounted] = useState(false)
   const [clickedButton, setClickedButton] = useState<number | null>(null)
@@ -26,11 +28,13 @@ export default function RewardsPage() {
   const [processing, setProcessing] = useState(false)
   const [redeemError, setRedeemError] = useState<string | null>(null)
   const [redeemSuccess, setRedeemSuccess] = useState(false)
+  const [newCouponId, setNewCouponId] = useState<string | null>(null)
 
   const openRedeem = (reward: typeof REWARDS[number]) => {
     setRedeemTarget(reward)
     setRedeemError(null)
     setRedeemSuccess(false)
+    setNewCouponId(null)
   }
 
   const handleConfirmRedeem = async () => {
@@ -47,6 +51,16 @@ export default function RewardsPage() {
     })
     setProcessing(false)
     if (result.success) {
+      // Create a coupon record for this redemption
+      const coupon = addCoupon({
+        reward_id: redeemTarget.id,
+        reward_name: redeemTarget.name,
+        reward_description: redeemTarget.description ?? '',
+        reward_image: redeemTarget.image,
+        points_used: redeemTarget.points,
+        tx_id: result.tx_id,
+      })
+      setNewCouponId(coupon.coupon_id)
       setRedeemSuccess(true)
     } else {
       setRedeemError(result.message || 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่')
@@ -271,20 +285,33 @@ export default function RewardsPage() {
           >
             {redeemSuccess ? (
               <div className="flex flex-col items-center text-center py-4">
-                <CheckCircle2 size={64} className="text-[#157b03] mb-3" />
-                <h2 className="text-xl font-bold text-[#154212] mb-1">แลกของรางวัลสำเร็จ!</h2>
+                <div className="w-16 h-16 rounded-full bg-[#e8f5e2] flex items-center justify-center mb-3">
+                  <CheckCircle2 size={40} className="text-[#157b03]" />
+                </div>
+                <h2 className="text-xl font-bold text-[#154212] mb-1">แลกรางวัลเสร็จสิ้น!</h2>
                 <p className="text-sm text-[#666666] mb-1">
                   {redeemTarget.name} · ใช้ไป {redeemTarget.points.toLocaleString()} คะแนน
                 </p>
-                <p className="text-sm text-[#666666] mb-5">
+                <p className="text-sm text-[#666666] mb-6">
                   คะแนนคงเหลือ {userPoints.toLocaleString()} คะแนน
                 </p>
-                <button
-                  onClick={() => setRedeemTarget(null)}
-                  className="w-full py-3 bg-[#154212] text-white font-bold rounded-lg hover:bg-[#0d3308] transition-colors"
-                >
-                  เสร็จสิ้น
-                </button>
+                {/* Two action buttons side by side */}
+                <div className="flex gap-3 w-full">
+                  <button
+                    onClick={() => setRedeemTarget(null)}
+                    className="flex-1 py-3 border-2 border-[#154212] text-[#154212] font-bold rounded-xl hover:bg-[#f5f5f5] transition-colors"
+                  >
+                    เสร็จสิ้น
+                  </button>
+                  <Link
+                    href="/coupons"
+                    onClick={() => setRedeemTarget(null)}
+                    className="flex-1 py-3 bg-[#154212] text-white font-bold rounded-xl hover:bg-[#0d3308] transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Ticket size={16} />
+                    ดูคูปองของฉัน
+                  </Link>
+                </div>
               </div>
             ) : (
               <>

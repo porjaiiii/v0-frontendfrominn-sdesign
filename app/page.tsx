@@ -38,6 +38,8 @@ export default function HomePage() {
   const liffContext = useLiffContext()
   const { status: guardStatus } = useProfileGuard()
   const [step, setStep] = useState(1)
+
+  console.log('[v0] HomePage render — guardStatus:', guardStatus, '| isReady:', liffContext?.isReady, '| isLoggedIn:', liffContext?.isLoggedIn, '| userId:', liffContext?.profile?.userId)
   const [selectedType, setSelectedType] = useState<WasteType | null>(null)
   const [selectedSubType, setSelectedSubType] = useState<WasteSubType | null>(null)
   const [weight, setWeight] = useState(0)

@@ -525,31 +525,6 @@ export default function RegisterPage() {
             </>
           )}
 
-          {/* ── LINE User ID / User ID (auto-filled) ── */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">LINE User ID</label>
-            <input
-              type="text"
-              name="lineUserId"
-              value={formData.lineUserId}
-              readOnly
-              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-gray-100 text-gray-500 outline-none cursor-not-allowed text-sm"
-            />
-            <p className="text-xs text-gray-400 mt-1">ดึงมาจากบัญชี LINE โดยอัตโนมัติ</p>
-          </div>
-
-          <div>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">User ID</label>
-            <input
-              type="text"
-              name="userId"
-              value={formData.userId}
-              readOnly
-              className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-gray-100 text-gray-500 outline-none cursor-not-allowed text-sm"
-            />
-            <p className="text-xs text-gray-400 mt-1">สร้างขึ้นโดยอัตโนมัติจากบัญชี LINE</p>
-          </div>
-
           {/* ── PDPA (อยู่ล่างสุด) ── */}
           <div className={`rounded-xl border transition-colors ${formData.pdpaConsent ? 'border-[#154212] bg-[#f0fdf0]' : 'border-[#e5e5e5] bg-[#f9f9f9]'}`}>
             <label className="flex items-start gap-3 cursor-pointer p-4">

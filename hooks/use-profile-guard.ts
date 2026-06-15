@@ -19,7 +19,9 @@ const FETCH_TIMEOUT_MS = 10_000
 export function useProfileGuard(): { status: GuardStatus } {
   const router = useRouter()
   const { isReady, isLoggedIn, profile } = useLiffContext()
-  const [status, setStatus] = useState<GuardStatus>('loading')
+  // Start as 'ok' so the home page renders immediately.
+  // The check runs in the background and only triggers a redirect on 404.
+  const [status, setStatus] = useState<GuardStatus>('ok')
   // Prevent double-firing if the effect runs more than once with the same userId
   const checkedRef = useRef<string | null>(null)
 

@@ -7,8 +7,8 @@ import { useLiffContext } from '@/lib/liff-context'
 type GuardStatus = 'loading' | 'ok' | 'redirecting'
 
 // How long (ms) to wait for the profile API before giving up and failing open.
-// Google Apps Script can be slow on cold starts — set generously.
-const FETCH_TIMEOUT_MS = 10_000
+// GAS can be slow on cold start + the API route retries once → allow 60 s.
+const FETCH_TIMEOUT_MS = 60_000
 
 /**
  * Checks whether the current LINE user has a completed registration profile.

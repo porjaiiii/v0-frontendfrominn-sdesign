@@ -185,18 +185,6 @@ export default function HomePage() {
     return imageMap[subTypeId] || '/images/waste/plastic.jpg'
   }
 
-  // Block render until profile check is complete
-  if (guardStatus === 'loading' || guardStatus === 'redirecting') {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-[#154212] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-500">กำลังตรวจสอบข้อมูล...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-white pb-24">
       <PageHeader />

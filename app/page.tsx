@@ -12,6 +12,7 @@ import { SaveSuccessModal } from '@/components/save-success-modal'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
 import { type WasteType, type WasteSubType } from '@/lib/app-context'
 import { useLiffContext } from '@/lib/liff-context'
+import { useProfileGuard } from '@/hooks/use-profile-guard'
 import { cn } from '@/lib/utils'
 
 // Carbon factors per kg for each waste type
@@ -35,6 +36,7 @@ const WASTE_IMAGES: Record<WasteType, string> = {
 export default function HomePage() {
   const router = useRouter()
   const liffContext = useLiffContext()
+  const { status: guardStatus } = useProfileGuard()
   const [step, setStep] = useState(1)
   const [selectedType, setSelectedType] = useState<WasteType | null>(null)
   const [selectedSubType, setSelectedSubType] = useState<WasteSubType | null>(null)
@@ -181,6 +183,18 @@ export default function HomePage() {
       'motor': '/images/waste/plastic.jpg',
     }
     return imageMap[subTypeId] || '/images/waste/plastic.jpg'
+  }
+
+  // Block render until profile check is complete
+  if (guardStatus === 'loading' || guardStatus === 'redirecting') {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-[#154212] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-500">กำลังตรวจสอบข้อมูล...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

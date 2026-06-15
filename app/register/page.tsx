@@ -413,7 +413,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* ── 1. ประเภทผู้ใช้งาน (อยู่บนสุด) ── */}
+          {/* ── 1. ประเภทผู้ใช้งาน ── */}
           <div id="field-userType" className={fieldWrapClass('field-userType')}>
             <label className="block text-gray-700 font-semibold mb-2 text-sm">
               ประเภทผู้ใช้งาน
@@ -426,24 +426,106 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* ── House number (conditional — mock only) ── */}
+          {/* ── 2. ชื่อ-นามสกุล ── */}
+          <div id="field-fullName" className={fieldWrapClass('field-fullName')}>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">ชื่อ-นามสกุล *</label>
+            <input
+              type="text"
+              name="fullName"
+              value={formData.fullName}
+              onChange={handleChange}
+              placeholder="เช่น นายสมหวัง ใจดี"
+              className={inputClass('field-fullName')}
+              required
+            />
+          </div>
+
+          {/* ── 3. เพศ ── */}
+          <div id="field-gender" className={fieldWrapClass('field-gender')}>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">เพศ *</label>
+            <ChoiceGroup
+              options={GENDERS}
+              value={formData.gender}
+              onChange={handleChoiceChange('gender')}
+              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-gender'}
+            />
+          </div>
+
+          {/* ── 4. ช่วงอายุ ── */}
+          <div id="field-ageRange" className={fieldWrapClass('field-ageRange')}>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">ช่วงอายุ *</label>
+            <ChoiceGroup
+              options={AGE_RANGES}
+              value={formData.ageRange}
+              onChange={handleChoiceChange('ageRange')}
+              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-ageRange'}
+            />
+          </div>
+
+          {/* ── 5. เบอร์โทรศัพท์ ── */}
+          <div id="field-phoneNumber" className={fieldWrapClass('field-phoneNumber')}>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">เบอร์โทรศัพท์ *</label>
+            <input
+              type="tel"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              placeholder="เช่น 0812345678"
+              className={inputClass('field-phoneNumber')}
+              required
+            />
+          </div>
+
+          {/* ── 6. อาชีพ ── */}
+          <div id="field-occupation" className={fieldWrapClass('field-occupation')}>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">อาชีพปัจจุบัน / อดีต</label>
+            <ChoiceGroup
+              options={OCCUPATIONS}
+              value={formData.occupation}
+              onChange={handleChoiceChange('occupation')}
+              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-occupation'}
+            />
+          </div>
+
+          {/* ── 7. ที่อยู่ (conditional — เฉพาะคนในชุมชน) ── */}
           {isLocalResident && (
-            <div>
-              <label className="block text-gray-700 font-medium mb-2 text-sm">
-                เลขที่บ้าน <span className="text-gray-400 font-normal text-xs">(ใช้สำหรับประสานงานเท่านั้น)</span>
-              </label>
-              <input
-                type="text"
-                name="houseNumber"
-                value={formData.houseNumber}
-                onChange={handleChange}
-                placeholder="เช่น 12/3 หมู่ 4"
-                className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all text-sm"
-              />
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2 text-sm">บ้านเลขที่</label>
+                  <input
+                    type="text"
+                    name="houseNumber"
+                    value={formData.houseNumber}
+                    onChange={handleChange}
+                    placeholder="เช่น 12/3"
+                    className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2 text-sm">หมู่ที่</label>
+                  <input
+                    type="text"
+                    name="mooNumber"
+                    placeholder="เช่น 4"
+                    className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all text-sm"
+                  />
+                </div>
+              </div>
+
+              <div id="field-subdistrict" className={fieldWrapClass('field-subdistrict')}>
+                <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ตำบลหลัก</label>
+                <ChoiceGroup
+                  options={SUBDISTRICTS}
+                  value={formData.subdistrict}
+                  onChange={handleChoiceChange('subdistrict')}
+                  highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-subdistrict'}
+                />
+              </div>
+            </>
           )}
 
-          {/* ── LINE User ID ── */}
+          {/* ── LINE User ID / User ID (auto-filled) ── */}
           <div>
             <label className="block text-gray-700 font-medium mb-2 text-sm">LINE User ID</label>
             <input
@@ -456,7 +538,6 @@ export default function RegisterPage() {
             <p className="text-xs text-gray-400 mt-1">ดึงมาจากบัญชี LINE โดยอัตโนมัติ</p>
           </div>
 
-          {/* ── User ID ── */}
           <div>
             <label className="block text-gray-700 font-medium mb-2 text-sm">User ID</label>
             <input
@@ -467,78 +548,6 @@ export default function RegisterPage() {
               className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-gray-100 text-gray-500 outline-none cursor-not-allowed text-sm"
             />
             <p className="text-xs text-gray-400 mt-1">สร้างขึ้นโดยอัตโนมัติจากบัญชี LINE</p>
-          </div>
-
-          {/* ── Full Name ── */}
-          <div id="field-fullName" className={fieldWrapClass('field-fullName')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">ชื่อ-นามสกุล *</label>
-            <input
-              type="text"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              placeholder="เช่น สมชาย สมการ"
-              className={inputClass('field-fullName')}
-              required
-            />
-          </div>
-
-          {/* ── Phone Number ── */}
-          <div id="field-phoneNumber" className={fieldWrapClass('field-phoneNumber')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">เบอร์ติดต่อ *</label>
-            <input
-              type="tel"
-              name="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={handleChange}
-              placeholder="เช่น 08xxxxxxxx"
-              className={inputClass('field-phoneNumber')}
-              required
-            />
-          </div>
-
-          {/* ── Gender ── */}
-          <div id="field-gender" className={fieldWrapClass('field-gender')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">เพศ *</label>
-            <ChoiceGroup
-              options={GENDERS}
-              value={formData.gender}
-              onChange={handleChoiceChange('gender')}
-              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-gender'}
-            />
-          </div>
-
-          {/* ── Age Range ── */}
-          <div id="field-ageRange" className={fieldWrapClass('field-ageRange')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">ช่วงอายุ *</label>
-            <ChoiceGroup
-              options={AGE_RANGES}
-              value={formData.ageRange}
-              onChange={handleChoiceChange('ageRange')}
-              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-ageRange'}
-            />
-          </div>
-
-          {/* ── Subdistrict ── */}
-          <div id="field-subdistrict" className={fieldWrapClass('field-subdistrict')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">ตำบล</label>
-            <ChoiceGroup
-              options={SUBDISTRICTS}
-              value={formData.subdistrict}
-              onChange={handleChoiceChange('subdistrict')}
-              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-subdistrict'}
-            />
-          </div>
-
-          {/* ── Occupation ── */}
-          <div id="field-occupation" className={fieldWrapClass('field-occupation')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">อาชีพ</label>
-            <ChoiceGroup
-              options={OCCUPATIONS}
-              value={formData.occupation}
-              onChange={handleChoiceChange('occupation')}
-              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-occupation'}
-            />
           </div>
 
           {/* ── PDPA (อยู่ล่างสุด) ── */}

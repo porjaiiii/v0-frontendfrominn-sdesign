@@ -6,68 +6,72 @@ import { ChevronLeft, Ticket } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { useCoupons, type Coupon } from '@/lib/coupon-context'
 import { cn } from '@/lib/utils'
-import { format } from 'date-fns'
-import { th } from 'date-fns/locale'
 
-function CouponCard({ coupon, index }: { coupon: Coupon; index: number }) {
-  const isEven = index % 2 === 0
+function CouponCard({ coupon }: { coupon: Coupon }) {
   const isUsed = coupon.status === 'used'
-  const dateStr = format(new Date(coupon.redeemed_at), 'd MMM yyyy', { locale: th })
 
   return (
-    <Link
-      href={`/coupons/${coupon.coupon_id}`}
-      className={cn(
-        'flex items-stretch rounded-2xl overflow-hidden border transition-shadow hover:shadow-md',
-        isUsed ? 'opacity-60 border-[#d0d0d0]' : 'border-[#c8dfc8]'
-      )}
-    >
-      {/* Left green label — only on even cards; right on odd (alternating layout) */}
-      {isEven && (
-        <div className="w-20 bg-[#154212] flex flex-col items-center justify-center gap-1 flex-shrink-0 p-2">
-          <div className="w-8 h-8 relative">
-            {/* Mascot leaf icon */}
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-              <Ticket size={18} className="text-white" />
+    <Link href={`/coupons/${coupon.coupon_id}`} className="block">
+      {/* Outer wrapper: provides space on left/right for the notch circles */}
+      <div className={cn('relative mx-3', isUsed && 'opacity-60')}>
+        {/* Left-edge ticket notch (white circle, page bg bleeds through) */}
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[55%] w-[26px] h-[26px] bg-white rounded-full z-20 shadow-inner" />
+
+        {/* Card */}
+        <div className="flex h-[126px] rounded-2xl overflow-hidden">
+          {/* ── LEFT: dark green section ── */}
+          <div className="relative w-[38%] flex-shrink-0 bg-[#154212] flex flex-col overflow-hidden">
+            {/* Label */}
+            <span className="text-white text-[10px] font-semibold leading-snug p-2.5 z-10 relative">
+              คูปองแลกรางวัล
+            </span>
+
+            {/* Mascot — anchored to bottom-left, slightly overflowing upward */}
+            <div className="absolute -bottom-1 left-0 w-full h-[105px]">
+              <Image
+                src="/mascot.png"
+                alt="mascot"
+                fill
+                className="object-contain object-bottom"
+              />
             </div>
           </div>
-          <span className="text-[9px] font-semibold text-white text-center leading-tight">
-            คูปอง{'\n'}แลกรางวัล
-          </span>
-        </div>
-      )}
 
-      {/* Center content */}
-      <div className="flex-1 bg-[#f0f7ee] px-4 py-3 flex flex-col justify-center min-w-0">
-        <p className="text-sm font-bold text-[#154212] truncate">{coupon.reward_name}</p>
-        <p className="text-xs text-[#555555]">{coupon.reward_description}</p>
-        <p className="text-[10px] text-[#888888] mt-1">{dateStr}</p>
-        {isUsed && (
-          <span className="text-[10px] font-semibold text-[#cc0000] mt-0.5">ใช้งานแล้ว</span>
-        )}
-      </div>
+          {/* ── RIGHT: sage/content section ── */}
+          <div className="flex-1 bg-[#ccdece] flex items-center px-3 gap-2 relative">
+            {/* Divider notch circle (sits on the seam between left and right panels) */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-[26px] h-[26px] bg-white rounded-full z-10" />
 
-      {/* Product image */}
-      <div className="w-24 h-24 relative flex-shrink-0 bg-[#e8f5e2]">
-        <Image
-          src={coupon.reward_image}
-          alt={coupon.reward_name}
-          fill
-          className="object-cover"
-        />
-      </div>
+            {/* Center: name badge + description */}
+            <div className="flex-1 flex flex-col gap-1.5 pl-1">
+              <div className="bg-[#154212] rounded-lg px-3 py-1 self-start">
+                <span className="text-white text-[14px] font-semibold leading-tight">
+                  {coupon.reward_name}
+                </span>
+              </div>
+              <span className="text-[#154212] text-xs font-medium pl-0.5">
+                {coupon.reward_description}
+              </span>
+              {isUsed && (
+                <span className="text-[10px] font-semibold text-[#cc4444]">ใช้งานแล้ว</span>
+              )}
+            </div>
 
-      {/* Right green label — on odd cards */}
-      {!isEven && (
-        <div className="w-20 bg-[#154212] flex flex-col items-center justify-center gap-1 flex-shrink-0 p-2">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-            <Ticket size={18} className="text-white" />
+            {/* Product image */}
+            <div className="relative w-[90px] h-[90px] flex-shrink-0">
+              <Image
+                src={coupon.reward_image}
+                alt={coupon.reward_name}
+                fill
+                className="object-contain drop-shadow-sm"
+              />
+            </div>
           </div>
-          <span className="text-[9px] font-semibold text-white text-center leading-tight">
-            คูปอง{'\n'}แลกรางวัล
-          </span>
         </div>
-      )}
+
+        {/* Right-edge ticket notch */}
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[55%] w-[26px] h-[26px] bg-white rounded-full z-20 shadow-inner" />
+      </div>
     </Link>
   )
 }
@@ -83,7 +87,7 @@ export default function CouponsPage() {
       <PageHeader />
 
       <main className="max-w-md mx-auto px-4 py-4">
-        {/* Back + title row */}
+        {/* Back + title */}
         <div className="flex items-center gap-2 mb-5">
           <Link href="/rewards" className="p-1 rounded-full hover:bg-[#f5f5f5] transition-colors">
             <ChevronLeft size={22} className="text-[#154212]" strokeWidth={2.5} />
@@ -92,9 +96,9 @@ export default function CouponsPage() {
         </div>
 
         {loading ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 rounded-2xl bg-[#f0f0f0] animate-pulse" />
+              <div key={i} className="mx-3 h-[126px] rounded-2xl bg-[#f0f0f0] animate-pulse" />
             ))}
           </div>
         ) : coupons.length === 0 ? (
@@ -116,26 +120,34 @@ export default function CouponsPage() {
             {/* Active coupons */}
             {activeCoupons.length > 0 && (
               <section>
-                <p className="text-xs font-semibold text-[#888888] uppercase tracking-wide mb-3">
-                  คูปองที่ใช้ได้ ({activeCoupons.length})
-                </p>
-                <div className="flex flex-col gap-3">
-                  {activeCoupons.map((c, i) => (
-                    <CouponCard key={c.coupon_id} coupon={c} index={i} />
+                <div className="flex justify-center mb-4">
+                  <div className="bg-[#e8f0e8] rounded-full px-5 py-1.5">
+                    <span className="text-[#154212] text-xs font-semibold">
+                      คูปองที่ใช้ได้ ({activeCoupons.length})
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-4">
+                  {activeCoupons.map((c) => (
+                    <CouponCard key={c.coupon_id} coupon={c} />
                   ))}
                 </div>
               </section>
             )}
 
-            {/* Used coupons history */}
+            {/* Used / history */}
             {usedCoupons.length > 0 && (
               <section>
-                <p className="text-xs font-semibold text-[#888888] uppercase tracking-wide mb-3">
-                  ประวัติการใช้คูปอง ({usedCoupons.length})
-                </p>
-                <div className="flex flex-col gap-3">
-                  {usedCoupons.map((c, i) => (
-                    <CouponCard key={c.coupon_id} coupon={c} index={i} />
+                <div className="flex justify-center mb-4">
+                  <div className="bg-[#f0f0f0] rounded-full px-5 py-1.5">
+                    <span className="text-[#888888] text-xs font-semibold">
+                      ประวัติการใช้คูปอง ({usedCoupons.length})
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-4">
+                  {usedCoupons.map((c) => (
+                    <CouponCard key={c.coupon_id} coupon={c} />
                   ))}
                 </div>
               </section>

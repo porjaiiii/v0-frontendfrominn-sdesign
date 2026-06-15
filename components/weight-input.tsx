@@ -14,15 +14,40 @@ interface WeightInputProps {
   unit?: string
 }
 
+const MAX_WEIGHT = 100
+
 export function WeightInput({ value, onChange, noWeight = false, onNoWeightChange, unit = 'กก.' }: WeightInputProps) {
+  const [weightError, setWeightError] = useState<string | null>(null)
+
+  const clamp = (v: number) => Math.min(MAX_WEIGHT, Math.max(0, Math.round(v * 10) / 10))
+
   const adjustWeight = (amount: number) => {
-    const newValue = Math.max(0, Math.round((value + amount) * 10) / 10)
+    const newValue = clamp(value + amount)
+    setWeightError(null)
     onChange(newValue)
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseFloat(e.target.value) || 0
-    onChange(Math.max(0, newValue))
+    const raw = parseFloat(e.target.value)
+
+    if (isNaN(raw) || raw < 0) {
+      setWeightError('กรุณากรอกน้ำหนักที่มากกว่า 0')
+      onChange(0)
+      return
+    }
+    if (raw > MAX_WEIGHT) {
+      setWeightError(`น้ำหนักต้องไม่เกิน ${MAX_WEIGHT} กก.`)
+      onChange(MAX_WEIGHT)
+      return
+    }
+    if (raw === 0) {
+      setWeightError('น้ำหนักต้องมากกว่า 0')
+      onChange(0)
+      return
+    }
+
+    setWeightError(null)
+    onChange(clamp(raw))
   }
 
   return (
@@ -51,7 +76,7 @@ export function WeightInput({ value, onChange, noWeight = false, onNoWeightChang
         {/* Minus button */}
         <button
           onClick={() => adjustWeight(-1.0)}
-          disabled={noWeight}
+          disabled={noWeight || value <= 0}
           className={cn(
             'w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0',
             noWeight
@@ -75,13 +100,14 @@ export function WeightInput({ value, onChange, noWeight = false, onNoWeightChang
             noWeight && 'bg-[#f5f5f5] text-[#999999]'
           )}
           step="0.1"
-          min="0"
+          min="0.1"
+          max={MAX_WEIGHT}
         />
 
         {/* Plus button */}
         <button
           onClick={() => adjustWeight(1.0)}
-          disabled={noWeight}
+          disabled={noWeight || value >= MAX_WEIGHT}
           className={cn(
             'w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0',
             noWeight
@@ -92,6 +118,11 @@ export function WeightInput({ value, onChange, noWeight = false, onNoWeightChang
           <Plus className="w-6 h-6 text-white" />
         </button>
       </div>
+
+      {/* Validation error */}
+      {weightError && (
+        <p className="text-sm text-red-500 text-center font-medium">{weightError}</p>
+      )}
     </div>
   )
 }

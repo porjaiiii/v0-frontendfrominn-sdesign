@@ -75,13 +75,13 @@ export function useProfileGuard(): { status: GuardStatus } {
 
         const data = await res.json()
 
-        // Only redirect if all required fields are truly empty/missing
-        const requiredFields = ['fullName', 'phoneNumber', 'gender', 'ageRange'] as const
-        const isComplete = requiredFields.every(
-          (f) => typeof data[f] === 'string' && data[f].trim() !== ''
-        )
+        // Redirect only when the record exists but has no name at all
+        // (covers the edge case where GAS returns 200 with an empty row).
+        // Any user who has a fullName value is considered registered.
+        const hasProfile =
+          typeof data?.fullName === 'string' && data.fullName.trim() !== ''
 
-        if (!isComplete) {
+        if (!hasProfile) {
           setStatus('redirecting')
           router.replace('/register')
           return

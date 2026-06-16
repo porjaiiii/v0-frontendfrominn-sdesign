@@ -12,7 +12,7 @@ import { useApp } from '@/lib/app-context'
 import { usePoints } from '@/lib/points-context'
 import { MOCK_USER } from '@/lib/mock-user'
 import { Button } from '@/components/ui/button'
-import QRCode from 'qrcode'
+import { StyledQRCode } from '@/components/styled-qr-code'
 
 // Badge levels data with gradient colors
 const BADGE_LEVELS = [
@@ -27,36 +27,12 @@ export default function ProfilePage() {
   const [scanResult, setScanResult] = useState<string | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [copiedLineId, setCopiedLineId] = useState(false)
-  const [qrDataUrl, setQrDataUrl] = useState<string>('')
   const [fetchedProfile, setFetchedProfile] = useState<any>(null)
   const [profileLoading, setProfileLoading] = useState(false)
   
   const { isReady, isLoggedIn, profile: liffProfile, scanCode, openExternalBrowser, isInClient } = useLiffContext()
   const { userProfile } = useApp()
   const { carbon: dbCarbon, weight: dbWeight } = usePoints()
-  
-  // Generate QR code with full URL when userId is available
-  useEffect(() => {
-    if (liffProfile?.userId) {
-      // Create full URL for profile-view page
-      const domain = typeof window !== 'undefined' ? window.location.origin : 'https://example.com'
-      const profileViewUrl = `${domain}/profile-view/${encodeURIComponent(liffProfile.userId)}`
-      
-      QRCode.toDataURL(profileViewUrl, {
-        errorCorrectionLevel: 'H',
-        type: 'image/jpeg',
-        quality: 0.95,
-        margin: 1,
-        width: 200,
-        color: {
-          dark: '#000000',
-          light: '#ffffff'
-        }
-      })
-        .then(url => setQrDataUrl(url))
-        .catch(err => console.error('QR Code generation failed:', err))
-    }
-  }, [liffProfile?.userId])
   
   // Fetch profile data from API
   useEffect(() => {
@@ -265,14 +241,11 @@ export default function ProfilePage() {
           
           <div className="flex flex-col items-center gap-4">
             {/* QR Code Display */}
-            {liffProfile?.userId && qrDataUrl && (
+            {liffProfile?.userId && (
               <div className="bg-white p-4 rounded-lg border border-[#e5e5e5] flex justify-center">
-                <img
-                  src={qrDataUrl}
-                  alt="QR Code for LINE User ID"
-                  width={200}
-                  height={200}
-                  className="rounded"
+                <StyledQRCode
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/profile-view/${encodeURIComponent(liffProfile.userId)}`}
+                  size={200}
                 />
               </div>
             )}

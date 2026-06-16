@@ -10,13 +10,28 @@ interface StyledQRCodeProps {
   logoSize?: number
 }
 
-/**
- * Renders a styled QR code on a <canvas>:
- *  - Dark modules: #1a7c2a (green)
- *  - Light modules: #ffffff
- *  - Rounded finder-pattern squares (the three corner markers)
- *  - Logo image centered on top (defaults to /logo-qr-center.png)
- */
+function drawRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  const radius = Math.min(r, w / 2, h / 2)
+  ctx.beginPath()
+  ctx.moveTo(x + radius, y)
+  ctx.lineTo(x + w - radius, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius)
+  ctx.lineTo(x + w, y + h - radius)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h)
+  ctx.lineTo(x + radius, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius)
+  ctx.lineTo(x, y + radius)
+  ctx.quadraticCurveTo(x, y, x + radius, y)
+  ctx.closePath()
+}
+
 export function StyledQRCode({
   value,
   size = 260,
@@ -34,38 +49,34 @@ export function StyledQRCode({
 
     const DARK = '#2a8a1e'
     const LIGHT = '#ffffff'
-    const MODULE_RADIUS_RATIO = 0.35 // how round individual data modules are
-    const FINDER_RADIUS_RATIO = 0.18  // corner radius for finder squares (outer / inner)
 
-    // 1. Generate raw QR matrix via the library (use a hidden offscreen canvas)
+    // Generate raw QR matrix via an offscreen canvas at fixed 500px for precision
+    const RAW = 500
     const offscreen = document.createElement('canvas')
     QRCode.toCanvas(offscreen, value, {
       errorCorrectionLevel: 'H',
-      margin: 2,
-      width: size,
-      color: { dark: DARK, light: LIGHT },
+      margin: 4,
+      width: RAW,
+      color: { dark: '#000000', light: '#ffffff' },
     }).then(() => {
-      // 2. Read the pixel data to determine module size & matrix
       const offCtx = offscreen.getContext('2d')
       if (!offCtx) return
 
-      const imageData = offCtx.getImageData(0, 0, offscreen.width, offscreen.height)
+      const imageData = offCtx.getImageData(0, 0, RAW, RAW)
       const data = imageData.data
-      const w = offscreen.width
 
-      // Sample the top-left corner area to find the quiet-zone (white) width
-      // by scanning downward until we hit a dark pixel — that's moduleSize
+      // Detect quiet zone width by scanning downward from y=0 at x=0
       let quietZone = 0
-      for (let y = 0; y < w; y++) {
-        const idx = (y * w + 0) * 4
+      for (let y = 0; y < RAW; y++) {
+        const idx = (y * RAW + y) * 4
         if (data[idx] < 128) { quietZone = y; break }
       }
 
-      // Find module size by scanning a horizontal line at quietZone row
-      let darkStart = -1
+      // Detect module size by scanning horizontally at y=quietZone
       let moduleSize = 1
-      for (let x = quietZone; x < w; x++) {
-        const idx = (quietZone * w + x) * 4
+      let darkStart = -1
+      for (let x = quietZone; x < RAW; x++) {
+        const idx = (quietZone * RAW + x) * 4
         if (data[idx] < 128) {
           if (darkStart === -1) darkStart = x
         } else {
@@ -73,117 +84,95 @@ export function StyledQRCode({
         }
       }
 
-      const cols = Math.round((w - quietZone * 2) / moduleSize)
+      const cols = Math.round((RAW - quietZone * 2) / moduleSize)
 
-      // Build boolean matrix
+      // Build boolean matrix by sampling center of each module
       const matrix: boolean[][] = []
       for (let row = 0; row < cols; row++) {
         matrix[row] = []
         for (let col = 0; col < cols; col++) {
           const px = quietZone + col * moduleSize + Math.floor(moduleSize / 2)
           const py = quietZone + row * moduleSize + Math.floor(moduleSize / 2)
-          const idx = (py * w + px) * 4
+          const idx = (py * RAW + px) * 4
           matrix[row][col] = data[idx] < 128
         }
       }
 
-      // 3. Paint our own canvas
+      // Scale to target size
       canvas.width = size
       canvas.height = size
+
+      const scale = size / RAW
+      const ms = moduleSize * scale
+      const qz = quietZone * scale
 
       // Background
       ctx.fillStyle = LIGHT
       ctx.fillRect(0, 0, size, size)
 
-      // Helper: rounded rectangle
-      const roundRect = (x: number, y: number, rw: number, rh: number, r: number) => {
-        ctx.beginPath()
-        ctx.moveTo(x + r, y)
-        ctx.lineTo(x + rw - r, y)
-        ctx.quadraticCurveTo(x + rw, y, x + rw, y + r)
-        ctx.lineTo(x + rw, y + rh - r)
-        ctx.quadraticCurveTo(x + rw, y + rh, x + rw - r, y + rh)
-        ctx.lineTo(x + r, y + rh)
-        ctx.quadraticCurveTo(x, y + rh, x, y + rh - r)
-        ctx.lineTo(x, y + r)
-        ctx.quadraticCurveTo(x, y, x + r, y)
-        ctx.closePath()
-      }
-
-      const ms = moduleSize
-
-      // Finder pattern positions (top-left col,row of the 7×7 outer square)
-      const finderPositions = [
+      // Finder pattern regions to skip when drawing data modules
+      const finderRegions = [
         { r: 0, c: 0 },
         { r: 0, c: cols - 7 },
         { r: cols - 7, c: 0 },
       ]
-      const isInFinder = (row: number, col: number) => {
-        for (const fp of finderPositions) {
-          if (row >= fp.r && row < fp.r + 7 && col >= fp.c && col < fp.c + 7) return true
-        }
-        return false
-      }
+      const isInFinder = (row: number, col: number) =>
+        finderRegions.some(
+          (fp) => row >= fp.r && row < fp.r + 7 && col >= fp.c && col < fp.c + 7
+        )
 
-      // Draw data modules (skip finder cells)
+      // Draw data modules with rounded corners
       ctx.fillStyle = DARK
       for (let row = 0; row < cols; row++) {
         for (let col = 0; col < cols; col++) {
           if (isInFinder(row, col)) continue
           if (!matrix[row][col]) continue
 
-          const x = quietZone + col * ms
-          const y = quietZone + row * ms
-          const r = ms * MODULE_RADIUS_RATIO
+          const x = qz + col * ms
+          const y = qz + row * ms
+          const r = ms * 0.32
 
-          roundRect(x + 0.5, y + 0.5, ms - 1, ms - 1, r)
+          drawRoundRect(ctx, x + 0.5, y + 0.5, ms - 1, ms - 1, r)
           ctx.fill()
         }
       }
 
-      // Draw finder patterns with rounded squares
-      for (const fp of finderPositions) {
-        const ox = quietZone + fp.c * ms
-        const oy = quietZone + fp.r * ms
-        const outerSize = 7 * ms
-        const outerR = outerSize * FINDER_RADIUS_RATIO
+      // Draw finder patterns (3 corners) with rounded style
+      for (const fp of finderRegions) {
+        const ox = qz + fp.c * ms
+        const oy = qz + fp.r * ms
+        const outerSz = 7 * ms
+        const outerR = outerSz * 0.2
 
-        // Outer ring
+        // Outer filled square
         ctx.fillStyle = DARK
-        roundRect(ox, oy, outerSize, outerSize, outerR)
+        drawRoundRect(ctx, ox, oy, outerSz, outerSz, outerR)
         ctx.fill()
 
-        // White gap (1 module wide)
+        // White inner gap (1 module border)
         ctx.fillStyle = LIGHT
-        roundRect(ox + ms, oy + ms, outerSize - 2 * ms, outerSize - 2 * ms, outerR * 0.6)
+        drawRoundRect(ctx, ox + ms, oy + ms, outerSz - 2 * ms, outerSz - 2 * ms, outerR * 0.5)
         ctx.fill()
 
-        // Inner 3×3 dot
+        // Inner 3×3 dark dot
         ctx.fillStyle = DARK
-        roundRect(ox + 2 * ms, oy + 2 * ms, 3 * ms, 3 * ms, (3 * ms) * FINDER_RADIUS_RATIO)
+        drawRoundRect(ctx, ox + 2 * ms, oy + 2 * ms, 3 * ms, 3 * ms, (3 * ms) * 0.25)
         ctx.fill()
       }
 
-      // 4. Draw center logo
+      // Draw center logo
       const effectiveLogoSize = logoSize ?? Math.round(size * 0.22)
       const logoX = (size - effectiveLogoSize) / 2
       const logoY = (size - effectiveLogoSize) / 2
 
-      const img = new Image()
+      const img = new window.Image()
       img.crossOrigin = 'anonymous'
       img.onload = () => {
-        // White circle behind logo
-        const pad = 4
-        const logoR = (effectiveLogoSize / 2) * 0.55
+        // White rounded background behind logo
+        const pad = 5
+        const bgR = effectiveLogoSize * 0.2
         ctx.fillStyle = LIGHT
-        ctx.beginPath()
-        ctx.roundRect(
-          logoX - pad,
-          logoY - pad,
-          effectiveLogoSize + pad * 2,
-          effectiveLogoSize + pad * 2,
-          logoR
-        )
+        drawRoundRect(ctx, logoX - pad, logoY - pad, effectiveLogoSize + pad * 2, effectiveLogoSize + pad * 2, bgR)
         ctx.fill()
 
         ctx.drawImage(img, logoX, logoY, effectiveLogoSize, effectiveLogoSize)

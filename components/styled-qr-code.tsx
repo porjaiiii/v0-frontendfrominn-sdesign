@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 
 interface StyledQRCodeProps {
@@ -8,28 +8,82 @@ interface StyledQRCodeProps {
   size?: number
   logoSrc?: string
   logoSize?: number
+  darkColor?: string
+  lightColor?: string
 }
 
-function drawRoundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number
-) {
-  const radius = Math.min(r, w / 2, h / 2)
-  ctx.beginPath()
-  ctx.moveTo(x + radius, y)
-  ctx.lineTo(x + w - radius, y)
-  ctx.quadraticCurveTo(x + w, y, x + w, y + radius)
-  ctx.lineTo(x + w, y + h - radius)
-  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h)
-  ctx.lineTo(x + radius, y + h)
-  ctx.quadraticCurveTo(x, y + h, x, y + h - radius)
-  ctx.lineTo(x, y + radius)
-  ctx.quadraticCurveTo(x, y, x + radius, y)
-  ctx.closePath()
+interface QRMatrix {
+  matrix: boolean[][]
+  moduleCount: number
+}
+
+async function getQRMatrix(value: string): Promise<QRMatrix> {
+  // Generate QR at fixed size to extract the boolean matrix
+  const RAW = 500
+  const offscreen = document.createElement('canvas')
+  await QRCode.toCanvas(offscreen, value, {
+    errorCorrectionLevel: 'H',
+    margin: 4,
+    width: RAW,
+    color: { dark: '#000000', light: '#ffffff' },
+  })
+
+  const ctx = offscreen.getContext('2d')!
+  const imageData = ctx.getImageData(0, 0, RAW, RAW)
+  const data = imageData.data
+
+  // Detect quiet zone
+  let quietZone = 0
+  for (let y = 0; y < RAW; y++) {
+    const idx = (y * RAW + y) * 4
+    if (data[idx] < 128) { quietZone = y; break }
+  }
+
+  // Detect module size
+  let moduleSize = 1
+  let darkStart = -1
+  for (let x = quietZone; x < RAW; x++) {
+    const idx = (quietZone * RAW + x) * 4
+    if (data[idx] < 128) {
+      if (darkStart === -1) darkStart = x
+    } else {
+      if (darkStart !== -1) { moduleSize = x - darkStart; break }
+    }
+  }
+
+  const cols = Math.round((RAW - quietZone * 2) / moduleSize)
+
+  // Build boolean matrix
+  const matrix: boolean[][] = []
+  for (let row = 0; row < cols; row++) {
+    matrix[row] = []
+    for (let col = 0; col < cols; col++) {
+      const px = quietZone + col * moduleSize + Math.floor(moduleSize / 2)
+      const py = quietZone + row * moduleSize + Math.floor(moduleSize / 2)
+      const idx = (py * RAW + px) * 4
+      matrix[row][col] = data[idx] < 128
+    }
+  }
+
+  return { matrix, moduleCount: cols }
+}
+
+function roundedRect(
+  x: number, y: number, w: number, h: number, r: number
+): string {
+  const rr = Math.min(r, w / 2, h / 2)
+  return [
+    `M ${x + rr} ${y}`,
+    `H ${x + w - rr}`,
+    `Q ${x + w} ${y} ${x + w} ${y + rr}`,
+    `V ${y + h - rr}`,
+    `Q ${x + w} ${y + h} ${x + w - rr} ${y + h}`,
+    `H ${x + rr}`,
+    `Q ${x} ${y + h} ${x} ${y + h - rr}`,
+    `V ${y + rr}`,
+    `Q ${x} ${y} ${x + rr} ${y}`,
+    'Z',
+  ].join(' ')
 }
 
 export function StyledQRCode({
@@ -37,157 +91,146 @@ export function StyledQRCode({
   size = 260,
   logoSrc = '/logo-qr-center.png',
   logoSize,
+  darkColor = '#2a8a1e',
+  lightColor = '#ffffff',
 }: StyledQRCodeProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [svgContent, setSvgContent] = useState<React.ReactNode>(null)
 
   useEffect(() => {
-    if (!canvasRef.current || !value) return
+    if (!value) return
 
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    getQRMatrix(value).then(({ matrix, moduleCount: cols }) => {
+      const PADDING = 4 // modules of quiet zone to show
+      const totalCols = cols
+      // viewBox units: each module = 10 units
+      const M = 10
+      const viewSize = (totalCols + PADDING * 2) * M
+      const offset = PADDING * M
 
-    const DARK = '#2a8a1e'
-    const LIGHT = '#ffffff'
-
-    // Generate raw QR matrix via an offscreen canvas at fixed 500px for precision
-    const RAW = 500
-    const offscreen = document.createElement('canvas')
-    QRCode.toCanvas(offscreen, value, {
-      errorCorrectionLevel: 'H',
-      margin: 4,
-      width: RAW,
-      color: { dark: '#000000', light: '#ffffff' },
-    }).then(() => {
-      const offCtx = offscreen.getContext('2d')
-      if (!offCtx) return
-
-      const imageData = offCtx.getImageData(0, 0, RAW, RAW)
-      const data = imageData.data
-
-      // Detect quiet zone width by scanning downward from y=0 at x=0
-      let quietZone = 0
-      for (let y = 0; y < RAW; y++) {
-        const idx = (y * RAW + y) * 4
-        if (data[idx] < 128) { quietZone = y; break }
-      }
-
-      // Detect module size by scanning horizontally at y=quietZone
-      let moduleSize = 1
-      let darkStart = -1
-      for (let x = quietZone; x < RAW; x++) {
-        const idx = (quietZone * RAW + x) * 4
-        if (data[idx] < 128) {
-          if (darkStart === -1) darkStart = x
-        } else {
-          if (darkStart !== -1) { moduleSize = x - darkStart; break }
-        }
-      }
-
-      const cols = Math.round((RAW - quietZone * 2) / moduleSize)
-
-      // Build boolean matrix by sampling center of each module
-      const matrix: boolean[][] = []
-      for (let row = 0; row < cols; row++) {
-        matrix[row] = []
-        for (let col = 0; col < cols; col++) {
-          const px = quietZone + col * moduleSize + Math.floor(moduleSize / 2)
-          const py = quietZone + row * moduleSize + Math.floor(moduleSize / 2)
-          const idx = (py * RAW + px) * 4
-          matrix[row][col] = data[idx] < 128
-        }
-      }
-
-      // Scale to target size
-      canvas.width = size
-      canvas.height = size
-
-      const scale = size / RAW
-      const ms = moduleSize * scale
-      const qz = quietZone * scale
-
-      // Background
-      ctx.fillStyle = LIGHT
-      ctx.fillRect(0, 0, size, size)
-
-      // Finder pattern regions to skip when drawing data modules
-      const finderRegions = [
-        { r: 0, c: 0 },
-        { r: 0, c: cols - 7 },
-        { r: cols - 7, c: 0 },
-      ]
-      const isInFinder = (row: number, col: number) =>
-        finderRegions.some(
-          (fp) => row >= fp.r && row < fp.r + 7 && col >= fp.c && col < fp.c + 7
+      const isInFinder = (row: number, col: number) => {
+        const regions = [
+          { r: 0, c: 0 },
+          { r: 0, c: cols - 7 },
+          { r: cols - 7, c: 0 },
+        ]
+        return regions.some(
+          fp => row >= fp.r && row < fp.r + 7 && col >= fp.c && col < fp.c + 7
         )
+      }
 
-      // Draw data modules with rounded corners
-      ctx.fillStyle = DARK
+      // Data modules — circles/dots
+      const dots: React.ReactNode[] = []
       for (let row = 0; row < cols; row++) {
         for (let col = 0; col < cols; col++) {
           if (isInFinder(row, col)) continue
           if (!matrix[row][col]) continue
 
-          const x = qz + col * ms
-          const y = qz + row * ms
-          const r = ms * 0.32
-
-          drawRoundRect(ctx, x + 0.5, y + 0.5, ms - 1, ms - 1, r)
-          ctx.fill()
+          const cx = offset + col * M + M / 2
+          const cy = offset + row * M + M / 2
+          dots.push(
+            <circle
+              key={`d-${row}-${col}`}
+              cx={cx}
+              cy={cy}
+              r={M * 0.42}
+              fill={darkColor}
+            />
+          )
         }
       }
 
-      // Draw finder patterns (3 corners) with rounded style
-      for (const fp of finderRegions) {
-        const ox = qz + fp.c * ms
-        const oy = qz + fp.r * ms
-        const outerSz = 7 * ms
-        const outerR = outerSz * 0.2
+      // Finder patterns
+      const finderPatterns: React.ReactNode[] = []
+      const finderPositions = [
+        { r: 0, c: 0 },
+        { r: 0, c: cols - 7 },
+        { r: cols - 7, c: 0 },
+      ]
 
-        // Outer filled square
-        ctx.fillStyle = DARK
-        drawRoundRect(ctx, ox, oy, outerSz, outerSz, outerR)
-        ctx.fill()
+      for (const fp of finderPositions) {
+        const ox = offset + fp.c * M
+        const oy = offset + fp.r * M
+        const outerSz = 7 * M
+        const outerR = outerSz * 0.22
 
-        // White inner gap (1 module border)
-        ctx.fillStyle = LIGHT
-        drawRoundRect(ctx, ox + ms, oy + ms, outerSz - 2 * ms, outerSz - 2 * ms, outerR * 0.5)
-        ctx.fill()
-
-        // Inner 3×3 dark dot
-        ctx.fillStyle = DARK
-        drawRoundRect(ctx, ox + 2 * ms, oy + 2 * ms, 3 * ms, 3 * ms, (3 * ms) * 0.25)
-        ctx.fill()
+        finderPatterns.push(
+          <g key={`fp-${fp.r}-${fp.c}`}>
+            {/* Outer square */}
+            <path d={roundedRect(ox, oy, outerSz, outerSz, outerR)} fill={darkColor} />
+            {/* White border ring */}
+            <path
+              d={roundedRect(ox + M, oy + M, outerSz - 2 * M, outerSz - 2 * M, outerR * 0.5)}
+              fill={lightColor}
+            />
+            {/* Inner dot */}
+            <path
+              d={roundedRect(ox + 2 * M, oy + 2 * M, 3 * M, 3 * M, (3 * M) * 0.3)}
+              fill={darkColor}
+            />
+          </g>
+        )
       }
 
-      // Draw center logo
-      const effectiveLogoSize = logoSize ?? Math.round(size * 0.22)
-      const logoX = (size - effectiveLogoSize) / 2
-      const logoY = (size - effectiveLogoSize) / 2
+      // Logo
+      const effectiveLogoSize = logoSize ?? Math.round(viewSize * 0.22)
+      const logoX = (viewSize - effectiveLogoSize) / 2
+      const logoY = (viewSize - effectiveLogoSize) / 2
+      const logoPad = effectiveLogoSize * 0.12
+      const logoBgR = effectiveLogoSize * 0.22
 
-      const img = new window.Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        // White rounded background behind logo
-        const pad = 5
-        const bgR = effectiveLogoSize * 0.2
-        ctx.fillStyle = LIGHT
-        drawRoundRect(ctx, logoX - pad, logoY - pad, effectiveLogoSize + pad * 2, effectiveLogoSize + pad * 2, bgR)
-        ctx.fill()
+      const logoEl = (
+        <g key="logo">
+          {/* White rounded background */}
+          <path
+            d={roundedRect(
+              logoX - logoPad,
+              logoY - logoPad,
+              effectiveLogoSize + logoPad * 2,
+              effectiveLogoSize + logoPad * 2,
+              logoBgR
+            )}
+            fill={lightColor}
+          />
+          <image
+            href={logoSrc}
+            x={logoX}
+            y={logoY}
+            width={effectiveLogoSize}
+            height={effectiveLogoSize}
+            preserveAspectRatio="xMidYMid meet"
+          />
+        </g>
+      )
 
-        ctx.drawImage(img, logoX, logoY, effectiveLogoSize, effectiveLogoSize)
-      }
-      img.src = logoSrc
+      setSvgContent(
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox={`0 0 ${viewSize} ${viewSize}`}
+          width={size}
+          height={size}
+          style={{ borderRadius: 16 }}
+        >
+          {/* Background */}
+          <rect width={viewSize} height={viewSize} fill={lightColor} rx={M * 1.5} />
+          {/* Data dots */}
+          {dots}
+          {/* Finder patterns */}
+          {finderPatterns}
+          {/* Logo */}
+          {logoEl}
+        </svg>
+      )
     })
-  }, [value, size, logoSrc, logoSize])
+  }, [value, size, logoSrc, logoSize, darkColor, lightColor])
 
-  return (
-    <canvas
-      ref={canvasRef}
-      width={size}
-      height={size}
-      style={{ width: size, height: size }}
-      className="rounded-2xl"
-    />
-  )
+  if (!svgContent) {
+    return (
+      <div
+        style={{ width: size, height: size, borderRadius: 16, background: lightColor }}
+        aria-label="Loading QR code"
+      />
+    )
+  }
+
+  return <>{svgContent}</>
 }

@@ -38,22 +38,17 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!liffProfile?.userId) {
-        console.log('[v0] No LINE User ID available')
         return
       }
       
       try {
         setProfileLoading(true)
-        console.log('[v0] Fetching profile data for LINE ID:', liffProfile.userId)
-        
         const response = await fetch(`/api/profile/${encodeURIComponent(liffProfile.userId)}`)
         
         if (response.ok) {
           const data = await response.json()
-          console.log('[v0] Profile data fetched successfully:', data)
           setFetchedProfile(data)
         } else {
-          console.log('[v0] Profile fetch returned status:', response.status)
           setFetchedProfile(null)
         }
       } catch (error) {
@@ -181,7 +176,7 @@ export default function ProfilePage() {
               {/* Row 1: Name & Gender */}
               <div className="flex">
                 <div className="flex-1">
-                  <span className="text-[#666666]">ชื่อ-นามสกุล</span>
+                  <span className="text-[#666666]">ช��่อ-นามสกุล</span>
                   <span className="ml-4 text-[#154212] font-medium">{user.name}</span>
                 </div>
                 <div>
@@ -241,14 +236,15 @@ export default function ProfilePage() {
           
           <div className="flex flex-col items-center gap-4">
             {/* QR Code Display */}
-            {liffProfile?.userId && (
-              <div className="bg-white p-4 rounded-lg border border-[#e5e5e5] flex justify-center">
-                <StyledQRCode
-                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/profile-view/${encodeURIComponent(liffProfile.userId)}`}
-                  size={200}
-                />
-              </div>
-            )}
+            <div className="bg-white p-4 rounded-lg border border-[#e5e5e5] flex justify-center">
+              <StyledQRCode
+                value={liffProfile?.userId
+                  ? `${typeof window !== 'undefined' ? window.location.origin : 'https://example.com'}/profile-view/${encodeURIComponent(liffProfile.userId)}`
+                  : 'https://example.com/profile-view/demo'
+                }
+                size={200}
+              />
+            </div>
             
             {/* LINE ID Display and Copy */}
             <div className="w-full">

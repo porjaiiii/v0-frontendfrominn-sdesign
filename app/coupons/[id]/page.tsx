@@ -1,36 +1,15 @@
 'use client'
 
-import { use, useEffect, useRef, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ChevronLeft, AlertCircle } from 'lucide-react'
-import QRCode from 'qrcode'
 import { PageHeader } from '@/components/page-header'
 import { useCoupons } from '@/lib/coupon-context'
+import { StyledQRCode } from '@/components/styled-qr-code'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-
-function QRCanvas({ value }: { value: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  useEffect(() => {
-    if (!canvasRef.current) return
-    QRCode.toCanvas(canvasRef.current, value, {
-      width: 260,
-      margin: 2,
-      color: { dark: '#000000', light: '#ffffff' },
-    })
-  }, [value])
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="rounded-2xl"
-      style={{ width: 260, height: 260 }}
-    />
-  )
-}
 
 export default function CouponDetailPage({
   params,
@@ -132,7 +111,7 @@ export default function CouponDetailPage({
 
               {/* QR Code white card */}
               <div className="bg-white rounded-3xl p-4 mt-5 mx-6 shadow-md flex items-center justify-center relative z-10">
-                <QRCanvas value={coupon.coupon_id} />
+                <StyledQRCode value={coupon.coupon_id} size={260} />
               </div>
             </div>
 

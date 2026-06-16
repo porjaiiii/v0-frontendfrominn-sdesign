@@ -12,7 +12,7 @@ import { useApp } from '@/lib/app-context'
 import { usePoints } from '@/lib/points-context'
 import { MOCK_USER } from '@/lib/mock-user'
 import { Button } from '@/components/ui/button'
-import QRCode from 'qrcode'
+import { StyledQRCode } from '@/components/styled-qr-code'
 
 // Badge levels data with gradient colors
 const BADGE_LEVELS = [
@@ -27,7 +27,6 @@ export default function ProfilePage() {
   const [scanResult, setScanResult] = useState<string | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [copiedLineId, setCopiedLineId] = useState(false)
-  const [qrDataUrl, setQrDataUrl] = useState<string>('')
   const [fetchedProfile, setFetchedProfile] = useState<any>(null)
   const [profileLoading, setProfileLoading] = useState(false)
   
@@ -35,49 +34,21 @@ export default function ProfilePage() {
   const { userProfile } = useApp()
   const { carbon: dbCarbon, weight: dbWeight } = usePoints()
   
-  // Generate QR code with full URL when userId is available
-  useEffect(() => {
-    if (liffProfile?.userId) {
-      // Create full URL for profile-view page
-      const domain = typeof window !== 'undefined' ? window.location.origin : 'https://example.com'
-      const profileViewUrl = `${domain}/profile-view/${encodeURIComponent(liffProfile.userId)}`
-      
-      QRCode.toDataURL(profileViewUrl, {
-        errorCorrectionLevel: 'H',
-        type: 'image/jpeg',
-        quality: 0.95,
-        margin: 1,
-        width: 200,
-        color: {
-          dark: '#000000',
-          light: '#ffffff'
-        }
-      })
-        .then(url => setQrDataUrl(url))
-        .catch(err => console.error('QR Code generation failed:', err))
-    }
-  }, [liffProfile?.userId])
-  
   // Fetch profile data from API
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!liffProfile?.userId) {
-        console.log('[v0] No LINE User ID available')
         return
       }
       
       try {
         setProfileLoading(true)
-        console.log('[v0] Fetching profile data for LINE ID:', liffProfile.userId)
-        
         const response = await fetch(`/api/profile/${encodeURIComponent(liffProfile.userId)}`)
         
         if (response.ok) {
           const data = await response.json()
-          console.log('[v0] Profile data fetched successfully:', data)
           setFetchedProfile(data)
         } else {
-          console.log('[v0] Profile fetch returned status:', response.status)
           setFetchedProfile(null)
         }
       } catch (error) {
@@ -205,7 +176,7 @@ export default function ProfilePage() {
               {/* Row 1: Name & Gender */}
               <div className="flex">
                 <div className="flex-1">
-                  <span className="text-[#666666]">ชื่อ-นามสกุล</span>
+                  <span className="text-[#666666]">ช��่อ-นามสกุล</span>
                   <span className="ml-4 text-[#154212] font-medium">{user.name}</span>
                 </div>
                 <div>
@@ -265,17 +236,15 @@ export default function ProfilePage() {
           
           <div className="flex flex-col items-center gap-4">
             {/* QR Code Display */}
-            {liffProfile?.userId && qrDataUrl && (
-              <div className="bg-white p-4 rounded-lg border border-[#e5e5e5] flex justify-center">
-                <img
-                  src={qrDataUrl}
-                  alt="QR Code for LINE User ID"
-                  width={200}
-                  height={200}
-                  className="rounded"
-                />
-              </div>
-            )}
+            <div className="bg-white p-4 rounded-lg border border-[#e5e5e5] flex justify-center">
+              <StyledQRCode
+                value={liffProfile?.userId
+                  ? `${typeof window !== 'undefined' ? window.location.origin : 'https://example.com'}/profile-view/${encodeURIComponent(liffProfile.userId)}`
+                  : 'https://example.com/profile-view/demo'
+                }
+                size={200}
+              />
+            </div>
             
             {/* LINE ID Display and Copy */}
             <div className="w-full">

@@ -176,7 +176,7 @@ export default function ProfilePage() {
               {/* Row 1: Name & Gender */}
               <div className="flex">
                 <div className="flex-1">
-                  <span className="text-[#666666]">ช��่อ-นามสกุล</span>
+                  <span className="text-[#666666]">ชื่อ-นามสกุล</span>
                   <span className="ml-4 text-[#154212] font-medium">{user.name}</span>
                 </div>
                 <div>

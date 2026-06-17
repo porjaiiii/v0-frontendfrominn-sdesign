@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { ChevronLeft, Ticket } from 'lucide-react'
+import { ChevronLeft, Ticket, RefreshCw } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { useCoupons, type Coupon } from '@/lib/coupon-context'
 import { cn } from '@/lib/utils'
@@ -77,7 +77,7 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
 }
 
 export default function CouponsPage() {
-  const { coupons, loading } = useCoupons()
+  const { coupons, loading, refresh } = useCoupons()
 
   const activeCoupons = coupons.filter((c) => c.status === 'active')
   const usedCoupons = coupons.filter((c) => c.status === 'used')
@@ -93,6 +93,14 @@ export default function CouponsPage() {
             <ChevronLeft size={22} className="text-[#154212]" strokeWidth={2.5} />
           </Link>
           <h1 className="text-lg font-bold text-[#154212]">คูปองของฉัน</h1>
+          <button
+            onClick={() => refresh()}
+            disabled={loading}
+            className="ml-auto p-1.5 rounded-full hover:bg-[#f5f5f5] transition-colors disabled:opacity-40"
+            aria-label="รีเฟรชคูปอง"
+          >
+            <RefreshCw size={16} className={`text-[#154212] ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
         {loading ? (

@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ChevronLeft, AlertCircle } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
-import { useCoupons } from '@/lib/coupon-context'
+import { useCoupons, type Coupon } from '@/lib/coupon-context'
 import { StyledQRCode } from '@/components/styled-qr-code'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -18,16 +18,21 @@ export default function CouponDetailPage({
 }) {
   const { id } = use(params)
   const { getCoupon } = useCoupons()
-  const [mounted, setMounted] = useState(false)
+  const [coupon, setCoupon] = useState<Coupon | undefined>(undefined)
+  const [fetching, setFetching] = useState(true)
 
+  // Fetch coupon from API (with local cache fallback inside getCoupon)
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setFetching(true)
+    getCoupon(id)
+      .then((c) => setCoupon(c))
+      .catch(() => setCoupon(undefined))
+      .finally(() => setFetching(false))
+  }, [id, getCoupon])
 
-  const coupon = mounted ? getCoupon(id) : undefined
   const isUsed = coupon?.status === 'used'
 
-  if (!mounted) {
+  if (fetching) {
     return (
       <div className="min-h-screen bg-[#f5f7f5]">
         <PageHeader />
@@ -77,10 +82,10 @@ export default function CouponDetailPage({
           <h1 className="text-lg font-bold text-[#154212]">คูปองของฉัน</h1>
         </div>
 
-        {/* Coupon card — outer wrapper gives room for the side notches */}
+        {/* Coupon card */}
         <div className={cn('relative mx-3', isUsed && 'opacity-60')}>
 
-          {/* ── Top ticket notch (left & right on the top seam) ── */}
+          {/* Side notches at seam level */}
           <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none" style={{ top: 'calc(55% - 14px)' }}>
             <div className="absolute -left-[14px] top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#f5f7f5]" />
             <div className="absolute -right-[14px] top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#f5f7f5]" />
@@ -88,10 +93,8 @@ export default function CouponDetailPage({
 
           <div className="rounded-3xl overflow-hidden shadow-xl">
 
-            {/* ── Top: dark green section ── */}
+            {/* Top: dark green section */}
             <div className="bg-[#154212] relative flex flex-col items-center pb-8 overflow-hidden">
-
-              {/* Mascot — flipped upside-down, large, peeking from top */}
               <div className="relative w-full flex justify-center" style={{ height: 120 }}>
                 <Image
                   src="/mascot.png"
@@ -103,34 +106,29 @@ export default function CouponDetailPage({
                 />
               </div>
 
-              {/* Title */}
               <h2 className="text-2xl font-bold text-white mb-1 relative z-10">คูปองแลกรางวัล</h2>
               {isUsed && (
                 <span className="text-xs font-semibold text-red-300 mb-1 relative z-10">ใช้งานแล้ว</span>
               )}
 
-              {/* QR Code white card */}
+              {/* QR Code */}
               <div className="bg-white rounded-3xl p-4 mt-5 mx-6 shadow-md flex items-center justify-center relative z-10">
                 <StyledQRCode value={coupon.coupon_id} size={260} />
               </div>
             </div>
 
-            {/* ── Ticket seam between green and sage ── */}
+            {/* Ticket seam */}
             <div className="relative bg-[#ccdece] h-6 flex items-center">
-              {/* Left notch on seam */}
               <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#f5f7f5]" />
-              {/* Right notch on seam */}
               <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#f5f7f5]" />
-              {/* Dashed divider */}
               <div className="w-full border-t-2 border-dashed border-white/70 mx-8" />
             </div>
 
-            {/* ── Bottom: sage section ── */}
+            {/* Bottom: sage section */}
             <div className="bg-[#ccdece] px-5 pt-4 pb-6">
               <p className="text-sm font-semibold text-[#4a7a4a] mb-3">รายละเอียด</p>
 
               <div className="bg-white/40 rounded-2xl p-3 flex items-center gap-4">
-                {/* Product image */}
                 <div className="w-20 h-20 relative rounded-xl overflow-hidden bg-white flex-shrink-0 border border-white/60 shadow-sm">
                   <Image
                     src={coupon.reward_image}
@@ -140,7 +138,6 @@ export default function CouponDetailPage({
                   />
                 </div>
 
-                {/* Product info */}
                 <div className="flex-1 min-w-0">
                   <span className="inline-block px-4 py-1.5 bg-[#154212] text-white text-sm font-bold rounded-xl mb-2">
                     {coupon.reward_name}
@@ -157,12 +154,21 @@ export default function CouponDetailPage({
                   {coupon.points_used.toLocaleString()} คะแนน
                 </span>
               </div>
+
+              {/* Used at */}
+              {coupon.used_at && (
+                <div className="mt-1 flex justify-between items-center px-1">
+                  <span className="text-xs text-[#5a7a5a]">ใช้งานเมื่อ</span>
+                  <span className="text-xs font-medium text-[#cc4444]">
+                    {format(new Date(coupon.used_at), 'd MMMM yyyy', { locale: th })}
+                  </span>
+                </div>
+              )}
             </div>
 
           </div>
         </div>
 
-        {/* Instruction note */}
         <p className="text-center text-xs text-[#888888] mt-6 leading-relaxed">
           แสดง QR code นี้ให้เจ้าหน้าที่สแกน เพื่อรับสินค้าของคุณ
         </p>

@@ -47,7 +47,7 @@ export interface Coupon {
 interface CouponContextType {
   coupons: Coupon[]
   loading: boolean
-  /** Create a coupon after a successful reward redemption */
+  /** Create a coupon after a successful reward redemption — calls backend API */
   addCoupon: (params: {
     reward_id: number
     reward_name: string
@@ -55,7 +55,7 @@ interface CouponContextType {
     reward_image: string
     points_used: number
     tx_id?: string
-  }) => Coupon
+  }) => Promise<Coupon>
   /** Get a single coupon by ID */
   getCoupon: (coupon_id: string) => Coupon | undefined
   /** Mark a coupon as used (for future scanner integration) */
@@ -110,26 +110,38 @@ export function CouponProvider({ children }: { children: ReactNode }) {
   )
 
   const addCoupon = useCallback(
-    (params: {
+    async (params: {
       reward_id: number
       reward_name: string
       reward_description: string
       reward_image: string
       points_used: number
       tx_id?: string
-    }): Coupon => {
-      const coupon: Coupon = {
-        coupon_id: generateCouponId(),
-        user_id: userId,
-        reward_id: params.reward_id,
-        reward_name: params.reward_name,
-        reward_description: params.reward_description,
-        reward_image: params.reward_image,
-        points_used: params.points_used,
-        tx_id: params.tx_id,
-        status: 'active',
-        redeemed_at: new Date().toISOString(),
+    }): Promise<Coupon> => {
+      // Call backend API to persist coupon in Google Sheet
+      const response = await fetch('/api/coupons/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          reward_id: params.reward_id,
+          reward_name: params.reward_name,
+          reward_description: params.reward_description,
+          reward_image: params.reward_image,
+          points_used: params.points_used,
+          tx_id: params.tx_id,
+        }),
+      })
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err?.error ?? 'Failed to create coupon')
       }
+
+      const data = await response.json()
+      const coupon: Coupon = data.coupon
+
+      // Also cache locally so UI is instant without re-fetch
       persist([coupon, ...coupons])
       return coupon
     },

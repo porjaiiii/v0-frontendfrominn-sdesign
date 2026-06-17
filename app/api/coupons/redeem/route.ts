@@ -90,12 +90,11 @@ export async function POST(request: NextRequest) {
       scanned_by: '',
     }
 
-    // ── Send to Google Apps Script ────────────────────────────────────────
+      // ── Send to Google Apps Script ────────────────────────────────────────
     const payload = {
-      action: 'createCoupon',
-      type: 'insert',
-      ...coupon,
-    }
+    action: 'redeem',  // แก้ให้ตรงกับ if (action === 'redeem')
+    coupon: coupon     // ใส่ข้อมูล coupon ยัดเข้าไปใน object ชื่อ coupon ตามที่ GAS เรียกใช้ (data.coupon)
+   }
 
     console.log('[v0] POST /api/coupons/redeem — sending to GAS URL:', COUPON_SCRIPT_URL)
     console.log('[v0] POST /api/coupons/redeem — GAS payload:', JSON.stringify(payload))

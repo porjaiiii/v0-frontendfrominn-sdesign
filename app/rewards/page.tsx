@@ -51,17 +51,22 @@ export default function RewardsPage() {
     })
     setProcessing(false)
     if (result.success) {
-      // Create a coupon record for this redemption
-      const coupon = addCoupon({
-        reward_id: redeemTarget.id,
-        reward_name: redeemTarget.name,
-        reward_description: redeemTarget.description ?? '',
-        reward_image: redeemTarget.image,
-        points_used: redeemTarget.points,
-        tx_id: result.tx_id,
-      })
-      setNewCouponId(coupon.coupon_id)
-      setRedeemSuccess(true)
+      try {
+        // Create a coupon record for this redemption — calls backend API
+        const coupon = await addCoupon({
+          reward_id: redeemTarget.id,
+          reward_name: redeemTarget.name,
+          reward_description: redeemTarget.description ?? '',
+          reward_image: redeemTarget.image,
+          points_used: redeemTarget.points,
+          tx_id: result.tx_id,
+        })
+        setNewCouponId(coupon.coupon_id)
+        setRedeemSuccess(true)
+      } catch (err) {
+        console.error('[v0] addCoupon API error:', err)
+        setRedeemError('แลกคะแนนสำเร็จ แต่ไม่สามารถสร้างคูปองได้ กรุณาติดต่อเจ้าหน้าที่')
+      }
     } else {
       setRedeemError(result.message || 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่')
     }

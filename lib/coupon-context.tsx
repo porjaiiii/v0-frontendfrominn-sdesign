@@ -113,26 +113,33 @@ export function CouponProvider({ children }: { children: ReactNode }) {
       points_used: number
       tx_id?: string
     }): Promise<Coupon> => {
+      const body = {
+        user_id: userId,
+        reward_id: params.reward_id,
+        reward_name: params.reward_name,
+        reward_description: params.reward_description,
+        reward_image: params.reward_image,
+        points_used: params.points_used,
+        tx_id: params.tx_id ?? '',
+      }
+      console.log('[v0] coupon-context addCoupon — POST /api/coupons/redeem body:', body)
+
       const response = await fetch('/api/coupons/redeem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          reward_id: params.reward_id,
-          reward_name: params.reward_name,
-          reward_description: params.reward_description,
-          reward_image: params.reward_image,
-          points_used: params.points_used,
-          tx_id: params.tx_id ?? '',
-        }),
+        body: JSON.stringify(body),
       })
+
+      console.log('[v0] coupon-context addCoupon — response status:', response.status)
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}))
+        console.error('[v0] coupon-context addCoupon — error response:', err)
         throw new Error(err?.error ?? 'Failed to create coupon')
       }
 
       const data = await response.json()
+      console.log('[v0] coupon-context addCoupon — success response:', data)
       const coupon: Coupon = data.coupon
 
       // Optimistically prepend to local state so UI updates immediately

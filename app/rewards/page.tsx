@@ -40,34 +40,54 @@ export default function RewardsPage() {
   const handleConfirmRedeem = async () => {
     if (!redeemTarget) return
     setRedeemError(null)
+
+    console.log('[v0] handleConfirmRedeem — redeemTarget:', redeemTarget)
+    console.log('[v0] handleConfirmRedeem — userPoints:', userPoints)
+
     if (redeemTarget.points > userPoints) {
+      console.log('[v0] handleConfirmRedeem — not enough points, required:', redeemTarget.points, 'have:', userPoints)
       setRedeemError('คะแนนของคุณไม่เพียงพอ')
       return
     }
+
     setProcessing(true)
+    console.log('[v0] spendPoints — calling with amount:', redeemTarget.points, 'detail:', {
+      category: 'reward',
+      items: [{ name: redeemTarget.name, quantity: 1, points: redeemTarget.points }],
+    })
+
     const result = await spendPoints(redeemTarget.points, {
       category: 'reward',
       items: [{ name: redeemTarget.name, quantity: 1, points: redeemTarget.points }],
     })
+
+    console.log('[v0] spendPoints — result:', result)
     setProcessing(false)
+
     if (result.success) {
+      console.log('[v0] spendPoints — success, tx_id:', result.tx_id)
       try {
-        // Create a coupon record for this redemption — calls backend API
-        const coupon = await addCoupon({
+        const payload = {
           reward_id: redeemTarget.id,
           reward_name: redeemTarget.name,
           reward_description: redeemTarget.description ?? '',
           reward_image: redeemTarget.image,
           points_used: redeemTarget.points,
           tx_id: result.tx_id,
-        })
+        }
+        console.log('[v0] addCoupon — calling with payload:', payload)
+
+        const coupon = await addCoupon(payload)
+
+        console.log('[v0] addCoupon — response coupon:', coupon)
         setNewCouponId(coupon.coupon_id)
         setRedeemSuccess(true)
       } catch (err) {
-        console.error('[v0] addCoupon API error:', err)
+        console.error('[v0] addCoupon — error:', err)
         setRedeemError('แลกคะแนนสำเร็จ แต่ไม่สามารถสร้างคูปองได้ กรุณาติดต่อเจ้าหน้าที่')
       }
     } else {
+      console.warn('[v0] spendPoints — failed:', result.message)
       setRedeemError(result.message || 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่')
     }
   }

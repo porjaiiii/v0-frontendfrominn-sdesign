@@ -65,6 +65,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <Link href="/profile-scanner" className="block text-xs font-semibold text-[#154212] text-center mt-1 hover:underline" onClick={onClose}>
                 สแกน QR Code
               </Link>
+              <Link href="/coupon-scanner" className="flex items-center justify-center gap-1 text-xs font-semibold text-[#154212] text-center mt-1 hover:underline" onClick={onClose}>
+                <QrCode className="w-3 h-3" />
+                สแกนคูปอง
+              </Link>
             </div>
           </div>
 

@@ -11,6 +11,11 @@ import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 
+function useCouponConfirmUrl(couponId: string) {
+  if (typeof window === 'undefined') return ''
+  return `${window.location.origin}/coupon-confirm/${couponId}`
+}
+
 export default function CouponDetailPage({
   params,
 }: {
@@ -31,6 +36,7 @@ export default function CouponDetailPage({
   }, [id, getCoupon])
 
   const isUsed = coupon?.status === 'used'
+  const qrUrl = useCouponConfirmUrl(id)
 
   if (fetching) {
     return (
@@ -113,7 +119,7 @@ export default function CouponDetailPage({
 
               {/* QR Code */}
               <div className="bg-white rounded-3xl p-4 mt-5 mx-6 shadow-md flex items-center justify-center relative z-10">
-                <BrandedQRCode value={coupon.coupon_id} size={260} />
+                <BrandedQRCode value={qrUrl || coupon.coupon_id} size={260} />
               </div>
             </div>
 
@@ -170,7 +176,7 @@ export default function CouponDetailPage({
         </div>
 
         <p className="text-center text-xs text-[#888888] mt-6 leading-relaxed">
-          แสดง QR code นี้ให้เจ้าหน้าที่สแกน เพื่อรับสินค้าของคุณ
+          แสดง QR code นี้ให้เจ้าหน้าที���สแกน เพื่อรับสินค้าของคุณ
         </p>
       </main>
     </div>

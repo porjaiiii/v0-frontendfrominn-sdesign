@@ -17,7 +17,12 @@ export default function CouponConfirmPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
-  const couponId = decodeURIComponent(id)
+  // id อาจเป็น coupon_id โดยตรง หรือ full URL ที่ encode มา
+  // ถ้ามี '/' อยู่ใน decoded value = full URL → ดึงเฉพาะ path segment สุดท้าย
+  const rawId = decodeURIComponent(id)
+  const couponId = rawId.startsWith('http')
+    ? rawId.split('/').pop() ?? rawId
+    : rawId
   const router = useRouter()
   const { profile } = useLiffContext()
 
@@ -30,6 +35,7 @@ export default function CouponConfirmPage({
     const fetchCoupon = async () => {
       setStatus('loading')
       try {
+        console.log('[v0] coupon-confirm — rawId:', rawId, '| couponId:', couponId)
         const res = await fetch(`/api/coupons/${encodeURIComponent(couponId)}`)
         if (res.status === 404) {
           setStatus('not_found')
@@ -66,6 +72,7 @@ export default function CouponConfirmPage({
     if (!coupon) return
     setStatus('confirming')
     try {
+      console.log('[v0] handleConfirm — couponId:', couponId, '| scanned_by:', profile?.userId ?? '(none)')
       const res = await fetch('/api/coupons/use', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,16 +82,18 @@ export default function CouponConfirmPage({
         }),
       })
 
-      if (res.status === 409) {
-        setStatus('already_used')
-        return
-      }
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err?.error ?? 'ไม่สามารถอัปเดตคูปองได้')
-      }
+        console.log('[v0] useCoupon response status:', res.status)
+        if (res.status === 409) {
+          setStatus('already_used')
+          return
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          console.error('[v0] useCoupon error body:', err)
+          throw new Error(err?.error ?? 'ไม่สามารถอัปเดตคูปองได้')
+        }
 
-      setStatus('success')
+        setStatus('success')
     } catch (err) {
       setStatus('error')
       setErrorMsg(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
@@ -92,11 +101,11 @@ export default function CouponConfirmPage({
   }
 
   const handleCancel = () => {
-    router.push('/coupon-scanner')
+    router.back()
   }
 
   const handleScanAgain = () => {
-    router.push('/coupon-scanner')
+    router.back()
   }
 
   // ── Loading state ──────────────────────────────────────────────────────────

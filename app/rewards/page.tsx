@@ -176,7 +176,7 @@ export default function RewardsPage() {
             </span>
             <span className="text-lg text-white/80">คะแนน</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Link 
               href="/history"
               className="px-4 py-1.5 bg-white rounded-lg text-sm font-medium text-[#154212] hover:bg-[#f5f5f5] transition-colors"
@@ -188,6 +188,15 @@ export default function RewardsPage() {
               className="px-4 py-1.5 bg-white rounded-lg text-sm font-medium text-[#154212] hover:bg-[#f5f5f5] transition-colors"
             >
               บริจาคคะแนน
+            </Link>
+          </div>
+          <div className="mt-3">
+            <Link
+              href="/coupons"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium text-white transition-colors border border-white/30"
+            >
+              <Ticket size={15} />
+              คูปองของฉัน
             </Link>
           </div>
         </div>

@@ -8,6 +8,8 @@ import { MapPin } from 'lucide-react'
 import Link from 'next/link'
 import type { RankingEntry } from '@/app/api/ranking/route'
 import { useLiffContext } from '@/lib/liff-context'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
 
 type LeaderboardEntry = {
   rank: number
@@ -202,15 +204,25 @@ export default function RankingPage() {
               <p className="text-sm text-white/90 mb-1">{currentUser.name}</p>
               <p className="text-sm text-white/80 mb-1">ยอดสะสมของคุณ</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-white">{currentUser.carbon}</span>
-                <span className="text-sm text-white/80">kgCO2</span>
+                {isLoading ? (
+                  <Spinner className="size-6 text-white/90 my-1" />
+                ) : (
+                  <>
+                    <span className="text-2xl font-bold text-white">{currentUser.carbon}</span>
+                    <span className="text-sm text-white/80">kgCO2</span>
+                  </>
+                )}
               </div>
             </div>
             <div className="text-right">
               <p className="text-sm text-white/80">อันดับ</p>
-              <p className="text-2xl font-bold text-white">
-                {currentUser.rank > 0 ? `#${currentUser.rank}` : '-'}
-              </p>
+              {isLoading ? (
+                <Spinner className="size-6 text-white/90 my-1 ml-auto" />
+              ) : (
+                <p className="text-2xl font-bold text-white">
+                  {currentUser.rank > 0 ? `#${currentUser.rank}` : '-'}
+                </p>
+              )}
             </div>
           </div>
           <Link
@@ -237,12 +249,37 @@ export default function RankingPage() {
             </div>
           )}
 
-          {/* Loading skeleton */}
+          {/* Loading skeleton — mirrors the podium + leaderboard list layout */}
           {isLoading && (
-            <div className="space-y-2 animate-pulse">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-16 bg-[#f0f0f0] rounded-xl" />
-              ))}
+            <div>
+              {/* Podium skeleton: rank 2, 1, 3 (middle is tallest) */}
+              <div className="flex items-end justify-center gap-2 mb-2">
+                {[110, 150, 110].map((h, i) => (
+                  <div key={i} className="flex flex-col items-center">
+                    <Skeleton className="w-16 h-16 rounded-full mb-2" />
+                    <Skeleton className="w-16 h-4 rounded mb-2" />
+                    <Skeleton className="w-28 rounded-t-lg" style={{ height: h }} />
+                  </div>
+                ))}
+              </div>
+
+              {/* List rows skeleton */}
+              <div className="rounded-3xl overflow-hidden">
+                <div className="bg-gradient-to-b from-[#e7f6ea] to-white p-2 space-y-2">
+                  <Skeleton className="w-full max-w-sm mx-auto h-10 rounded-2xl mb-2" />
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-[#eee]">
+                      <Skeleton className="w-8 h-8 rounded-full" />
+                      <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-2/3 rounded" />
+                        <Skeleton className="h-3 w-1/3 rounded" />
+                      </div>
+                      <Skeleton className="h-4 w-12 rounded" />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 

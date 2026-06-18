@@ -12,7 +12,7 @@ import { useApp } from '@/lib/app-context'
 import { usePoints } from '@/lib/points-context'
 import { MOCK_USER } from '@/lib/mock-user'
 import { Button } from '@/components/ui/button'
-import { StyledQRCode } from '@/components/styled-qr-code'
+import { BrandedQRCode } from '@/components/branded-qr-code'
 
 // Badge levels data with gradient colors
 const BADGE_LEVELS = [
@@ -22,6 +22,32 @@ const BADGE_LEVELS = [
   { id: 4, name: 'นักอนุรักษ์ระดับผู้เชี่ยวชาญ', min: 500, max: 999, gradient: 'from-[#f5c4c4] to-[#c06161]', iconColor: 'text-[#e74c3c]', active: false },
 ]
 
+// Recycle waste types → Thai label + chart color (shared by both graphs)
+const WASTE_META: Record<string, { label: string; color: string }> = {
+  plastic:  { label: 'พลาสติก',    color: '#6fc061' },
+  glass:    { label: 'แก้ว',       color: '#606dc0' },
+  paper:    { label: 'กระดาษ',     color: '#c06161' },
+  aluminum: { label: 'อลูมิเนียม', color: '#d7ce56' },
+  oil:      { label: 'น้ำมันเก่า', color: '#60c098' },
+}
+const WASTE_ORDER = ['plastic', 'glass', 'paper', 'aluminum', 'oil']
+
+// One row of the co2_collection sheet (per user, per waste type)
+type Co2Row = { waste_type: string; weight: number; co2: number }
+
+// Shown inside a graph card when there's no data yet
+function EmptyGraph() {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center">
+      <div className="w-12 h-12 rounded-full bg-[#f5f5f5] flex items-center justify-center mb-2">
+        <TreePine className="w-6 h-6 text-[#b5b5b5]" />
+      </div>
+      <p className="text-sm text-[#999999]">ยังไม่มีข้อมูล</p>
+      <p className="text-xs text-[#bbbbbb] mt-0.5">เริ่มเก็บขยะรีไซเคิลเพื่อดูสถิติของคุณ</p>
+    </div>
+  )
+}
+
 export default function ProfilePage() {
   const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0)
   const [scanResult, setScanResult] = useState<string | null>(null)
@@ -29,6 +55,7 @@ export default function ProfilePage() {
   const [copiedLineId, setCopiedLineId] = useState(false)
   const [fetchedProfile, setFetchedProfile] = useState<any>(null)
   const [profileLoading, setProfileLoading] = useState(false)
+  const [co2Collection, setCo2Collection] = useState<Co2Row[] | null>(null)
   
   const { isReady, isLoggedIn, profile: liffProfile, scanCode, openExternalBrowser, isInClient } = useLiffContext()
   const { userProfile } = useApp()
@@ -61,7 +88,30 @@ export default function ProfilePage() {
     
     fetchUserProfile()
   }, [liffProfile?.userId])
-  
+
+  // Fetch the per-waste-type breakdown (co2_collection sheet) for the graphs
+  useEffect(() => {
+    const userId = liffProfile?.userId
+    if (!userId) {
+      setCo2Collection([]) // guest / not logged in → treat as no data
+      return
+    }
+    const controller = new AbortController()
+    fetch(`/api/points?action=get_co2_collection&user_id=${encodeURIComponent(userId)}`, {
+      signal: controller.signal,
+    })
+      .then((res) => res.json())
+      .then((data) =>
+        setCo2Collection(
+          data?.success && Array.isArray(data.collection) ? (data.collection as Co2Row[]) : []
+        )
+      )
+      .catch((err) => {
+        if (err.name !== 'AbortError') setCo2Collection([])
+      })
+    return () => controller.abort()
+  }, [liffProfile?.userId])
+
   // Use fetched profile data, fallback to LIFF and mock if not available
   const user = {
     name: fetchedProfile?.name || liffProfile?.displayName || MOCK_USER.name,
@@ -84,21 +134,25 @@ export default function ProfilePage() {
     totalRecycled: dbWeight,
   }
 
-  const recycleData = [
-    { name: 'พลาสติก', value: 30.5, color: '#6fc061' },
-    { name: 'แก้ว', value: 10, color: '#c06161' },
-    { name: 'กระดาษ', value: 5, color: '#d7ce56' },
-    { name: 'อลูมิเนียม', value: 8, color: '#606dc0' },
-    { name: 'น้ำมันเก่า', value: 0, color: '#60c098' },
+  // Build the two graph datasets from the real co2_collection rows.
+  const graphLoading = !!liffProfile?.userId && co2Collection === null
+  const presentKeys = Array.from(new Set((co2Collection ?? []).map((r) => r.waste_type)))
+  const orderedKeys = [
+    ...WASTE_ORDER.filter((k) => presentKeys.includes(k)),
+    ...presentKeys.filter((k) => !WASTE_ORDER.includes(k)),
   ]
-
-  const co2Data = [
-    { name: 'พลาสติก', value: 67.42, color: '#6fc061' },
-    { name: 'แก้ว', value: 22.15, color: '#c06161' },
-    { name: 'กระดาษ', value: 6.26, color: '#d7ce56' },
-    { name: 'อลูมิเนียม', value: 4.2, color: '#606dc0' },
-    { name: 'น้ำมันเก่า', value: 0, color: '#60c098' },
-  ]
+  const buildGraph = (field: 'weight' | 'co2') =>
+    orderedKeys
+      .map((key) => {
+        const meta = WASTE_META[key] ?? { label: key, color: '#9aa39a' }
+        const total = (co2Collection ?? [])
+          .filter((r) => r.waste_type === key)
+          .reduce((sum, r) => sum + (Number(r[field]) || 0), 0)
+        return { name: meta.label, value: Math.round(total * 100) / 100, color: meta.color }
+      })
+      .filter((d) => d.value > 0)
+  const recycleData = buildGraph('weight')
+  const co2Data = buildGraph('co2')
 
   const currentBadge = BADGE_LEVELS[currentBadgeIndex]
   const badgeProgress = (stats.totalRecycled / currentBadge.max) * 100
@@ -237,7 +291,7 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center gap-4">
             {/* QR Code Display */}
             <div className="bg-white p-4 rounded-lg border border-[#e5e5e5] flex justify-center">
-              <StyledQRCode
+              <BrandedQRCode
                 value={liffProfile?.userId
                   ? `${typeof window !== 'undefined' ? window.location.origin : 'https://example.com'}/profile-view/${encodeURIComponent(liffProfile.userId)}`
                   : 'https://example.com/profile-view/demo'
@@ -351,8 +405,8 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Badge Section with Navigation */}
-        <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
+        {/* Badge Section with Navigation — hidden for now (not deleted) */}
+        <div className="hidden bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
           {/* Badge Icons Row with Navigation */}
           <div className="flex items-center justify-between mb-4">
             <button 
@@ -410,78 +464,114 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        {/* Pie Chart - Recycle Breakdown */}
+        {/* Graph - Recycled weight breakdown (KG) */}
         <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
-          <p className="text-sm font-semibold text-[#154212] mb-3">การทำการสะสมของ Recycle ของคุณ</p>
-          
-          <div className="flex items-center gap-4">
-            <div className="w-32 h-32">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={recycleData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={25}
-                    outerRadius={50}
-                    dataKey="value"
-                  >
-                    {recycleData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            
-            {/* Legend */}
-            <div className="flex-1 space-y-1">
-              {recycleData.map((item) => (
-                <div key={item.name} className="flex items-center gap-2 text-xs">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-[#666666]">{item.name}</span>
-                  <span className="ml-auto font-medium text-[#154212]">{item.value} KG</span>
+          <p className="text-sm font-semibold text-[#154212] mb-3">กราฟการสะสมน้ำหนักขยะของคุณ (KG)</p>
+
+          {graphLoading ? (
+            <div className="h-40 rounded-xl bg-[#f5f5f5] animate-pulse" />
+          ) : recycleData.length === 0 ? (
+            <EmptyGraph />
+          ) : (
+            <>
+              <div className="flex justify-center">
+                <div className="w-40 h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={recycleData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={42}
+                        outerRadius={72}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {recycleData.map((entry, index) => (
+                          <Cell key={`cell-w-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+
+              {/* Legend — 2-column grid below the donut */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3">
+                {recycleData.map((item) => (
+                  <div key={item.name} className="flex items-center gap-2 text-xs">
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="text-[#666666]">{item.name}</span>
+                    <span className="ml-auto font-medium text-[#154212]">{item.value} KG</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Pie Chart - CO2 Breakdown (changed from bar to pie) */}
-        <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
-          <p className="text-sm font-semibold text-[#154212] mb-3">การทำการสะสมของ Recycle เป็น Co2 ของคุณ</p>
-          
-          <div className="flex items-center gap-4">
-            <div className="w-32 h-32">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={co2Data}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={25}
-                    outerRadius={50}
-                    dataKey="value"
-                  >
-                    {co2Data.map((entry, index) => (
-                      <Cell key={`cell-co2-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            
-            {/* Legend */}
-            <div className="flex-1 space-y-1">
-              {co2Data.map((item) => (
-                <div key={item.name} className="flex items-center gap-2 text-xs">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-[#666666]">{item.name}</span>
-                  <span className="ml-auto font-medium text-[#154212]">{item.value} kgCO2</span>
+        {/* Graph - CO2 reduction breakdown + tree equivalent */}
+        <div className="bg-white rounded-xl border border-[#e5e5e5] overflow-hidden mb-4 shadow-sm">
+          <div className="p-4">
+            <p className="text-sm font-semibold text-[#154212] mb-3">กราฟสะสมการลดค่า CO2 ของคุณ</p>
+
+            {graphLoading ? (
+              <div className="h-40 rounded-xl bg-[#f5f5f5] animate-pulse" />
+            ) : co2Data.length === 0 ? (
+              <EmptyGraph />
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="w-32 h-32 flex-shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={co2Data}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={34}
+                        outerRadius={58}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {co2Data.map((entry, index) => (
+                          <Cell key={`cell-co2-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
+
+                {/* Legend on the right */}
+                <div className="flex-1 space-y-1.5">
+                  {co2Data.map((item) => (
+                    <div key={item.name} className="flex items-center gap-2 text-xs">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                      <span className="text-[#666666]">{item.name}</span>
+                      <span className="ml-auto font-medium text-[#154212]">{item.value} kgCO2</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Tree illustration + "equivalent trees planted" — only when there's CO2 data */}
+          {!graphLoading && co2Data.length > 0 && (
+            <div className="relative">
+              <div
+                className="h-44 bg-no-repeat bg-cover bg-bottom"
+                style={{ backgroundImage: 'url(/graphtree-bg.svg)' }}
+              />
+              <div className="absolute bottom-4 right-4 bg-[#eaf6e8]/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-md text-center">
+                <p className="text-xs font-medium text-[#4a7a4a] mb-1">เทียบเท่าการปลูกต้นไม้</p>
+                <p className="text-2xl font-bold text-[#154212] flex items-center justify-center gap-1.5">
+                  <TreePine className="w-6 h-6 text-[#6fc061]" />
+                  {stats.treesPlanted}
+                  <span className="text-sm font-medium">ต้น</span>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 

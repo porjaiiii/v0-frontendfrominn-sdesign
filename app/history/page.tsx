@@ -233,8 +233,12 @@ export default function HistoryPage() {
   const rewardItems = (spendDetails ?? []).map(spendDetailToItem)
   const realItems = [...earnItems, ...rewardItems].sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0))
 
-  // Use real data when we have any; otherwise fall back to the mockup.
-  const sourceData = realItems.length > 0 ? realItems : historyData
+  // Still waiting on the Google Sheet fetch for a logged-in user.
+  const isLoading =
+    !!liffProfile?.userId && (transactions === null || spendDetails === null)
+
+  // Show only real data — no mock fallback.
+  const sourceData = realItems
 
   const filteredData = activeFilter === 'all'
     ? sourceData
@@ -280,6 +284,41 @@ export default function HistoryPage() {
             </button>
           ))}
         </div>
+
+        {/* Loading skeleton — while fetching from Google Sheet */}
+        {isLoading && (
+          <div className="space-y-6">
+            {[...Array(2)].map((_, g) => (
+              <div key={g}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-[#e5e5e5]" />
+                  <div className="h-4 w-28 bg-[#f0f0f0] rounded animate-pulse" />
+                </div>
+                <div className="ml-[3px] border-l-2 border-[#e5e5e5] pl-5 space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#e5e5e5]">
+                      <div className="w-10 h-10 rounded-full bg-[#f0f0f0] animate-pulse flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 w-16 bg-[#f0f0f0] rounded animate-pulse" />
+                        <div className="h-4 w-2/3 bg-[#f0f0f0] rounded animate-pulse" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty state — no history to show */}
+        {!isLoading && filteredData.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-14 h-14 rounded-full bg-[#f5f5f5] flex items-center justify-center mb-3">
+              <Recycle className="w-7 h-7 text-[#b5b5b5]" />
+            </div>
+            <p className="text-sm text-[#999999]">ยังไม่มีประวัติการใช้งาน</p>
+          </div>
+        )}
 
         {/* History List Grouped by Date */}
         <div className="space-y-6">

@@ -1,6 +1,6 @@
 'use client'
 
-import { Menu, Award } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -19,51 +19,50 @@ export function PageHeader({ title, showBack = false, onBack }: PageHeaderProps)
   const { profile: liffProfile, isReady } = useLiffContext()
   const { userProfile } = useApp()
 
-  // Use LINE profile if available, otherwise use demo data
-  const displayName = liffProfile?.displayName || userProfile?.displayName || 'ผู้ใช้'
+  // While LIFF is still initializing we don't yet know who the user is —
+  // show a shimmer instead of a scary "loading" name.
+  const isProfileLoading = !isReady
+
+  // Use LINE profile if available, otherwise fall back to a friendly guest name
+  const displayName = liffProfile?.displayName || userProfile?.displayName || 'ผู้เยี่ยมชม'
   const profilePicture = liffProfile?.pictureUrl || userProfile?.pictureUrl || '/placeholder-user.jpg'
 
   return (
     <>
       <header className="sticky top-0 bg-white border-b border-black/20 z-40">
         <div className="max-w-md mx-auto flex items-center justify-between h-[50px] px-4">
-          {/* Menu Button + LINE Username */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-1 rounded-full hover:bg-[#f5f5f5] transition-colors"
-            >
-              <Menu className="w-5 h-5 text-[#154212]" strokeWidth={2.5} />
-            </button>
-            
-            {/* LINE Profile Picture + Username */}
-            <Link href="/profile" className="flex items-center gap-1.5">
-              <div className="relative w-[28px] h-[28px] rounded-full overflow-hidden border border-[#154212] flex-shrink-0">
-                <Image
-                  src={profilePicture}
-                  alt="Profile"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <span className="text-sm font-medium text-[#154212] max-w-[100px] truncate">
-                {displayName}
-              </span>
-            </Link>
-          </div>
-
-          {/* User Badge on right */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-[#91c1e7] to-[#9fcba5] border border-[#154212]">
-              <div className="relative w-5 h-5">
-                <Award className="w-5 h-5 text-[#154212]" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-white shadow" />
+          {/* LINE Profile Picture + Username */}
+          <Link href="/profile" className="flex items-center gap-1.5">
+            {isProfileLoading ? (
+              <>
+                <div className="w-[28px] h-[28px] rounded-full shimmer flex-shrink-0" />
+                <div className="h-4 w-20 rounded shimmer" />
+              </>
+            ) : (
+              <>
+                <div className="relative w-[28px] h-[28px] rounded-full overflow-hidden border border-[#154212] flex-shrink-0">
+                  <Image
+                    src={profilePicture}
+                    alt="Profile"
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-              </div>
-              <span className="text-xs font-semibold text-[#154212]">นักอนุรักษ์มือใหม่</span>
-            </div>
-          </div>
+                <span className="text-sm font-medium text-[#154212] max-w-[100px] truncate">
+                  {displayName}
+                </span>
+              </>
+            )}
+          </Link>
+
+          {/* Menu Button — top right, light gray */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="เปิดเมนู"
+            className="p-1 rounded-full hover:bg-[#f5f5f5] transition-colors"
+          >
+            <Menu className="w-5 h-5 text-[#d1d5db]" strokeWidth={2.5} />
+          </button>
         </div>
       </header>
 

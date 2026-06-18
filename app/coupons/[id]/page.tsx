@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { ChevronLeft, AlertCircle } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { useCoupons, type Coupon } from '@/lib/coupon-context'
-import { StyledQRCode } from '@/components/styled-qr-code'
+import { BrandedQRCode } from '@/components/branded-qr-code'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
@@ -113,7 +113,7 @@ export default function CouponDetailPage({
 
               {/* QR Code */}
               <div className="bg-white rounded-3xl p-4 mt-5 mx-6 shadow-md flex items-center justify-center relative z-10">
-                <StyledQRCode value={coupon.coupon_id} size={260} />
+                <BrandedQRCode value={coupon.coupon_id} size={260} />
               </div>
             </div>
 

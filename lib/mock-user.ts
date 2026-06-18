@@ -3,8 +3,8 @@
 // else's name/stats and thinks the app is broken.
 export const MOCK_USER = {
   lineUserId:    'mock-current-user',
-  name:          'กำลังโหลดข้อมูล...',
-  displayName:   'กำลังโหลดข้อมูล...',
+  name:          'ผู้เยี่ยมชม',
+  displayName:   'ผู้เยี่ยมชม',
   avatar:        '/placeholder-user.jpg',
 
   gender:        '-',

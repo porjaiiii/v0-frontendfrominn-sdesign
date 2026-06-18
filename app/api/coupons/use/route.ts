@@ -35,17 +35,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing coupon_id' }, { status: 400 })
     }
 
-    const payload = {
-      action: 'useCoupon',
-      coupon_id,
-      scanned_by: scanned_by ?? '',
-      used_at: new Date().toISOString(),
-    }
+    // GAS Web App ไม่รองรับ JSON POST โดยตรง (จะ redirect ไป Google login)
+    // ใช้ GET + query string แทนเหมือนกับ route อื่น ๆ ในโปรเจกต์นี้
+    const scriptUrl = new URL(COUPON_SCRIPT_URL)
+    scriptUrl.searchParams.set('action', 'useCoupon')
+    scriptUrl.searchParams.set('coupon_id', coupon_id)
+    scriptUrl.searchParams.set('scanned_by', scanned_by ?? '')
+    scriptUrl.searchParams.set('used_at', new Date().toISOString())
 
-    const response = await fetch(COUPON_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+    const response = await fetch(scriptUrl.toString(), {
+      method: 'GET',
+      redirect: 'follow',
     })
 
     if (!response.ok) {

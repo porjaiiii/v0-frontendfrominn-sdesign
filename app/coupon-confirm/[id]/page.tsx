@@ -35,7 +35,6 @@ export default function CouponConfirmPage({
     const fetchCoupon = async () => {
       setStatus('loading')
       try {
-        console.log('[v0] coupon-confirm — rawId:', rawId, '| couponId:', couponId)
         const res = await fetch(`/api/coupons/${encodeURIComponent(couponId)}`)
         if (res.status === 404) {
           setStatus('not_found')
@@ -72,7 +71,6 @@ export default function CouponConfirmPage({
     if (!coupon) return
     setStatus('confirming')
     try {
-      console.log('[v0] handleConfirm — couponId:', couponId, '| scanned_by:', profile?.userId ?? '(none)')
       const res = await fetch('/api/coupons/use', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -82,14 +80,12 @@ export default function CouponConfirmPage({
         }),
       })
 
-        console.log('[v0] useCoupon response status:', res.status)
         if (res.status === 409) {
           setStatus('already_used')
           return
         }
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
-          console.error('[v0] useCoupon error body:', err)
           throw new Error(err?.error ?? 'ไม่สามารถอัปเดตคูปองได้')
         }
 

@@ -12,8 +12,8 @@ export async function POST(request: Request) {
     // เรียก GAS ด้วย GET + query string (pattern เดียวกับ route อื่นในโปรเจกต์)
     const url = new URL(ADMIN_SCRIPT_URL)
     url.searchParams.set('action', 'verifyAdminKey')
-    url.searchParams.set('admin_key', adminKey)
-    url.searchParams.set('user_id', userId ?? '')
+    url.searchParams.set('adminKey', adminKey)
+    url.searchParams.set('userId', userId ?? '')
 
     const gasRes = await fetch(url.toString(), { method: 'GET', redirect: 'follow' })
 
@@ -30,20 +30,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true })
     }
 
-    // แยก error reason เพื่อให้ frontend แสดงข้อความที่ถูกต้อง
-    const reason = (result.reason ?? result.message ?? '').toLowerCase()
+    // GAS ส่ง reason กลับมาตรงๆ เช่น 'KEY_TAKEN', 'KEY_INVALID', 'MISSING_PARAMS' ฯลฯ
+    const reason = result.reason ?? ''
 
-    if (reason.includes('bound') || reason.includes('taken') || reason.includes('other')) {
-      // key ถูกผูกกับ user อื่นแล้ว
+    if (reason === 'KEY_TAKEN') {
       return NextResponse.json({ error: 'KEY_TAKEN' }, { status: 403 })
     }
 
-    if (reason.includes('not found') || reason.includes('invalid') || reason.includes('ไม่พบ')) {
-      // key ไม่มีใน sheet
+    if (reason === 'KEY_INVALID') {
       return NextResponse.json({ error: 'KEY_INVALID' }, { status: 404 })
     }
 
-    return NextResponse.json({ error: result.message ?? 'UNKNOWN_ERROR' }, { status: 400 })
+    if (reason === 'MISSING_PARAMS') {
+      return NextResponse.json({ error: 'MISSING_PARAMS' }, { status: 400 })
+    }
+
+    if (reason === 'SHEET_NOT_FOUND') {
+      return NextResponse.json({ error: 'SHEET_NOT_FOUND' }, { status: 500 })
+    }
+
+    return NextResponse.json({ error: reason || result.message || 'UNKNOWN_ERROR' }, { status: 400 })
   } catch (err) {
     console.error('[admin/verify-key] error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

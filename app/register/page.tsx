@@ -230,7 +230,7 @@ export default function RegisterPage() {
     setFormData(prev => ({ ...prev, [field]: prev[field as keyof typeof prev] === val ? '' : val }))
   }
   async function notifyRegistrationComplete(lineUserId: string, data: typeof formData) {
-  const N8N_WEBHOOK_URL = 'https://prorate-squeak-perennial.ngrok-free.dev/webhook/line-webhook' // เปลี่ยนเป็น URL จริงจาก n8n
+  const N8N_WEBHOOK_URL = 'https://prorate-squeak-perennial.ngrok-free.dev/webhook/registration-complete' // เปลี่ยนเป็น URL จริงจาก n8n
   const SECRET = 'dwa-secret-2024' // ต้องตรงกับ secret ที่ฝังใน node "Validate & Extract Data"
 
   try {

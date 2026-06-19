@@ -6,6 +6,7 @@ import { ArrowLeft, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAdmin } from '@/lib/admin-context'
 import { cn } from '@/lib/utils'
+import { compressImage } from '@/lib/compress-image'
 
 export default function AdminAddRewardPage() {
   const { isAdmin } = useAdmin()
@@ -31,12 +32,18 @@ export default function AdminAddRewardPage() {
     )
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => setImagePreview(ev.target?.result as string)
-    reader.readAsDataURL(file)
+    try {
+      const { dataUrl } = await compressImage(file)
+      setImagePreview(dataUrl)
+    } catch {
+      // fallback: อ่าน dataUrl ตรงๆ ถ้า compress ไม่ได้
+      const reader = new FileReader()
+      reader.onload = (ev) => setImagePreview(ev.target?.result as string)
+      reader.readAsDataURL(file)
+    }
   }
 
   const validate = () => {

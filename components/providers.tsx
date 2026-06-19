@@ -5,6 +5,7 @@ import { LiffProvider } from '@/lib/liff-context'
 import { PointsProvider } from '@/lib/points-context'
 import { CartProvider } from '@/lib/cart-context'
 import { CouponProvider } from '@/lib/coupon-context'
+import { AdminProvider } from '@/lib/admin-context'
 import { ThemeProvider } from '@/components/theme-provider'
 import { type ReactNode } from 'react'
 
@@ -21,7 +22,9 @@ export function Providers({ children }: { children: ReactNode }) {
           <PointsProvider>
             <CartProvider>
               <CouponProvider>
-                {children}
+                <AdminProvider>
+                  {children}
+                </AdminProvider>
               </CouponProvider>
             </CartProvider>
           </PointsProvider>

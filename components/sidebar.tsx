@@ -1,12 +1,13 @@
 'use client'
 
-import { X, Award, Trash2, BarChart3, Gift, BookOpen, Info } from 'lucide-react'
+import { X, Award, Trash2, BarChart3, Gift, BookOpen, Info, ScanLine, Package, Heart, LogOut } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useLiffContext } from '@/lib/liff-context'
 import { useApp } from '@/lib/app-context'
+import { useAdmin } from '@/lib/admin-context'
 
 interface SidebarProps {
   isOpen: boolean
@@ -25,6 +26,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { profile: liffProfile } = useLiffContext()
   const { userProfile } = useApp()
+  const { isAdmin, adminLogout } = useAdmin()
 
   // Use LINE profile if available, otherwise use demo data
   const displayName = liffProfile?.displayName || userProfile?.displayName || 'ผู้ใช้'
@@ -93,6 +95,55 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             })}
           </nav>
         </div>
+
+        {/* Admin Section */}
+        {isAdmin && (
+          <div className="px-4 pb-4">
+            <div className="h-px bg-[#154212]/20 mb-3" />
+            <p className="text-[10px] font-semibold text-[#154212]/50 uppercase tracking-widest mb-2">
+              ผู้ดูแลระบบ
+            </p>
+            <nav className="space-y-2">
+              <Link
+                href="/profile-scanner"
+                onClick={onClose}
+                className="flex items-center gap-2.5 py-1 text-sm font-semibold text-[#154212]/80 hover:text-[#154212] transition-colors"
+              >
+                <ScanLine className="w-4 h-4" strokeWidth={1.8} />
+                สแกนกล้อง (QR ผู้ใช้ / คูปอง)
+              </Link>
+              <Link
+                href="/admin/rewards"
+                onClick={onClose}
+                className={cn(
+                  'flex items-center gap-2.5 py-1 text-sm font-semibold transition-colors',
+                  pathname === '/admin/rewards' ? 'text-[#154212]' : 'text-[#154212]/80 hover:text-[#154212]'
+                )}
+              >
+                <Package className="w-4 h-4" strokeWidth={1.8} />
+                จัดการสต๊อกของรางวัล
+              </Link>
+              <Link
+                href="/admin/donations/new"
+                onClick={onClose}
+                className={cn(
+                  'flex items-center gap-2.5 py-1 text-sm font-semibold transition-colors',
+                  pathname === '/admin/donations/new' ? 'text-[#154212]' : 'text-[#154212]/80 hover:text-[#154212]'
+                )}
+              >
+                <Heart className="w-4 h-4" strokeWidth={1.8} />
+                เพิ่มรายการบริจาค
+              </Link>
+              <button
+                onClick={() => { adminLogout(); onClose() }}
+                className="flex items-center gap-2.5 py-1 text-sm font-semibold text-red-500 hover:text-red-600 transition-colors w-full text-left"
+              >
+                <LogOut className="w-4 h-4" strokeWidth={1.8} />
+                ออกจากโหมดผู้ดูแล
+              </button>
+            </nav>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="absolute bottom-4 left-0 right-0 px-4">

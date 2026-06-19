@@ -5,8 +5,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { Sidebar } from './sidebar'
+import { AdminLoginModal } from './admin-login-modal'
 import { useLiffContext } from '@/lib/liff-context'
 import { useApp } from '@/lib/app-context'
+import { useAdmin } from '@/lib/admin-context'
 
 interface PageHeaderProps {
   title?: string
@@ -16,8 +18,18 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, showBack = false, onBack }: PageHeaderProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [loginModalOpen, setLoginModalOpen] = useState(false)
   const { profile: liffProfile, isReady } = useLiffContext()
   const { userProfile } = useApp()
+  const { isAdmin } = useAdmin()
+
+  const handleMenuClick = () => {
+    if (isAdmin) {
+      setSidebarOpen(true)
+    } else {
+      setLoginModalOpen(true)
+    }
+  }
 
   // While LIFF is still initializing we don't yet know who the user is —
   // show a shimmer instead of a scary "loading" name.
@@ -55,18 +67,26 @@ export function PageHeader({ title, showBack = false, onBack }: PageHeaderProps)
             )}
           </Link>
 
-          {/* Menu Button — top right, light gray */}
+          {/* Menu Button — invisible but still clickable */}
           <button
-            onClick={() => setSidebarOpen(true)}
+            onClick={handleMenuClick}
             aria-label="เปิดเมนู"
-            className="p-1 rounded-full hover:bg-[#f5f5f5] transition-colors"
+            className="p-1 rounded-full opacity-0"
           >
-            <Menu className="w-5 h-5 text-[#d1d5db]" strokeWidth={2.5} />
+            <Menu className="w-5 h-5" strokeWidth={2.5} />
           </button>
         </div>
       </header>
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <AdminLoginModal
+        isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+        onSuccess={() => {
+          setLoginModalOpen(false)
+          setSidebarOpen(true)
+        }}
+      />
     </>
   )
 }

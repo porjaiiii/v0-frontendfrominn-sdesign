@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { COUPON_SCRIPT_URL } from '@/lib/coupon-config'
+import { ADMIN_SCRIPT_URL } from '@/lib/admin-config'
 
 export async function POST(request: Request) {
   try {
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     }
 
     // เรียก GAS ด้วย GET + query string (pattern เดียวกับ route อื่นในโปรเจกต์)
-    const url = new URL(COUPON_SCRIPT_URL)
+    const url = new URL(ADMIN_SCRIPT_URL)
     url.searchParams.set('action', 'verifyAdminKey')
     url.searchParams.set('admin_key', adminKey)
     url.searchParams.set('user_id', userId ?? '')

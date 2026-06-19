@@ -5,6 +5,7 @@ import { Camera, Loader2, Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { useLiffContext } from '@/lib/liff-context'
+import { compressImage } from '@/lib/compress-image'
 
 interface WeightInputProps {
   value: number
@@ -152,13 +153,11 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
     try {
       setIsUploading(true)
       setError(null)
-      
-      const reader = new FileReader()
-      reader.onload = async (event) => {
-        const base64String = event.target?.result as string
-        console.log('[v0] Image selected, starting upload to Google Drive')
-        
-        try {
+
+      // บีบอัดรูปให้ไม่เกิน 0.8 MB ก่อน upload
+      const { dataUrl: base64String } = await compressImage(file)
+
+      try {
           const response = await fetch('/api/upload-image', {
             method: 'POST',
             headers: {
@@ -180,39 +179,21 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
           console.log('[v0] Has imageUrl?', !!result.imageUrl)
           
           if (result.success && result.imageUrl) {
-            console.log('[v0] Image uploaded to Google Drive:', result.imageUrl)
             onImageChange(result.imageUrl)
           } else {
             const errorMsg = result.details || result.error || 'ไม่สามารถอัพโหลดรูปได้'
-            console.error('[v0] Upload response error - no imageUrl:', {
-              success: result.success,
-              error: result.error,
-              details: result.details,
-              hasImageUrl: !!result.imageUrl,
-              status: response.status,
-              fullResponse: result
-            })
             setError(errorMsg)
             const localUrl = URL.createObjectURL(file)
             onImageChange(localUrl)
           }
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด'
-          console.error('[v0] Upload request failed:', {
-            error: errorMsg,
-            type: err instanceof Error ? err.constructor.name : typeof err,
-            fullError: err
-          })
           setError(errorMsg)
           const localUrl = URL.createObjectURL(file)
           onImageChange(localUrl)
         }
-      }
-      
-      reader.readAsDataURL(file)
     } catch (err) {
-      console.error('[v0] File processing error:', err)
-      setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+      setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบีบอัดรูป')
     } finally {
       setIsUploading(false)
     }

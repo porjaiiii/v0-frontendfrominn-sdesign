@@ -57,14 +57,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await response.json()
+    let result: { status?: string; message?: string; data?: CouponRecord }
+    try {
+      result = await response.json()
+    } catch {
+      // GAS อาจส่ง non-JSON กลับมา
+      const text = await response.text().catch(() => '')
+      console.error('[coupons/use] GAS returned non-JSON:', text.substring(0, 200))
+      return NextResponse.json({ error: 'Invalid response from GAS' }, { status: 500 })
+    }
 
-    // คาดว่า GAS จะ return: { status: 'success', data: CouponRecord }
-    // หรือ { status: 'error', message: '...' }
+    console.log('[coupons/use] GAS result:', JSON.stringify(result))
+
+    // GAS return: { status: 'success', message: '...', data?: CouponRecord }
     if (result.status === 'success') {
-      const coupon: CouponRecord = result.data
-      console.log('[coupons/use] Coupon marked used:', coupon_id)
-      return NextResponse.json({ success: true, coupon })
+      return NextResponse.json({ success: true, coupon: result.data ?? null })
     }
 
     // Handle specific error codes from GAS

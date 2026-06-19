@@ -118,8 +118,11 @@ export default function CouponDetailPage({
               )}
 
               {/* QR Code */}
-              <div className="bg-white rounded-3xl p-4 mt-5 mx-6 shadow-md flex items-center justify-center relative z-10">
+              <div className="bg-white rounded-3xl p-4 mt-5 mx-6 shadow-md flex flex-col items-center justify-center relative z-10 gap-2">
                 <BrandedQRCode value={qrUrl || coupon.coupon_id} size={260} />
+                <p className="text-[10px] text-[#888888] tracking-widest font-mono select-all">
+                  {coupon.coupon_id}
+                </p>
               </div>
             </div>
 

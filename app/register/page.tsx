@@ -230,22 +230,28 @@ export default function RegisterPage() {
     setFormData(prev => ({ ...prev, [field]: prev[field as keyof typeof prev] === val ? '' : val }))
   }
   async function notifyRegistrationComplete(lineUserId: string, data: typeof formData) {
-  const N8N_WEBHOOK_URL = 'https://prorate-squeak-perennial.ngrok-free.dev/webhook/registration-complete' // เปลี่ยนเป็น URL จริงจาก n8n
-  const SECRET = 'dwa-secret-2024' // ต้องตรงกับ secret ที่ฝังใน node "Validate & Extract Data"
+  const N8N_WEBHOOK_URL = 'https://prorate-squeak-perennial.ngrok-free.dev/webhook/registration-complete'
+  const SECRET = 'dwa-secret-2024'
 
   try {
     await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-registration-secret': SECRET },
       body: JSON.stringify({
-        userId: lineUserId,
-        name: data.fullName,
-        phone: data.phoneNumber,
-        email: '',
+        lineUserId: data.lineUserId,
+        userId: data.userId,
+        pdpaConsent: data.pdpaConsent ? 'ยอมรับ' : 'ไม่ยอมรับ',
+        fullName: data.fullName,
+        phoneNumber: data.phoneNumber,
+        gender: data.gender,
+        ageRange: data.ageRange,
+        userType: data.userType,
+        subdistrict: data.subdistrict,
+        occupation: data.occupation,
+        registrationDate: new Date().toLocaleDateString('th-TH'),
       }),
     })
   } catch (err) {
-    // webhook fail ไม่กระทบการลงทะเบียนหลัก
     console.error('Webhook notification failed:', err)
   }
 }

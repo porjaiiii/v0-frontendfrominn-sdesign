@@ -100,14 +100,14 @@ export default function AdminRewardsPage() {
               onClick={() => toggleEnabled(item.id)}
               aria-label={item.enabled ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน'}
               className={cn(
-                'relative w-12 h-7 rounded-full transition-colors flex-shrink-0',
+                'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
                 item.enabled ? 'bg-[#154212]' : 'bg-[#d1d5db]'
               )}
             >
               <span
                 className={cn(
-                  'absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform',
-                  item.enabled ? 'translate-x-6' : 'translate-x-1'
+                  'absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform',
+                  item.enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
                 )}
               />
             </button>

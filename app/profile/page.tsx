@@ -4,9 +4,10 @@ import Image from 'next/image'
 import { useEffect } from 'react'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
-import { Award, TreePine, ChevronLeft, ChevronRight, QrCode, ExternalLink, Copy, Check } from 'lucide-react'
+import { Award, TreePine, ChevronLeft, ChevronRight, QrCode, ExternalLink, Copy, Check, ArrowLeft } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useLiffContext } from '@/lib/liff-context'
 import { useApp } from '@/lib/app-context'
 import { usePoints } from '@/lib/points-context'
@@ -57,6 +58,7 @@ export default function ProfilePage() {
   const [profileLoading, setProfileLoading] = useState(false)
   const [co2Collection, setCo2Collection] = useState<Co2Row[] | null>(null)
   
+  const router = useRouter()
   const { isReady, isLoggedIn, profile: liffProfile, scanCode, openExternalBrowser, isInClient } = useLiffContext()
   const { userProfile } = useApp()
   const { carbon: dbCarbon, weight: dbWeight } = usePoints()
@@ -207,6 +209,18 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-white pb-24">
       <PageHeader />
+
+      {/* Back button */}
+      <div className="max-w-md mx-auto px-4 pt-3">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1 text-[#154212] hover:text-[#154212]/70 transition-colors"
+          aria-label="กลับ"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="text-sm font-medium">กลับ</span>
+        </button>
+      </div>
 
       <main className="max-w-md mx-auto px-4 py-4">
         {/* Profile Card with overlapping avatar */}

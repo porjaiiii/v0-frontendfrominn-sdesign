@@ -6,8 +6,15 @@ import type { RankingEntry } from '@/app/api/ranking/route'
 // served through the Apps Script `get_leaderboard` action.
 //
 // Carbon/points come from points_account; display names + locations are
-// cross-referenced from the registration/profile sheet (keyed by LINE user id,
-// which equals points_account.user_id).
+// cross-referenced from the REGISTRATION sheet (the same Apps Script the
+// profile page uses), keyed by LINE user id (== points_account.user_id).
+
+// Allow time for the per-user fallback (getUser lookups) on cold starts.
+export const maxDuration = 60
+
+// Registration Apps Script — same web app as /api/register and /api/profile/[id].
+const REGISTRATION_SCRIPT_URL =
+  'https://script.google.com/macros/s/AKfycbxXbPMRk1PXSbw5vLEvbCQPfFkPZithJXStciUM2oZ__y9ct1OPVUlM-YfvF7ZpDVKG/exec'
 
 const SAMPLE_RANKING: Omit<RankingEntry, 'rank'>[] = [
   { lineUserId: 'Usample001', name: 'สมชาย ใจดี', carbon: 256.5, points: 2565, avatar: '/placeholder.svg?height=40&width=40', location: 'ตำบลบางกะเจ้า' },
@@ -31,63 +38,108 @@ function toNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
-function parseCSV(text: string): string[][] {
-  return text.split('\n').map(line =>
-    line.split(',').map(cell => cell.trim().replace(/^"(.*)"$/, '$1'))
-  )
+const FALLBACK_AVATAR = '/placeholder.svg?height=40&width=40'
+type UserInfo = { name: string; avatar: string; location: string }
+
+function str(value: unknown): string {
+  return value == null ? '' : String(value).trim()
 }
 
-function normalizeHeader(h: string): string {
-  return (h ?? '').toLowerCase().trim().replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (c) =>
-    String.fromCharCode(c.charCodeAt(0) - 0x2050)
-  )
+// Map a raw registration user object (tolerant of field-name variants) → UserInfo.
+function toUserInfo(u: any): UserInfo {
+  return {
+    name:     str(u?.fullName ?? u?.name ?? u?.displayName),
+    avatar:   str(u?.avatar ?? u?.pictureUrl ?? u?.picture) || FALLBACK_AVATAR,
+    location: str(u?.subdistrict ?? u?.location),
+  }
 }
 
-function findColumnIndex(headers: string[], possibleNames: string[]): number {
-  return headers.findIndex(h =>
-    possibleNames.some(name => normalizeHeader(h).includes(name))
-  )
+function userIdOf(u: any): string {
+  return str(u?.lineUserId ?? u?.line_user_id ?? u?.userId ?? u?.user_id)
 }
 
-// Pull display names / avatars / locations from the registration profile sheet.
-async function buildNameMap(): Promise<Record<string, { name: string; avatar: string; location: string }>> {
-  const nameMap: Record<string, { name: string; avatar: string; location: string }> = {}
-  const sheetId = process.env.GOOGLE_SHEETS_ID
-  if (!sheetId) return nameMap
-
+// Bulk path: one `getAllUsers` call to the registration script (fast). Returns
+// an empty map if the action isn't implemented / yields nothing.
+async function fetchAllUsers(): Promise<Record<string, UserInfo>> {
+  const map: Record<string, UserInfo> = {}
   try {
-    const profileUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`
-    const profileRes = await fetch(profileUrl, { cache: 'no-store' })
-    if (!profileRes.ok) return nameMap
-
-    const profileRows = parseCSV(await profileRes.text())
-    if (profileRows.length <= 1) return nameMap
-
-    const ph = profileRows[0]
-    const pLineIdx    = findColumnIndex(ph, ['line user id', 'lineuserid', 'line_user_id'])
-    const pNameIdx    = findColumnIndex(ph, ['ชื่อ-นามสกุล', 'fullname', 'full name'])
-    const pAltNameIdx = findColumnIndex(ph, ['ชื่อ', 'name', 'ชื่อไลน์', 'ชื่อที่แสดง', 'displayname', 'display name', 'ชื่อเล่น'])
-    const pAvatarIdx  = findColumnIndex(ph, ['ภาพ', 'picture', 'avatar'])
-    const pLocIdx     = findColumnIndex(ph, ['ตำบล', 'subdistrict'])
-
-    profileRows.slice(1).forEach(row => {
-      const lid = pLineIdx >= 0 ? row[pLineIdx]?.trim() : ''
-      if (lid) {
-        const primaryName = pNameIdx    >= 0 ? row[pNameIdx]?.trim()    || '' : ''
-        const altName     = pAltNameIdx >= 0 ? row[pAltNameIdx]?.trim() || '' : ''
-        nameMap[lid] = {
-          name:     primaryName || altName,
-          avatar:   pAvatarIdx >= 0 && row[pAvatarIdx]?.trim()
-                      ? row[pAvatarIdx].trim()
-                      : '/placeholder.svg?height=40&width=40',
-          location: pLocIdx    >= 0 ? row[pLocIdx]?.trim()    || '' : '',
-        }
-      }
+    const res = await fetch(REGISTRATION_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getAllUsers' }),
+      cache: 'no-store',
+    })
+    if (!res.ok) return map
+    const data = await res.json().catch(() => null)
+    const users: any[] = Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.users)
+      ? data.users
+      : Array.isArray(data)
+      ? data
+      : []
+    users.forEach(u => {
+      const lid = userIdOf(u)
+      if (lid) map[lid] = toUserInfo(u)
     })
   } catch {
-    // Profile fetch failed — continue without names.
+    // ignore — caller falls back to per-user lookups
   }
-  return nameMap
+  return map
+}
+
+// Fallback path: look up one user via the registration script's `getUser`
+// (already supported by the deployed script the profile page uses).
+async function fetchOneUser(lineUserId: string): Promise<UserInfo | null> {
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 12_000)
+    const res = await fetch(REGISTRATION_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getUser', lineUserId }),
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+    clearTimeout(timer)
+    if (!res.ok) return null
+    const data = await res.json().catch(() => null)
+    if (data?.status === 'success' && data?.data) return toUserInfo(data.data)
+    return null
+  } catch {
+    return null
+  }
+}
+
+// Run async tasks with a small concurrency cap (keep GAS happy).
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length)
+  let next = 0
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++
+      results[i] = await fn(items[i])
+    }
+  })
+  await Promise.all(workers)
+  return results
+}
+
+// Pull display names / avatars / locations from the REGISTRATION sheet, keyed by
+// LINE user id. Tries the bulk `getAllUsers` action first; if that isn't
+// available it falls back to per-user `getUser` lookups for the leaderboard ids.
+async function buildNameMap(userIds: string[]): Promise<Record<string, UserInfo>> {
+  const bulk = await fetchAllUsers()
+  if (Object.keys(bulk).length > 0) return bulk
+
+  // Fallback — resolve each leaderboard user individually.
+  const map: Record<string, UserInfo> = {}
+  const infos = await mapWithConcurrency(userIds, 8, fetchOneUser)
+  userIds.forEach((id, i) => {
+    const info = infos[i]
+    if (info) map[id] = info
+  })
+  return map
 }
 
 export async function GET(request: Request) {
@@ -118,7 +170,7 @@ export async function GET(request: Request) {
 
     if (entries.length === 0) return sample()
 
-    const nameMap = await buildNameMap()
+    const nameMap = await buildNameMap(entries.map(e => e.lineUserId))
 
     const ranking: RankingEntry[] = entries
       .sort((a, b) => b.carbon - a.carbon)
@@ -131,7 +183,7 @@ export async function GET(request: Request) {
           name:       isCaller && callerName ? callerName : info?.name || `ผู้ใช้ ${i + 1}`,
           carbon:     entry.carbon,
           points:     entry.points,
-          avatar:     info?.avatar || '/placeholder.svg?height=40&width=40',
+          avatar:     info?.avatar || FALLBACK_AVATAR,
           location:   info?.location || '',
         }
       })

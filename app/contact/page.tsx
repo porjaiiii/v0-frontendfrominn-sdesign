@@ -1,125 +1,133 @@
 'use client'
 
 import Image from 'next/image'
-import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
-import { Phone, MessageCircle, Mail, MapPin, Clock, ChevronRight } from 'lucide-react'
+import { useLiffContext } from '@/lib/liff-context'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { Phone, Mail, MapPin, Clock, HelpCircle } from 'lucide-react'
 
-const contactMethods = [
+// LINE Official Account — users can type their question to the chatbot here.
+const LINE_OA_URL = 'https://line.me/R/ti/p/@digitalwaste'
+
+// FAQ — common questions answered so users can self-serve before contacting.
+const FAQS = [
   {
-    icon: Phone,
-    label: 'โทรศัพท์',
-    value: '02-123-4567',
-    action: 'tel:021234567',
-    color: '#EF5350'
+    q: 'ใช้แต้มแลกของรางวัลยังไง?',
+    a: 'ไปที่หน้า "แลกของรางวัล" เลือกของที่ต้องการ แล้วกดแลก ระบบจะสร้างคูปอง QR Code ให้นำไปแสดงกับเจ้าหน้าที่',
   },
   {
-    icon: Phone,
-    label: 'มือถือ',
-    value: '081-234-5678',
-    action: 'tel:0812345678',
-    color: '#66BB6A'
+    q: 'ทำไมแต้มยังไม่เข้า?',
+    a: 'แต้มจะเข้าหลังจากเจ้าหน้าที่ตรวจสอบและรับขยะเรียบร้อยแล้ว หากรอเกิน 1-2 วันแล้วยังไม่เข้า พิมพ์ถามแชทบอทได้เลย',
   },
   {
-    icon: MessageCircle,
-    label: 'LINE Official',
-    value: '@digitalwaste',
-    action: 'https://line.me/R/ti/p/@digitalwaste',
-    color: '#00B900'
+    q: 'คูปองมีวันหมดอายุไหม?',
+    a: 'คูปองที่แลกแล้วควรนำไปใช้โดยเร็ว สถานะและรายละเอียดจะแสดงอยู่ในหน้า "คูปองของฉัน"',
   },
   {
-    icon: Mail,
-    label: 'อีเมล',
-    value: 'contact@digitalwaste.co.th',
-    action: 'mailto:contact@digitalwaste.co.th',
-    color: '#42A5F5'
-  }
+    q: 'ขยะแบบไหนที่รับบ้าง?',
+    a: 'รับขยะรีไซเคิล เช่น พลาสติก กระดาษ แก้ว และอลูมิเนียม ดูขั้นตอนได้ที่หน้า "วิธีใช้งาน"',
+  },
+  {
+    q: 'เปลี่ยนข้อมูลส่วนตัวยังไง?',
+    a: 'ดูข้อมูลของคุณได้ที่หน้าโปรไฟล์ หากต้องการแก้ไข พิมพ์แจ้งแชทบอทหรือติดต่อเจ้าหน้าที่',
+  },
+]
+
+// Placeholder contact channels — values are not real yet (shown as "coming soon").
+const PLACEHOLDER_CHANNELS = [
+  { icon: Phone, label: 'โทรศัพท์', value: 'ยังไม่มีข้อมูล' },
+  { icon: Mail, label: 'อีเมล', value: 'ยังไม่มีข้อมูล' },
+  { icon: MapPin, label: 'ที่อยู่สำนักงาน', value: 'ยังไม่มีข้อมูล' },
+  { icon: Clock, label: 'เวลาทำการ', value: 'ยังไม่มีข้อมูล' },
 ]
 
 export default function ContactPage() {
+  const { closeWindow, isInClient } = useLiffContext()
+
+  // Same behavior as finishing a waste record: inside LINE, close the LIFF
+  // window so the user lands back in the chat (where they type to the bot).
+  // Outside LINE, open the Official Account link instead.
+  const goToChat = () => {
+    if (isInClient) {
+      closeWindow()
+    } else {
+      window.open(LINE_OA_URL, '_blank')
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-white pb-24">
+    <div className="min-h-screen bg-[#f5f7f5] pb-12">
       <PageHeader />
 
-      <main className="max-w-md mx-auto px-4 py-4">
-        {/* Header Banner */}
-        <div className="bg-gradient-to-br from-[#b6ebad] to-[#8fdf7f] rounded-2xl p-6 mb-6 relative overflow-hidden">
-          <div className="relative z-10">
-            <div className="w-20 h-20 mx-auto mb-4 relative">
-              <Image
-                src="/images/icon/logo.png"
-                alt="Logo"
-                fill
-                className="object-contain rounded-lg"
-              />
-            </div>
-            <h1 className="text-xl font-bold text-[#154212] text-center mb-1">
-              Digital Wasted Account
-            </h1>
-            <p className="text-sm text-[#154212]/80 text-center">
-              ติดต่อเรา
-            </p>
+      <main className="max-w-md mx-auto px-4 py-4 space-y-6">
+        {/* Hero */}
+        <div className="bg-[#154212] rounded-2xl px-4 py-3 flex items-center gap-3 relative overflow-hidden">
+          <div className="relative w-14 h-14 flex-shrink-0">
+            <Image src="/mascot.png" alt="mascot" fill className="object-contain drop-shadow-lg" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-white leading-tight">มีอะไรให้เราช่วยไหม?</h1>
+            <p className="text-xs text-white/80">พิมพ์คำถามของคุณ แล้วแชทบอทตอบให้ทันที</p>
           </div>
         </div>
 
-        {/* Contact Methods */}
-        <div className="space-y-3 mb-6">
-          {contactMethods.map((method, index) => (
-            <a
-              key={index}
-              href={method.action}
-              className="flex items-center gap-4 p-4 bg-white rounded-xl border border-[#e5e5e5] hover:border-[#154212] hover:shadow-md transition-all"
-            >
-              <div 
-                className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: method.color + '20' }}
-              >
-                <method.icon className="w-6 h-6" style={{ color: method.color }} />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-[#666666]">{method.label}</p>
-                <p className="text-base font-medium text-[#444444]">{method.value}</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-[#999999]" />
-            </a>
-          ))}
-        </div>
-
-        {/* Office Info */}
-        <div className="bg-[#f5f5f5] rounded-xl p-4 space-y-4">
-          <h2 className="text-base font-semibold text-[#154212]">ที่อยู่สำนักงาน</h2>
-          
-          <div className="flex gap-3">
-            <MapPin className="w-5 h-5 text-[#154212] flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-[#666666] leading-relaxed">
-              123 อาคาร ABC ชั้น 10<br />
-              ถนนสุขุมวิท แขวงคลองเตย<br />
-              เขตคลองเตย กรุงเทพฯ 10110
-            </p>
+        {/* FAQ */}
+        <section className="bg-white rounded-2xl border border-[#e5e5e5] shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-5 pt-4 pb-1">
+            <HelpCircle className="w-5 h-5 text-[#154212]" />
+            <h2 className="text-lg font-bold text-[#154212]">คำถามที่พบบ่อย</h2>
           </div>
-          
-          <div className="flex gap-3">
-            <Clock className="w-5 h-5 text-[#154212] flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-[#666666]">
-              <p className="font-medium text-[#444444] mb-1">เวลาทำการ</p>
-              <p>จันทร์ - ศุกร์: 08:30 - 17:30 น.</p>
-              <p>เสาร์: 09:00 - 12:00 น.</p>
-              <p>อาทิตย์: ปิดทำการ</p>
-            </div>
-          </div>
-        </div>
 
-        {/* Chat Button */}
-        <div className="mt-6">
-          <button className="w-full py-4 rounded-xl bg-[#154212] text-white font-semibold hover:bg-[#0d3308] transition-colors flex items-center justify-center gap-2">
-            <MessageCircle className="w-5 h-5" />
-            แชทกับเจ้าหน้าที่
+          <Accordion type="single" collapsible className="px-5 pb-2">
+            {FAQS.map((item, i) => (
+              <AccordionItem key={i} value={`faq-${i}`} className="border-[#eee]">
+                <AccordionTrigger className="text-base font-semibold text-[#154212] hover:no-underline py-4">
+                  {item.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-[#555555] leading-relaxed">
+                  {item.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+
+          {/* Nudge toward the chatbot for anything not covered */}
+          <button
+            onClick={goToChat}
+            className="block w-full border-t border-[#eee] px-5 py-4 text-center text-sm font-semibold text-[#06994a] hover:bg-[#f3faf4] transition-colors"
+          >
+            ไม่เจอคำตอบ? พิมพ์ถามแชทบอทได้เลย →
           </button>
-        </div>
-      </main>
+        </section>
 
-      {/* <BottomNav /> */}
+        {/* Other channels — clearly marked as not available yet.
+            Top is faded (barely visible) so it reads as a peek → scroll down. */}
+        <section className="space-y-3 [mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.12),#000_60%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.12),#000_60%)]">
+          <h2 className="text-base font-bold text-[#154212] px-1">ช่องทางติดต่ออื่น</h2>
+
+          <div className="bg-white rounded-2xl border border-[#e5e5e5] shadow-sm divide-y divide-[#eee]">
+            {PLACEHOLDER_CHANNELS.map((c, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-4 opacity-60">
+                <div className="w-11 h-11 rounded-full bg-[#f0f0f0] flex items-center justify-center flex-shrink-0">
+                  <c.icon className="w-5 h-5 text-[#999999]" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-[#444444]">{c.label}</p>
+                  <p className="text-sm text-[#999999] italic">{c.value}</p>
+                </div>
+                <span className="text-xs font-semibold text-[#b8860b] bg-[#fff3cd] rounded-full px-2.5 py-1 flex-shrink-0">
+                  เร็ว ๆ นี้
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
     </div>
-    // test2
   )
 }

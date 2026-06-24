@@ -31,6 +31,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="th" className="bg-background" suppressHydrationWarning>
+      <head>
+        {/* preconnect ลด DNS + TLS handshake สำหรับ external origins ที่ใช้บ่อย */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Google Apps Script / Drive ที่ใช้ upload รูปและบันทึกข้อมูล */}
+        <link rel="preconnect" href="https://script.google.com" />
+        <link rel="dns-prefetch" href="https://liff.line.me" />
+        <link rel="dns-prefetch" href="https://profile.line-scdn.net" />
+      </head>
       <body className={`${notoSansThai.variable} font-sans antialiased`}>
         <Providers>
           {children}

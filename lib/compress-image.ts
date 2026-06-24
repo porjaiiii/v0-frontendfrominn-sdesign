@@ -1,11 +1,11 @@
 /**
- * บีบอัดรูปภาพให้ขนาดไม่เกิน maxSizeBytes (default 0.8 MB)
+ * บีบอัดรูปภาพให้ขนาดไม่เกิน maxSizeBytes (default 0.5 MB)
  * ใช้ Canvas API วนลด quality จนผ่านเกณฑ์
  */
 export async function compressImage(
   file: File,
-  maxSizeBytes = 0.8 * 1024 * 1024, // 0.8 MB
-  maxDimension = 1920
+  maxSizeBytes = 0.5 * 1024 * 1024, // 0.5 MB
+  maxDimension = 1280               // ลด resolution ลงจาก 1920 → 1280 เพื่อช่วยให้ไฟล์เล็กลงไวขึ้น
 ): Promise<{ blob: Blob; dataUrl: string }> {
   return new Promise((resolve, reject) => {
     const img = new window.Image()
@@ -28,8 +28,8 @@ export async function compressImage(
       const ctx = canvas.getContext('2d')!
       ctx.drawImage(img, 0, 0, width, height)
 
-      // ลด quality ลงเรื่อยๆ จนขนาดผ่านเกณฑ์
-      let quality = 0.9
+      // เริ่มที่ quality 0.85 และลดทีละ 0.15 เพื่อให้ถึงเป้าเร็วขึ้น
+      let quality = 0.85
       const tryCompress = () => {
         canvas.toBlob(
           (blob) => {
@@ -42,7 +42,8 @@ export async function compressImage(
               reader.onerror = reject
               reader.readAsDataURL(blob)
             } else {
-              quality = Math.max(0.1, quality - 0.1)
+              // ลด quality ทีละ 0.15 (เร็วกว่าเดิมที่ลดทีละ 0.1)
+              quality = Math.max(0.1, quality - 0.15)
               tryCompress()
             }
           },

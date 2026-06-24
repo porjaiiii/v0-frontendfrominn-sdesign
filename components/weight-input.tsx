@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Camera, Loader2, Minus, Plus } from 'lucide-react'
+import { Camera, Loader2, Minus, Plus, X } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { useLiffContext } from '@/lib/liff-context'
@@ -284,12 +284,28 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
               <span className="text-xs font-medium text-[#666666]">กำลังอัพโหลด...</span>
             </div>
           ) : imageUrl ? (
-            <Image
-              src={imageUrl}
-              alt="หลักฐาน"
-              fill
-              className="object-cover"
-            />
+            <>
+              <Image
+                src={imageUrl}
+                alt="หลักฐาน"
+                fill
+                className="object-cover"
+              />
+              {/* ปุ่ม X ยกเลิกรูป */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onImageChange(null)
+                  setError(null)
+                }}
+                className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+                aria-label="ลบรูป"
+              >
+                <X className="w-3.5 h-3.5 text-white" />
+              </button>
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center text-[#666666] px-2">
               <Camera className="w-9 h-9 mb-2 text-[#888888]" />

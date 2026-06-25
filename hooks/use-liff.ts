@@ -83,14 +83,18 @@ export function useLiff(liffId?: string): UseLiffReturn {
         // restore it after LINE returns the user back to the LIFF app.
         if (!liff.isLoggedIn()) {
           setLoadingStep('requesting_permission')
-          // Save the intended path (e.g. /register) before redirecting
-          const intendedPath = window.location.pathname + window.location.search
+          // Determine intended path — treat "/" as "/register" because the
+          // LIFF entry point always lands on "/" but the real destination is
+          // the register page for first-time users.
+          const rawPath = window.location.pathname + window.location.search
+          const intendedPath = rawPath === '/' ? '/register' : rawPath
           try {
             localStorage.setItem(LIFF_REDIRECT_KEY, intendedPath)
           } catch (_) {
             // localStorage may be unavailable in some environments
           }
-          // Build a redirectUri that returns user to the same path
+          // Always redirect back to the intended path (e.g. /register) after
+          // LINE grants permission, not to "/" which is just the LIFF entry.
           const redirectUri = window.location.origin + intendedPath
           liff.login({ redirectUri })
           return

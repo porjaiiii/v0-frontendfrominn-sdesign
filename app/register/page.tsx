@@ -538,7 +538,7 @@ export default function RegisterPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2 text-sm">หมู่ที่</label>
+                  <label className="block text-gray-700 font-medium mb-2 text-sm">หม��่ที่</label>
                   <input
                     type="text"
                     name="mooNumber"
@@ -549,7 +549,7 @@ export default function RegisterPage() {
               </div>
 
               <div id="field-subdistrict" className={fieldWrapClass('field-subdistrict')}>
-                <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ต��บลหลัก</label>
+                <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ตำบลหลัก</label>
                 <ChoiceGroup
                   options={SUBDISTRICTS}
                   value={formData.subdistrict}

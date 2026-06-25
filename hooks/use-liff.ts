@@ -71,29 +71,24 @@ export function useLiff(liffId?: string): UseLiffReturn {
         }
 
         setLoadingStep('initializing')
-        // withLoginOnExternalBrowser: true makes liff.init() automatically
-        // trigger LINE login (and redirect back to the same URL) whenever the
-        // user is not yet authenticated — in any browser, not just LINE app.
-        // After init() resolves the user is always logged in, so we never need
-        // a separate liff.login() call.
-        await liff.init({
-          liffId: id,
-          withLoginOnExternalBrowser: true,
-        })
+        await liff.init({ liffId: id })
         setIsInClient(liff.isInClient())
         setOs(liff.getOS())
         setLanguage(liff.getLanguage())
         setLineVersion(liff.getLineVersion())
 
-        // If somehow still not logged in after init (should not happen with
-        // withLoginOnExternalBrowser but kept as a safety net).
+        // Not logged in — redirect to LINE login and come back to the same URL.
+        // Using window.location.href as redirectUri ensures the user lands back
+        // on whatever page they were on (e.g. /home, /profile-view/xxx, etc.)
+        // on both desktop and mobile browsers.
         if (!liff.isLoggedIn()) {
           setLoadingStep('requesting_permission')
           liff.login({ redirectUri: window.location.href })
           return
         }
 
-        // Fetch profile and set all auth state atomically.
+        // Fetch profile and set all auth state atomically so consumers never
+        // see isLoggedIn=true with profile=null.
         setLoadingStep('fetching_profile')
         let userProfile: LiffProfile | null = null
         try {

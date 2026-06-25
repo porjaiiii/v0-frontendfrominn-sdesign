@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { BottomNav } from '@/components/bottom-nav'
@@ -38,6 +38,17 @@ export default function HomePage() {
   const liffContext = useLiffContext()
   const { status: guardStatus } = useProfileGuard()
   const [step, setStep] = useState(1)
+
+  // The LIFF link always lands on "/" but the real first-time destination is
+  // "/register". If the user is already logged in (e.g. returning visit) and
+  // lands on "/" with no saved redirect path, send them to /register as well.
+  // use-liff handles this via localStorage when permission is newly granted;
+  // this is a safety fallback for cases where localStorage was cleared.
+  useEffect(() => {
+    if (liffContext?.isReady && liffContext?.isLoggedIn) {
+      router.replace('/register')
+    }
+  }, [liffContext?.isReady, liffContext?.isLoggedIn, router])
 
   console.log('[v0] HomePage render — guardStatus:', guardStatus, '| isReady:', liffContext?.isReady, '| isLoggedIn:', liffContext?.isLoggedIn, '| userId:', liffContext?.profile?.userId)
   const [selectedType, setSelectedType] = useState<WasteType | null>(null)

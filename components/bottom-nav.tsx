@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { href: '/home', icon: Trash2, label: 'บันทึกขยะ' },
+  { href: '/', icon: Trash2, label: 'บันทึกขยะ' },
   { href: '/rewards', icon: Gift, label: 'แลกรางวัล' },
   { href: '/ranking', icon: BarChart3, label: 'อันดับ' },
   { href: '/how-to-use', icon: BookOpen, label: 'วิธีใช้งาน' },

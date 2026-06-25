@@ -121,7 +121,7 @@ function ChoiceGroup({
 }
 
 export default function RegisterPage() {
-  const { profile, isReady } = useLiffContext()
+  const { profile } = useLiffContext()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -323,11 +323,6 @@ export default function RegisterPage() {
 
   const isLocalResident = formData.userType === 'คนในชุมชนคุ้งบางกะเจ้า'
 
-  // Wait for LIFF to finish initialising before rendering the form.
-  // The LiffLoadingOverlay handles the visual loading state globally,
-  // so we just return null here to avoid showing an empty / profileless form.
-  if (!isReady) return null
-
   if (success) {
     return (
       <div className="min-h-screen bg-white flex flex-col">
@@ -343,7 +338,7 @@ export default function RegisterPage() {
             <p className="text-gray-600 mb-2">ยินดีต้อนรับสู่ Digital Wasted Account</p>
             <p className="text-sm text-gray-500 mb-6">คุณได้ลงทะเบียนเรียบร้อยแล้ว</p>
             <Link
-              href="/home"
+              href="/"
               className="inline-block bg-[#154212] text-white font-bold py-3 px-8 rounded-lg hover:bg-[#0d3308] transition-colors"
             >
               กลับไปหน้าหลัก
@@ -549,7 +544,7 @@ export default function RegisterPage() {
               </div>
 
               <div id="field-subdistrict" className={fieldWrapClass('field-subdistrict')}>
-                <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ต��บลหลัก</label>
+                <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ตำบลหลัก</label>
                 <ChoiceGroup
                   options={SUBDISTRICTS}
                   value={formData.subdistrict}

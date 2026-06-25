@@ -1,29 +1,41 @@
 'use client'
 
 /**
- * Root route "/" — this is the LIFF entry point.
+ * Root route "/" — this is the registered LIFF endpoint.
  *
- * The LIFF app always opens at "/" first. We immediately redirect to
- * "/register" which is the correct first-time landing page.
- * use-liff.ts handles saving the intended path before LINE's permission
- * screen and restoring it afterwards, so deep-links (e.g. "/home") still
- * work correctly.
+ * liff.login() always returns the user here after LINE grants permission.
+ * We MUST let LiffProvider / useLiff finish initialising before we redirect,
+ * otherwise the token LINE just issued never gets consumed and the user
+ * loops back to the login screen on every visit from a non-LIFF URL.
  *
- * Registered users who land here via useProfileGuard will be redirected
- * to "/home" automatically by that hook after their profile is confirmed.
+ * Flow:
+ *   1. LIFF SDK inits, picks up the token from the URL hash/query
+ *   2. isReady becomes true, profile is populated
+ *   3. useProfileGuard checks whether the user has a saved profile
+ *      → registered user  : redirect to /home
+ *      → unregistered user: redirect to /register
  */
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useLiffContext } from '@/lib/liff-context'
+import { useProfileGuard } from '@/hooks/use-profile-guard'
 
 export default function RootPage() {
   const router = useRouter()
+  const { isReady, profile } = useLiffContext()
+  const { status: guardStatus } = useProfileGuard()
 
   useEffect(() => {
-    router.replace('/register')
-  }, [router])
+    if (!isReady) return
 
-  // Return null — LiffLoadingOverlay from LiffProvider covers the screen
-  // while LIFF initialises, so the user never sees a blank flash.
+    // useProfileGuard handles the redirect to /register when no profile exists.
+    // Once the profile is confirmed we send the user to /home.
+    if (guardStatus === 'allowed' && profile?.userId) {
+      router.replace('/home')
+    }
+  }, [isReady, guardStatus, profile, router])
+
+  // LiffLoadingOverlay covers the screen while LIFF initialises.
   return null
 }

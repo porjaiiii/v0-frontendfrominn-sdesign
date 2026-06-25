@@ -46,8 +46,6 @@ export interface UseLiffReturn {
   getIDToken: () => string | null
 }
 
-const LIFF_REDIRECT_KEY = 'liff_intended_path'
-
 export function useLiff(liffId?: string): UseLiffReturn {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isReady, setIsReady] = useState(false)
@@ -73,11 +71,13 @@ export function useLiff(liffId?: string): UseLiffReturn {
         }
 
         setLoadingStep('initializing')
+        // withLoginOnExternalBrowser: true makes liff.init() automatically
+        // trigger LINE login (and redirect back to the same URL) whenever the
+        // user is not yet authenticated — in any browser, not just LINE app.
+        // After init() resolves the user is always logged in, so we never need
+        // a separate liff.login() call.
         await liff.init({
           liffId: id,
-          // Automatically trigger LINE login when opened in an external browser
-          // (e.g. Chrome/Safari) if the user has already granted permission.
-          // This restores the same behaviour as the old "/" entry point.
           withLoginOnExternalBrowser: true,
         })
         setIsInClient(liff.isInClient())
@@ -85,42 +85,15 @@ export function useLiff(liffId?: string): UseLiffReturn {
         setLanguage(liff.getLanguage())
         setLineVersion(liff.getLineVersion())
 
-        // Auto-login if not logged in — save current path first so we can
-        // restore it after LINE returns the user back to the LIFF app.
+        // If somehow still not logged in after init (should not happen with
+        // withLoginOnExternalBrowser but kept as a safety net).
         if (!liff.isLoggedIn()) {
           setLoadingStep('requesting_permission')
-          // Save the current path so we can restore it after LINE returns.
-          // "/" now permanently redirects to "/register" on its own, so all
-          // paths here are meaningful destinations.
-          const intendedPath = window.location.pathname + window.location.search
-          try {
-            localStorage.setItem(LIFF_REDIRECT_KEY, intendedPath)
-          } catch (_) {
-            // localStorage may be unavailable in some environments
-          }
-          const redirectUri = window.location.origin + intendedPath
-          liff.login({ redirectUri })
+          liff.login({ redirectUri: window.location.href })
           return
         }
 
-        // User is logged in — check if we need to restore a saved path
-        try {
-          const savedPath = localStorage.getItem(LIFF_REDIRECT_KEY)
-          if (savedPath && savedPath !== '/') {
-            localStorage.removeItem(LIFF_REDIRECT_KEY)
-            const currentPath = window.location.pathname + window.location.search
-            // Only redirect if we're not already on the intended page
-            if (currentPath !== savedPath) {
-              window.location.replace(savedPath)
-              return
-            }
-          }
-        } catch (_) {
-          // localStorage unavailable — skip path restoration
-        }
-
-        // Fetch profile — set isLoggedIn + profile atomically so consumers
-        // never see isLoggedIn=true with profile=null.
+        // Fetch profile and set all auth state atomically.
         setLoadingStep('fetching_profile')
         let userProfile: LiffProfile | null = null
         try {
@@ -129,8 +102,6 @@ export function useLiff(liffId?: string): UseLiffReturn {
           console.error('[LIFF] Failed to get profile:', profileErr)
         }
 
-        // Batch all state updates together to avoid intermediate renders
-        // where isLoggedIn is true but profile is still null.
         setIsLoggedIn(true)
         setProfile(userProfile)
         setLoadingStep('ready')

@@ -77,13 +77,13 @@ export function useLiff(liffId?: string): UseLiffReturn {
         setLanguage(liff.getLanguage())
         setLineVersion(liff.getLineVersion())
 
-        // Not logged in — redirect to LINE login and come back to the same URL.
-        // Using window.location.href as redirectUri ensures the user lands back
-        // on whatever page they were on (e.g. /home, /profile-view/xxx, etc.)
-        // on both desktop and mobile browsers.
+        // Not logged in — call liff.login() without a custom redirectUri.
+        // LINE will return the user to the registered LIFF endpoint URL.
+        // Passing a custom redirectUri can break token validation on mobile
+        // when the URL differs from the endpoint registered in LINE Developers.
         if (!liff.isLoggedIn()) {
           setLoadingStep('requesting_permission')
-          liff.login({ redirectUri: window.location.href })
+          liff.login()
           return
         }
 

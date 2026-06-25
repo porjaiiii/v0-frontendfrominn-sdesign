@@ -73,7 +73,13 @@ export function useLiff(liffId?: string): UseLiffReturn {
         }
 
         setLoadingStep('initializing')
-        await liff.init({ liffId: id })
+        await liff.init({
+          liffId: id,
+          // Automatically trigger LINE login when opened in an external browser
+          // (e.g. Chrome/Safari) if the user has already granted permission.
+          // This restores the same behaviour as the old "/" entry point.
+          withLoginOnExternalBrowser: true,
+        })
         setIsInClient(liff.isInClient())
         setOs(liff.getOS())
         setLanguage(liff.getLanguage())
@@ -113,16 +119,20 @@ export function useLiff(liffId?: string): UseLiffReturn {
           // localStorage unavailable — skip path restoration
         }
 
-        // Fetch profile
+        // Fetch profile — set isLoggedIn + profile atomically so consumers
+        // never see isLoggedIn=true with profile=null.
         setLoadingStep('fetching_profile')
-        setIsLoggedIn(true)
+        let userProfile: LiffProfile | null = null
         try {
-          const userProfile = await liff.getProfile()
-          setProfile(userProfile)
+          userProfile = await liff.getProfile()
         } catch (profileErr) {
           console.error('[LIFF] Failed to get profile:', profileErr)
         }
 
+        // Batch all state updates together to avoid intermediate renders
+        // where isLoggedIn is true but profile is still null.
+        setIsLoggedIn(true)
+        setProfile(userProfile)
         setLoadingStep('ready')
         setIsReady(true)
       } catch (err) {

@@ -71,16 +71,27 @@ export function useLiff(liffId?: string): UseLiffReturn {
         }
 
         setLoadingStep('initializing')
-        await liff.init({ liffId: id })
+
+        // liff.init() throws if called a second time in the same page session.
+        // Catch "already initialized" gracefully and continue with existing state.
+        try {
+          await liff.init({ liffId: id })
+        } catch (initErr) {
+          const msg = initErr instanceof Error ? initErr.message : String(initErr)
+          const alreadyInit =
+            msg.toLowerCase().includes('already') ||
+            msg.toLowerCase().includes('init')
+          if (!alreadyInit) throw initErr
+          // Already initialised — SDK state is intact, carry on normally.
+        }
+
         setIsInClient(liff.isInClient())
         setOs(liff.getOS())
         setLanguage(liff.getLanguage())
         setLineVersion(liff.getLineVersion())
 
-        // Not logged in — call liff.login() without a custom redirectUri.
-        // LINE will return the user to the registered LIFF endpoint URL.
-        // Passing a custom redirectUri can break token validation on mobile
-        // when the URL differs from the endpoint registered in LINE Developers.
+        // Not logged in — redirect to LINE login.
+        // No custom redirectUri: LINE returns to the registered LIFF endpoint.
         if (!liff.isLoggedIn()) {
           setLoadingStep('requesting_permission')
           liff.login()

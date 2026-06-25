@@ -121,7 +121,7 @@ function ChoiceGroup({
 }
 
 export default function RegisterPage() {
-  const { profile } = useLiffContext()
+  const { profile, isReady } = useLiffContext()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -322,6 +322,11 @@ export default function RegisterPage() {
       : ''
 
   const isLocalResident = formData.userType === 'คนในชุมชนคุ้งบางกะเจ้า'
+
+  // Wait for LIFF to finish initialising before rendering the form.
+  // The LiffLoadingOverlay handles the visual loading state globally,
+  // so we just return null here to avoid showing an empty / profileless form.
+  if (!isReady) return null
 
   if (success) {
     return (
@@ -544,7 +549,7 @@ export default function RegisterPage() {
               </div>
 
               <div id="field-subdistrict" className={fieldWrapClass('field-subdistrict')}>
-                <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ตำบลหลัก</label>
+                <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ต��บลหลัก</label>
                 <ChoiceGroup
                   options={SUBDISTRICTS}
                   value={formData.subdistrict}

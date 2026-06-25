@@ -65,6 +65,7 @@ export function LiffLoadingOverlay({ step }: Props) {
             height={80}
             className="object-contain w-full h-full"
             priority
+            unoptimized
           />
         </div>
         <span className="text-[#154212] font-bold text-lg tracking-wide">

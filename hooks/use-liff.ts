@@ -73,7 +73,13 @@ export function useLiff(liffId?: string): UseLiffReturn {
         }
 
         setLoadingStep('initializing')
-        await liff.init({ liffId: id })
+        await liff.init({
+          liffId: id,
+          // Automatically trigger LINE login when opened in an external browser
+          // (e.g. Chrome/Safari) if the user has already granted permission.
+          // This restores the same behaviour as the old "/" entry point.
+          withLoginOnExternalBrowser: true,
+        })
         setIsInClient(liff.isInClient())
         setOs(liff.getOS())
         setLanguage(liff.getLanguage())

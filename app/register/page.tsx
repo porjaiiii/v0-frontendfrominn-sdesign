@@ -343,7 +343,7 @@ export default function RegisterPage() {
             <p className="text-gray-600 mb-2">ยินดีต้อนรับสู่ Digital Wasted Account</p>
             <p className="text-sm text-gray-500 mb-6">คุณได้ลงทะเบียนเรียบร้อยแล้ว</p>
             <Link
-              href="/"
+              href="/home"
               className="inline-block bg-[#154212] text-white font-bold py-3 px-8 rounded-lg hover:bg-[#0d3308] transition-colors"
             >
               กลับไปหน้าหลัก

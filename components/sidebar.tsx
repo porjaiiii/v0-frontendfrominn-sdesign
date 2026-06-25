@@ -15,7 +15,7 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  { href: '/home', icon: Trash2, label: 'บันทึกขยะ' },
+  { href: '/', icon: Trash2, label: 'บันทึกขยะ' },
   { href: '/ranking', icon: BarChart3, label: 'ยอดสะสมและอันดับ' },
   { href: '/rewards', icon: Gift, label: 'แลกรางวัล' },
   { href: '/how-to-use', icon: BookOpen, label: 'วิธีใช้งาน' },

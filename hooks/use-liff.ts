@@ -113,16 +113,20 @@ export function useLiff(liffId?: string): UseLiffReturn {
           // localStorage unavailable — skip path restoration
         }
 
-        // Fetch profile
+        // Fetch profile — set isLoggedIn + profile atomically so consumers
+        // never see isLoggedIn=true with profile=null.
         setLoadingStep('fetching_profile')
-        setIsLoggedIn(true)
+        let userProfile: LiffProfile | null = null
         try {
-          const userProfile = await liff.getProfile()
-          setProfile(userProfile)
+          userProfile = await liff.getProfile()
         } catch (profileErr) {
           console.error('[LIFF] Failed to get profile:', profileErr)
         }
 
+        // Batch all state updates together to avoid intermediate renders
+        // where isLoggedIn is true but profile is still null.
+        setIsLoggedIn(true)
+        setProfile(userProfile)
         setLoadingStep('ready')
         setIsReady(true)
       } catch (err) {

@@ -1,29 +1,42 @@
 'use client'
 
 /**
- * Root route "/" — this is the LIFF entry point.
+ * Root route "/" — this is the registered LIFF endpoint.
  *
- * The LIFF app always opens at "/" first. We immediately redirect to
- * "/register" which is the correct first-time landing page.
- * use-liff.ts handles saving the intended path before LINE's permission
- * screen and restoring it afterwards, so deep-links (e.g. "/home") still
- * work correctly.
+ * LINE always redirects back here after the permission screen, passing
+ * ?liff.state= tokens in the URL. We MUST let liff.init() run and consume
+ * those tokens BEFORE doing any navigation, otherwise the SDK never receives
+ * the auth code and the session stays empty on mobile.
  *
- * Registered users who land here via useProfileGuard will be redirected
- * to "/home" automatically by that hook after their profile is confirmed.
+ * Flow:
+ *  1. Page mounts → LiffProvider (in layout) starts liff.init()
+ *  2. LiffLoadingOverlay covers the screen while init runs
+ *  3. Once isReady=true, useProfileGuard checks if the user has a profile:
+ *     - No profile → redirect to /register
+ *     - Has profile → redirect to /home
  */
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useLiffContext } from '@/lib/liff-context'
+import { useProfileGuard } from '@/hooks/use-profile-guard'
 
 export default function RootPage() {
   const router = useRouter()
+  const { isReady, isLoggedIn } = useLiffContext()
+  const { status: guardStatus } = useProfileGuard()
 
   useEffect(() => {
-    router.replace('/register')
-  }, [router])
+    // Only navigate after LIFF has fully initialised and the user is logged in.
+    // guardStatus 'ok' means profile exists → go to home.
+    // guardStatus 'redirecting' means useProfileGuard already pushed /register.
+    if (!isReady || !isLoggedIn) return
+    if (guardStatus === 'ok') {
+      router.replace('/home')
+    }
+    // 'redirecting' is handled by useProfileGuard itself
+  }, [isReady, isLoggedIn, guardStatus, router])
 
-  // Return null — LiffLoadingOverlay from LiffProvider covers the screen
-  // while LIFF initialises, so the user never sees a blank flash.
+  // LiffLoadingOverlay from LiffProvider covers the screen — no blank flash.
   return null
 }

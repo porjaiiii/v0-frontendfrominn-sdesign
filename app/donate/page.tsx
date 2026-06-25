@@ -42,7 +42,7 @@ const DONATIONS: DonationItem[] = [
     id: 1,
     name: 'สำนักสงฆ์ห้วยทำเนียว',
     description: 'เก็บเนียวโบราณที่สวยงามสำนักสงฆ์ห้วยทำเนียว',
-    image: 'https://images.unsplash.com/photo-1548013146-72839103ba69?w=400&h=400&fit=crop',
+    image: '/images/temple/วัด2.jpg',
     currentAmount: 15670,
     targetAmount: 50000,
     progress: 31
@@ -60,7 +60,7 @@ const DONATIONS: DonationItem[] = [
     id: 3,
     name: 'วัดห้วยสายน้ำใจบิน',
     description: 'ปรับปรุงพื้นพวงพื้นสัตว์ในประเทศไทย',
-    image: 'https://images.unsplash.com/photo-1494783367193-149034c05e41?w=400&h=400&fit=crop',
+    image: '/images/temple/วัดพระสิงห์.jpg',
     currentAmount: 42300,
     targetAmount: 100000,
     progress: 42
@@ -69,7 +69,7 @@ const DONATIONS: DonationItem[] = [
     id: 4,
     name: 'สำนักสงฆ์เขาแก้ว',
     description: 'ฟื้นฟูป่าทำไม้สำหรับชุมชนท้องถิ่น',
-    image: 'https://images.unsplash.com/photo-1511379938547-c1f69b13d835?w=400&h=400&fit=crop',
+    image: '/images/temple/วัดภูเขา.jpg',
     currentAmount: 56800,
     targetAmount: 90000,
     progress: 63

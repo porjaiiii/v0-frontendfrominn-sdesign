@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { unstable_cache } from 'next/cache'
 import { POINTS_SCRIPT_URL } from '@/lib/points-config'
 import type { RankingEntry } from '@/app/api/ranking/route'
 
@@ -25,13 +26,6 @@ const SAMPLE_RANKING: Omit<RankingEntry, 'rank'>[] = [
   { lineUserId: 'Usample006', name: 'วรรณา เจริญสุข', carbon: 76.0, points: 760, avatar: '/placeholder.svg?height=40&width=40', location: 'ตำบลบางยอ' },
   { lineUserId: 'Usample007', name: 'ประยุทธ รุ่งเรือง', carbon: 74.0, points: 740, avatar: '/placeholder.svg?height=40&width=40', location: 'ตำบลทรงคะนอง' },
 ]
-
-function sample() {
-  return NextResponse.json({
-    ranking: SAMPLE_RANKING.map((e, i) => ({ ...e, rank: i + 1 })),
-    isSample: true,
-  })
-}
 
 function toNumber(value: unknown): number {
   const n = typeof value === 'number' ? value : parseFloat(String(value ?? ''))
@@ -142,11 +136,18 @@ async function buildNameMap(userIds: string[]): Promise<Record<string, UserInfo>
   return map
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const callerUserId = searchParams.get('userId')?.trim() || ''
-  const callerName   = searchParams.get('name')?.trim() || ''
+type RankingResult = { ranking: RankingEntry[]; isSample: boolean }
 
+const SAMPLE_RESULT: RankingResult = {
+  ranking: SAMPLE_RANKING.map((e, i) => ({ ...e, rank: i + 1 })),
+  isSample: true,
+}
+
+// Build the global leaderboard from the Apps Script (2 GAS calls + name lookups).
+// This is identical for every viewer, so we cache it server-side: the slow GAS
+// path runs at most once per `revalidate` window, and all other requests — even
+// from freshly-reopened LIFF tabs — get the warm cached copy instantly.
+async function buildRanking(): Promise<RankingResult> {
   try {
     // The Apps Script guard requires a user_id; pass a sentinel for the leaderboard call.
     const url = `${POINTS_SCRIPT_URL}?action=get_leaderboard&user_id=leaderboard`
@@ -154,7 +155,7 @@ export async function GET(request: Request) {
 
     if (!res.ok) {
       console.error('[points-ranking] script error:', res.status, await res.text())
-      return sample()
+      return SAMPLE_RESULT
     }
 
     const data = await res.json()
@@ -163,12 +164,14 @@ export async function GET(request: Request) {
     const entries = accounts
       .map(a => ({
         lineUserId: String(a.user_id ?? '').trim(),
-        carbon:     toNumber(a.total_co2),
-        points:     toNumber(a.total_points),
+        // Round away floating-point artifacts before they reach the (raw) UI:
+        // carbon shows to 2 decimals, points are whole numbers.
+        carbon:     Math.round(toNumber(a.total_co2) * 100) / 100,
+        points:     Math.round(toNumber(a.total_points)),
       }))
       .filter(e => e.lineUserId)
 
-    if (entries.length === 0) return sample()
+    if (entries.length === 0) return SAMPLE_RESULT
 
     const nameMap = await buildNameMap(entries.map(e => e.lineUserId))
 
@@ -176,11 +179,10 @@ export async function GET(request: Request) {
       .sort((a, b) => b.carbon - a.carbon)
       .map((entry, i) => {
         const info = nameMap[entry.lineUserId]
-        const isCaller = callerUserId && entry.lineUserId === callerUserId
         return {
           rank:       i + 1,
           lineUserId: entry.lineUserId,
-          name:       isCaller && callerName ? callerName : info?.name || `ผู้ใช้ ${i + 1}`,
+          name:       info?.name || `ผู้ใช้ ${i + 1}`,
           carbon:     entry.carbon,
           points:     entry.points,
           avatar:     info?.avatar || FALLBACK_AVATAR,
@@ -188,9 +190,35 @@ export async function GET(request: Request) {
         }
       })
 
-    return NextResponse.json({ ranking, isSample: false })
+    return { ranking, isSample: false }
   } catch (error) {
     console.error('[points-ranking] Error:', error)
-    return NextResponse.json({ error: 'Failed to fetch ranking' }, { status: 500 })
+    return SAMPLE_RESULT
   }
+}
+
+// Shared, viewer-independent cache. 60 s keeps the leaderboard fresh enough
+// (carbon totals change slowly) while removing the GAS cold-start from the hot
+// path. Bump the revalidate if you want fewer GAS hits.
+const getCachedRanking = unstable_cache(buildRanking, ['points-leaderboard'], {
+  revalidate: 60,
+  tags: ['points-leaderboard'],
+})
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const callerUserId = searchParams.get('userId')?.trim() || ''
+  const callerName   = searchParams.get('name')?.trim() || ''
+
+  const result = await getCachedRanking()
+
+  // Patch the caller's display name post-cache so the shared cached payload
+  // stays viewer-independent (the page also patches this client-side from LIFF).
+  const ranking = callerUserId && callerName
+    ? result.ranking.map(e =>
+        e.lineUserId === callerUserId ? { ...e, name: callerName } : e
+      )
+    : result.ranking
+
+  return NextResponse.json({ ranking, isSample: result.isSample })
 }

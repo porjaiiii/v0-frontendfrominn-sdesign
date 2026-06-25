@@ -85,14 +85,17 @@ function txToHistoryItem(tx: Transaction): HistoryItem | null {
   if (tx.type === 'spend') return null
   const d = parseTs(tx.timestamp)
   const base = { id: tx.tx_id, ts: d.getTime(), date: fmtDate(d), time: fmtTime(d) }
-  const weight = Number(tx.weight) || 0
+  // Round away floating-point artifacts from the sheet (weight × factor sums):
+  // weight to 2 decimals, points to a whole number.
+  const weight = Math.round((Number(tx.weight) || 0) * 100) / 100
+  const points = Math.round(Number(tx.points) || 0)
 
   // earn with recycled weight -> recycle entry (has detail)
   if (weight > 0) {
     return { ...base, type: 'recycle', title: `เก็บของรีไซเคิล ${weight} KG`, color: TYPE_COLOR.recycle, hasDetail: true }
   }
   // earn without weight (e.g. bonus) -> points entry
-  return { ...base, type: 'points', title: `คุณมีคะแนนสะสมเพิ่ม ${tx.points} คะแนน`, color: TYPE_COLOR.points }
+  return { ...base, type: 'points', title: `คุณมีคะแนนสะสมเพิ่ม ${points} คะแนน`, color: TYPE_COLOR.points }
 }
 
 // Spend detail rows -> rich reward/donation entries.

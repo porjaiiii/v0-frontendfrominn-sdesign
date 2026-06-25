@@ -67,6 +67,16 @@ function toNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
+// Points are always whole numbers; weight/CO2 are shown to 2 decimals. Rounding
+// here strips floating-point artifacts (e.g. 829.9999999999 / 2.30000000004)
+// that can sneak in from the sheet sums or Apps Script before they hit the UI.
+function toPoints(value: unknown): number {
+  return Math.round(toNumber(value))
+}
+function toMetric(value: unknown): number {
+  return Math.round(toNumber(value) * 100) / 100
+}
+
 export function PointsProvider({ children }: { children: ReactNode }) {
   const { profile, isReady } = useLiffContext()
   const userId = profile?.userId ?? null
@@ -80,6 +90,30 @@ export function PointsProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError(null)
     try {
+      // ── Fast path: read the balance straight from the public points sheet ──
+      // No Apps Script cold start. Returns notFound for brand-new users, who
+      // then fall through to the GAS path below so their account gets created.
+      try {
+        const fastRes = await fetch(
+          `/api/points?action=get_account_fast&user_id=${encodeURIComponent(uid)}`
+        )
+        const fast = await fastRes.json()
+        if (fast?.success && fast.account) {
+          setAccount({
+            user_id: fast.account.user_id,
+            total_points: toPoints(fast.account.total_points),
+            total_weight: toMetric(fast.account.total_weight),
+            total_co2: toMetric(fast.account.total_co2),
+            tier: fast.account.tier ?? '',
+            last_updated: fast.account.last_updated,
+          })
+          return
+        }
+      } catch {
+        // Fast read failed — fall through to the authoritative GAS path.
+      }
+
+      // ── Fallback: Apps Script get_or_create (handles new-user creation) ──
       const res = await fetch('/api/points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,7 +125,7 @@ export function PointsProvider({ children }: { children: ReactNode }) {
         // in points_monthly (e.g. hand-edited cells). Resync so the number shown
         // == the number that can actually be spent. Otherwise the UI shows
         // "enough points" but the server rejects the spend as "Not enough points".
-        let spendablePoints = toNumber(data.account.total_points)
+        let spendablePoints = toPoints(data.account.total_points)
         try {
           const syncRes = await fetch('/api/points', {
             method: 'POST',
@@ -99,7 +133,7 @@ export function PointsProvider({ children }: { children: ReactNode }) {
             body: JSON.stringify({ action: 'resync_balance', user_id: uid }),
           })
           const syncData = await syncRes.json()
-          if (syncData?.success) spendablePoints = toNumber(syncData.total_points)
+          if (syncData?.success) spendablePoints = toPoints(syncData.total_points)
         } catch {
           // Resync failed — fall back to the account's stored total.
         }
@@ -107,8 +141,8 @@ export function PointsProvider({ children }: { children: ReactNode }) {
         setAccount({
           user_id: data.account.user_id,
           total_points: spendablePoints,
-          total_weight: toNumber(data.account.total_weight),
-          total_co2: toNumber(data.account.total_co2),
+          total_weight: toMetric(data.account.total_weight),
+          total_co2: toMetric(data.account.total_co2),
           tier: data.account.tier ?? '',
           last_updated: data.account.last_updated,
         })

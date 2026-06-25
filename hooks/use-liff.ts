@@ -14,6 +14,13 @@ export interface ScanCodeResult {
   value: string | null
 }
 
+export type LiffLoadingStep =
+  | 'idle'
+  | 'initializing'
+  | 'requesting_permission'
+  | 'fetching_profile'
+  | 'ready'
+
 export interface UseLiffReturn {
   // State
   isLoggedIn: boolean
@@ -24,6 +31,7 @@ export interface UseLiffReturn {
   os: string | null
   language: string | null
   lineVersion: string | null
+  loadingStep: LiffLoadingStep
   
   // Auth
   login: () => void
@@ -38,6 +46,8 @@ export interface UseLiffReturn {
   getIDToken: () => string | null
 }
 
+const LIFF_REDIRECT_KEY = 'liff_intended_path'
+
 export function useLiff(liffId?: string): UseLiffReturn {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isReady, setIsReady] = useState(false)
@@ -47,6 +57,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
   const [os, setOs] = useState<string | null>(null)
   const [language, setLanguage] = useState<string | null>(null)
   const [lineVersion, setLineVersion] = useState<string | null>(null)
+  const [loadingStep, setLoadingStep] = useState<LiffLoadingStep>('idle')
 
   useEffect(() => {
     const initLiff = async () => {
@@ -56,24 +67,53 @@ export function useLiff(liffId?: string): UseLiffReturn {
         
         if (!id) {
           console.warn('[LIFF] No LIFF ID provided. Running in demo mode.')
+          setLoadingStep('ready')
           setIsReady(true)
           return
         }
-        
+
+        setLoadingStep('initializing')
         await liff.init({ liffId: id })
         setIsInClient(liff.isInClient())
         setOs(liff.getOS())
         setLanguage(liff.getLanguage())
         setLineVersion(liff.getLineVersion())
 
-        // Auto-login if not logged in
+        // Auto-login if not logged in — save current path first so we can
+        // restore it after LINE returns the user back to the LIFF app.
         if (!liff.isLoggedIn()) {
-          // Redirect to LINE login automatically
-          liff.login()
+          setLoadingStep('requesting_permission')
+          // Save the intended path (e.g. /register) before redirecting
+          const intendedPath = window.location.pathname + window.location.search
+          try {
+            localStorage.setItem(LIFF_REDIRECT_KEY, intendedPath)
+          } catch (_) {
+            // localStorage may be unavailable in some environments
+          }
+          // Build a redirectUri that returns user to the same path
+          const redirectUri = window.location.origin + intendedPath
+          liff.login({ redirectUri })
           return
         }
 
-        // User is logged in, get profile
+        // User is logged in — check if we need to restore a saved path
+        try {
+          const savedPath = localStorage.getItem(LIFF_REDIRECT_KEY)
+          if (savedPath && savedPath !== '/') {
+            localStorage.removeItem(LIFF_REDIRECT_KEY)
+            const currentPath = window.location.pathname + window.location.search
+            // Only redirect if we're not already on the intended page
+            if (currentPath !== savedPath) {
+              window.location.replace(savedPath)
+              return
+            }
+          }
+        } catch (_) {
+          // localStorage unavailable — skip path restoration
+        }
+
+        // Fetch profile
+        setLoadingStep('fetching_profile')
         setIsLoggedIn(true)
         try {
           const userProfile = await liff.getProfile()
@@ -81,11 +121,13 @@ export function useLiff(liffId?: string): UseLiffReturn {
         } catch (profileErr) {
           console.error('[LIFF] Failed to get profile:', profileErr)
         }
-        
+
+        setLoadingStep('ready')
         setIsReady(true)
       } catch (err) {
         console.error('[LIFF] Initialization failed:', err)
         setError(err instanceof Error ? err.message : 'LIFF initialization failed')
+        setLoadingStep('ready')
         setIsReady(true) // Still mark as ready for fallback
       }
     }
@@ -229,6 +271,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
     os,
     language,
     lineVersion,
+    loadingStep,
     login,
     logout,
     sendMessage,

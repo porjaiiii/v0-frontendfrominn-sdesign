@@ -1,8 +1,9 @@
 'use client'
 
 import { createContext, useContext, useEffect, type ReactNode } from 'react'
-import { useLiff, type LiffProfile, type ScanCodeResult } from '@/hooks/use-liff'
+import { useLiff, type LiffProfile, type ScanCodeResult, type LiffLoadingStep } from '@/hooks/use-liff'
 import { useApp } from './app-context'
+import { LiffLoadingOverlay } from '@/components/liff-loading-overlay'
 
 interface LiffContextType {
   // State
@@ -14,6 +15,7 @@ interface LiffContextType {
   os: string | null
   language: string | null
   lineVersion: string | null
+  loadingStep: LiffLoadingStep
   
   // Auth
   login: () => void
@@ -51,6 +53,7 @@ export function LiffProvider({ children }: { children: ReactNode }) {
 
   return (
     <LiffContext.Provider value={liff}>
+      <LiffLoadingOverlay step={liff.loadingStep} />
       {children}
     </LiffContext.Provider>
   )

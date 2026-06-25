@@ -14,6 +14,13 @@ export interface ScanCodeResult {
   value: string | null
 }
 
+export type LiffLoadingStep =
+  | 'idle'
+  | 'initializing'
+  | 'requesting_permission'
+  | 'fetching_profile'
+  | 'ready'
+
 export interface UseLiffReturn {
   // State
   isLoggedIn: boolean
@@ -24,6 +31,7 @@ export interface UseLiffReturn {
   os: string | null
   language: string | null
   lineVersion: string | null
+  loadingStep: LiffLoadingStep
   
   // Auth
   login: () => void
@@ -47,6 +55,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
   const [os, setOs] = useState<string | null>(null)
   const [language, setLanguage] = useState<string | null>(null)
   const [lineVersion, setLineVersion] = useState<string | null>(null)
+  const [loadingStep, setLoadingStep] = useState<LiffLoadingStep>('idle')
 
   useEffect(() => {
     const initLiff = async () => {
@@ -56,36 +65,46 @@ export function useLiff(liffId?: string): UseLiffReturn {
         
         if (!id) {
           console.warn('[LIFF] No LIFF ID provided. Running in demo mode.')
+          setLoadingStep('ready')
           setIsReady(true)
           return
         }
-        
+
+        setLoadingStep('initializing')
         await liff.init({ liffId: id })
         setIsInClient(liff.isInClient())
         setOs(liff.getOS())
         setLanguage(liff.getLanguage())
         setLineVersion(liff.getLineVersion())
 
-        // Auto-login if not logged in
+        // Not logged in — call liff.login() without a custom redirectUri.
+        // LINE will return the user to the registered LIFF endpoint URL.
+        // Passing a custom redirectUri can break token validation on mobile
+        // when the URL differs from the endpoint registered in LINE Developers.
         if (!liff.isLoggedIn()) {
-          // Redirect to LINE login automatically
+          setLoadingStep('requesting_permission')
           liff.login()
           return
         }
 
-        // User is logged in, get profile
-        setIsLoggedIn(true)
+        // Fetch profile and set all auth state atomically so consumers never
+        // see isLoggedIn=true with profile=null.
+        setLoadingStep('fetching_profile')
+        let userProfile: LiffProfile | null = null
         try {
-          const userProfile = await liff.getProfile()
-          setProfile(userProfile)
+          userProfile = await liff.getProfile()
         } catch (profileErr) {
           console.error('[LIFF] Failed to get profile:', profileErr)
         }
-        
+
+        setIsLoggedIn(true)
+        setProfile(userProfile)
+        setLoadingStep('ready')
         setIsReady(true)
       } catch (err) {
         console.error('[LIFF] Initialization failed:', err)
         setError(err instanceof Error ? err.message : 'LIFF initialization failed')
+        setLoadingStep('ready')
         setIsReady(true) // Still mark as ready for fallback
       }
     }
@@ -229,6 +248,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
     os,
     language,
     lineVersion,
+    loadingStep,
     login,
     logout,
     sendMessage,

@@ -503,9 +503,14 @@ export default function RegisterPage() {
             <input
               type="tel"
               name="phoneNumber"
+              inputMode="numeric"
               value={formData.phoneNumber}
-              onChange={handleChange}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, '').slice(0, 10)
+                setFormData(prev => ({ ...prev, phoneNumber: digits }))
+              }}
               placeholder="เช่น 0812345678"
+              maxLength={10}
               className={inputClass('field-phoneNumber')}
               required
             />

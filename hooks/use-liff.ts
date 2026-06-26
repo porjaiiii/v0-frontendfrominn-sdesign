@@ -94,7 +94,28 @@ export function useLiff(liffId?: string): UseLiffReturn {
         try {
           userProfile = await liff.getProfile()
         } catch (profileErr) {
-          console.error('[LIFF] Failed to get profile:', profileErr)
+          // isLoggedIn() can return true off a LINE access token that has
+          // actually expired, which makes getProfile() throw (401). That would
+          // leave the app stuck as a "guest" with no data — and because the
+          // stale token lives in localStorage, clearing the HTTP cache doesn't
+          // help (the failure is browser-specific). Recover by clearing the
+          // session and re-logging in to mint a fresh token. A sessionStorage
+          // flag bounds this to a single retry so a genuinely broken setup
+          // (e.g. missing "profile" scope) can't cause an infinite redirect.
+          console.error('[LIFF] Failed to get profile — session may be stale:', profileErr)
+          const RELOGIN_FLAG = 'liff_stale_relogin'
+          if (!sessionStorage.getItem(RELOGIN_FLAG)) {
+            sessionStorage.setItem(RELOGIN_FLAG, '1')
+            try { liff.logout() } catch {}
+            liff.login({ redirectUri: window.location.href })
+            return
+          }
+        }
+
+        // Healthy session — clear the retry guard so a future stale token can
+        // trigger the recovery again.
+        if (userProfile) {
+          try { sessionStorage.removeItem('liff_stale_relogin') } catch {}
         }
 
         setIsLoggedIn(true)

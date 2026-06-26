@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import liff from '@line/liff'
 import Image from 'next/image'
 import { ChevronDown, ChevronUp, X } from 'lucide-react'
@@ -130,6 +131,18 @@ export default function RegisterPage() {
   const [tourStep, setTourStep] = useState(0)
   const [bubblePos, setBubblePos] = useState<{ top: number; bottom: number; useBottom: boolean } | null>(null)
   const tourStarted = useRef(false)
+  const router = useRouter()
+
+  // After registration: close the LIFF window to return to LINE.
+  // Outside the LINE client (e.g. plain browser) that does nothing, so
+  // fall back to navigating home.
+  const handleFinish = () => {
+    if (liff.isInClient()) {
+      liff.closeWindow()
+    } else {
+      router.push('/home')
+    }
+  }
 
   const [formData, setFormData] = useState({
     lineUserId: '',
@@ -343,7 +356,7 @@ export default function RegisterPage() {
             <p className="text-gray-600 mb-2">ยินดีต้อนรับสู่ Digital Wasted Account</p>
             <p className="text-sm text-gray-500 mb-6">คุณได้ลงทะเบียนเรียบร้อยแล้ว</p>
             <button
-              onClick={() => liff.closeWindow()}
+              onClick={handleFinish}
               className="inline-block bg-[#154212] text-white font-bold py-3 px-8 rounded-lg hover:bg-[#0d3308] transition-colors"
             >
               กลับสู่ line

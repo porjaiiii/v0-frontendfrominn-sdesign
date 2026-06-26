@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import Link from 'next/link'
+import liff from '@line/liff'
 import Image from 'next/image'
 import { ChevronDown, ChevronUp, X } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
@@ -342,12 +342,12 @@ export default function RegisterPage() {
             <h2 className="text-2xl font-bold text-[#154212] mb-3">ลงทะเบียนสำเร็จ</h2>
             <p className="text-gray-600 mb-2">ยินดีต้อนรับสู่ Digital Wasted Account</p>
             <p className="text-sm text-gray-500 mb-6">คุณได้ลงทะเบียนเรียบร้อยแล้ว</p>
-            <Link
-              href="/home"
+            <button
+              onClick={() => liff.closeWindow()}
               className="inline-block bg-[#154212] text-white font-bold py-3 px-8 rounded-lg hover:bg-[#0d3308] transition-colors"
             >
-              กลับไปหน้าหลัก
-            </Link>
+              กลับสู่ line
+            </button>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
@@ -36,6 +37,7 @@ const WASTE_IMAGES: Record<WasteType, string> = {
 export default function HomePage() {
   const liffContext = useLiffContext()
   const { status: guardStatus } = useProfileGuard()
+  const router = useRouter()
   const [step, setStep] = useState(1)
 
 
@@ -132,8 +134,13 @@ export default function HomePage() {
     setWeight(0)
     setNoWeight(false)
     setImageEvidence(null)
-    // Close LIFF window to return to LINE
-    liff.closeWindow()
+    // Inside LINE, close the LIFF window to return to chat. Outside the LINE
+    // client liff.closeWindow() does nothing, so fall back to navigating home.
+    if (liff.isInClient()) {
+      liff.closeWindow()
+    } else {
+      router.push('/home')
+    }
   }
 
   const handleNext = () => {

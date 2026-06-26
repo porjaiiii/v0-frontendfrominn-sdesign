@@ -118,7 +118,7 @@ export function WeightInput({ value, onChange, noWeight = false, onNoWeightChang
           onClick={() => adjustWeight(-1.0)}
           disabled={noWeight || value <= 0}
           className={cn(
-            'w-14 h-14 rounded-full flex items-center justify-center transition-all shrink-0 shadow-sm active:scale-95',
+            'w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0',
             noWeight || value <= 0
               ? 'bg-[#cccccc] cursor-not-allowed'
               : 'bg-[#154212] hover:bg-[#0d3308]'
@@ -128,31 +128,23 @@ export function WeightInput({ value, onChange, noWeight = false, onNoWeightChang
         </button>
 
         {/* Text input — uses inputMode="decimal" for mobile numeric keyboard with decimal */}
-        <div className="relative">
-          <input
-            type="text"
-            inputMode="decimal"
-            pattern="[0-9]*\.?[0-9]*"
-            value={shownValue}
-            onChange={handleInputChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            disabled={noWeight}
-            placeholder="0"
-            className={cn(
-              'w-36 text-center text-4xl font-bold py-4 px-3 rounded-3xl border-2',
-              'focus:outline-none transition-colors',
-              noWeight
-                ? 'bg-[#f5f5f5] text-[#999999] border-[#cccccc]'
-                : isFocused
-                  ? 'border-[#154212] bg-white text-[#154212]'
-                  : 'border-[#cccccc] bg-white text-[#154212]'
-            )}
-          />
-          <span className="absolute right-3 bottom-[14px] text-sm font-medium text-[#888888] pointer-events-none">
-            {unit}
-          </span>
-        </div>
+        <input
+          type="text"
+          inputMode="decimal"
+          pattern="[0-9]*\.?[0-9]*"
+          value={shownValue}
+          onChange={handleInputChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          disabled={noWeight}
+          placeholder="0"
+          className={cn(
+            'w-40 text-center text-3xl font-semibold py-4 px-4 rounded-3xl border-2',
+            'focus:border-[#154212] focus:outline-none',
+            'bg-white',
+            noWeight && 'bg-[#f5f5f5] text-[#999999]'
+          )}
+        />
 
         {/* Plus button */}
         <button
@@ -160,7 +152,7 @@ export function WeightInput({ value, onChange, noWeight = false, onNoWeightChang
           onClick={() => adjustWeight(1.0)}
           disabled={noWeight || value >= MAX_WEIGHT}
           className={cn(
-            'w-14 h-14 rounded-full flex items-center justify-center transition-all shrink-0 shadow-sm active:scale-95',
+            'w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0',
             noWeight || value >= MAX_WEIGHT
               ? 'bg-[#cccccc] cursor-not-allowed'
               : 'bg-[#154212] hover:bg-[#0d3308]'
@@ -169,31 +161,6 @@ export function WeightInput({ value, onChange, noWeight = false, onNoWeightChang
           <Plus className="w-6 h-6 text-white" />
         </button>
       </div>
-
-      {/* Quick-select buttons */}
-      {!noWeight && (
-        <div className="flex flex-wrap justify-center gap-2">
-          {[0.5, 1, 2, 5, 10].map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => {
-                onChange(preset)
-                setDisplayValue(String(preset))
-                setWeightError(null)
-              }}
-              className={cn(
-                'px-4 py-1.5 rounded-full border-2 text-sm font-semibold transition-all',
-                value === preset
-                  ? 'bg-[#154212] border-[#154212] text-white'
-                  : 'bg-white border-[#cccccc] text-[#154212] hover:border-[#154212]'
-              )}
-            >
-              {preset} {unit}
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* Validation error */}
       {weightError && (

@@ -2,7 +2,14 @@
 
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
-import { Recycle, Scale, Camera, QrCode, Play } from 'lucide-react'
+import liff from '@line/liff'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { Recycle, Scale, Camera, QrCode, Play, HelpCircle } from 'lucide-react'
 
 // Steps data — matches the Figma design (circular pastel icons + wording)
 const STEPS = [
@@ -40,7 +47,36 @@ const STEPS = [
   },
 ]
 
+// FAQ — common questions answered so users can self-serve before asking the bot.
+const FAQS = [
+  {
+    q: 'ใช้แต้มแลกของรางวัลยังไง?',
+    a: 'ไปที่หน้า "แลกของรางวัล" เลือกของที่ต้องการ แล้วกดแลก ระบบจะสร้างคูปอง QR Code ให้นำไปแสดงกับเจ้าหน้าที่',
+  },
+  {
+    q: 'ทำไมแต้มยังไม่เข้า?',
+    a: 'แต้มจะเข้าหลังจากเจ้าหน้าที่ตรวจสอบและรับขยะเรียบร้อยแล้ว หากรอเกิน 1-2 วันแล้วยังไม่เข้า พิมพ์ถามแชทบอทได้เลย',
+  },
+  {
+    q: 'คูปองมีวันหมดอายุไหม?',
+    a: 'คูปองที่แลกแล้วควรนำไปใช้โดยเร็ว สถานะและรายละเอียดจะแสดงอยู่ในหน้า "คูปองของฉัน"',
+  },
+  {
+    q: 'ขยะแบบไหนที่รับบ้าง?',
+    a: 'รับขยะรีไซเคิล เช่น พลาสติก กระดาษ แก้ว และอลูมิเนียม ตามขั้นตอนด้านบน',
+  },
+  {
+    q: 'เปลี่ยนข้อมูลส่วนตัวยังไง?',
+    a: 'ดูข้อมูลของคุณได้ที่หน้าโปรไฟล์ หากต้องการแก้ไข พิมพ์แจ้งแชทบอทหรือติดต่อเจ้าหน้าที่',
+  },
+]
+
 export default function HowToUsePage() {
+  // Close the LIFF window so the user lands back in the LINE chat with the bot.
+  const goToChat = () => {
+    liff.closeWindow()
+  }
+
   return (
     <div className="min-h-screen bg-white pb-24">
       <PageHeader />
@@ -90,6 +126,39 @@ export default function HowToUsePage() {
             })}
           </div>
         </div>
+
+        {/* FAQ Section */}
+        <section className="mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <HelpCircle className="w-5 h-5 text-[#154212]" />
+            <h3 className="text-lg font-bold text-[#154212]">คำถามที่พบบ่อย</h3>
+          </div>
+
+          <Accordion
+            type="single"
+            collapsible
+            className="rounded-2xl border border-[#e5e5e5] bg-white shadow-sm px-5"
+          >
+            {FAQS.map((item, i) => (
+              <AccordionItem key={i} value={`faq-${i}`} className="border-[#eee]">
+                <AccordionTrigger className="text-base font-semibold text-[#154212] hover:no-underline py-4">
+                  {item.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-[#555555] leading-relaxed">
+                  {item.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+
+          {/* Nudge toward the chatbot for anything not covered */}
+          <button
+            onClick={goToChat}
+            className="mt-3 block w-full rounded-2xl border border-[#cdeccb] bg-[#f3faf1] px-5 py-4 text-center text-sm font-semibold text-[#06994a] hover:bg-[#e8f5e6] transition-colors"
+          >
+            ไม่เจอคำตอบ? พิมพ์ถามแชทบอทได้เลย →
+          </button>
+        </section>
       </main>
 
       {/* <BottomNav /> */}

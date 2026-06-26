@@ -573,7 +573,7 @@ export default function ProfilePage() {
           {!graphLoading && co2Data.length > 0 && (
             <div className="relative">
               <div
-                className="w-full aspect-[338/407] bg-no-repeat bg-contain bg-bottom"
+                className="w-full aspect-[338/237] bg-no-repeat bg-contain bg-bottom"
                 style={{ backgroundImage: 'url(/images/treebg.png)' }}
               />
               <div className="absolute bottom-4 right-4 bg-[#eaf6e8]/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-md text-center">

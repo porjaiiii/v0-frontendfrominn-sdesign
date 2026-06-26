@@ -573,7 +573,7 @@ export default function ProfilePage() {
           {!graphLoading && co2Data.length > 0 && (
             <div className="relative">
               <div
-                className="h-44 bg-no-repeat bg-cover bg-bottom"
+                className="w-full aspect-[636/407] bg-no-repeat bg-contain bg-bottom"
                 style={{ backgroundImage: 'url(/graphtree-bg.svg)' }}
               />
               <div className="absolute bottom-4 right-4 bg-[#eaf6e8]/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-md text-center">

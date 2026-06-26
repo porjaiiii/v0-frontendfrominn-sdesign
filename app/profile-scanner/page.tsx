@@ -190,7 +190,7 @@ export default function ProfileScannerPage() {
           </div>
         </main>
 
-        <BottomNav />
+        {/* <BottomNav /> */}
       </div>
     )
   }

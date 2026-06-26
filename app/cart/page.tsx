@@ -202,7 +202,7 @@ export default function CartPage() {
         )}
       </main>
 
-      <BottomNav />
+      {/* <BottomNav /> */}
     </div>
   )
 }

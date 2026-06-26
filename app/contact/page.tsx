@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { PageHeader } from '@/components/page-header'
-import { useLiffContext } from '@/lib/liff-context'
+import liff from '@line/liff'
 import {
   Accordion,
   AccordionContent,
@@ -10,9 +10,6 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Phone, Mail, MapPin, Clock, HelpCircle } from 'lucide-react'
-
-// LINE Official Account — users can type their question to the chatbot here.
-const LINE_OA_URL = 'https://line.me/R/ti/p/@digitalwaste'
 
 // FAQ — common questions answered so users can self-serve before contacting.
 const FAQS = [
@@ -47,17 +44,10 @@ const PLACEHOLDER_CHANNELS = [
 ]
 
 export default function ContactPage() {
-  const { closeWindow, isInClient } = useLiffContext()
-
-  // Same behavior as finishing a waste record: inside LINE, close the LIFF
-  // window so the user lands back in the chat (where they type to the bot).
-  // Outside LINE, open the Official Account link instead.
+  // Close the LIFF window so the user lands back in the LINE chat,
+  // where they type their question to the bot.
   const goToChat = () => {
-    if (isInClient) {
-      closeWindow()
-    } else {
-      window.open(LINE_OA_URL, '_blank')
-    }
+    liff.closeWindow()
   }
 
   return (

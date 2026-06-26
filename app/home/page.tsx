@@ -12,6 +12,7 @@ import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
 import { type WasteType, type WasteSubType } from '@/lib/app-context'
 import { useLiffContext } from '@/lib/liff-context'
 import { useProfileGuard } from '@/hooks/use-profile-guard'
+import liff from '@line/liff'
 import { cn } from '@/lib/utils'
 
 // Carbon factors per kg for each waste type
@@ -132,11 +133,7 @@ export default function HomePage() {
     setNoWeight(false)
     setImageEvidence(null)
     // Close LIFF window to return to LINE
-    try {
-      liffContext?.closeWindow()
-    } catch (e) {
-      // Ignore if not in LIFF environment
-    }
+    liff.closeWindow()
   }
 
   const handleNext = () => {

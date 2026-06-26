@@ -2,8 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { X, CheckCircle2, AlertCircle } from 'lucide-react'
+import { X, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
+
+const CARBON_FACTORS: Record<string, number> = {
+  plastic: 2.5,
+  paper: 1.8,
+  glass: 0.8,
+  aluminum: 4.0,
+  oil: 3.0,
+}
 
 interface WasteRecord {
   timestamp: string
@@ -26,6 +35,13 @@ interface WasteDetailModalProps {
   isEditing?: boolean
 }
 
+function recalculate(record: WasteRecord): WasteRecord {
+  const factor = CARBON_FACTORS[record.waste_type] ?? 2.0
+  const carbonReduction = record.weight_kg * factor
+  const pointsEarned = Math.round(carbonReduction * 10)
+  return { ...record, carbon_reduction: carbonReduction, points_earned: pointsEarned }
+}
+
 export function WasteDetailModal({
   record,
   isOpen,
@@ -43,16 +59,29 @@ export function WasteDetailModal({
     }
   }, [record])
 
+  // ฟังก์ชันอัปเดตค่าพร้อมคำนวณคะแนนใหม่ทุกครั้ง
+  const updateField = (fields: Partial<WasteRecord>) => {
+    setEditedRecord((prev) => {
+      if (!prev) return prev
+      const updated = { ...prev, ...fields }
+      return recalculate(updated)
+    })
+  }
+
+  // เมื่อเปลี่ยน waste_type ให้ reset subtype เป็นค่าแรกของประเภทใหม่
+  const handleTypeChange = (newType: string) => {
+    const subtypes = WASTE_SUBTYPES[newType as keyof typeof WASTE_SUBTYPES] ?? []
+    const firstSubtype = subtypes[0]?.name ?? ''
+    updateField({ waste_type: newType, waste_subtype: firstSubtype })
+  }
+
   const handleConfirmClick = async () => {
     if (!editedRecord) return
 
     try {
       setIsSavingApi(true)
-      console.log('[v0] Modal confirm clicked, isEditing:', isEditing)
       
       if (isEditing) {
-        // Call API to update the record
-        console.log('[v0] Updating record via API:', editedRecord)
         const response = await fetch('/api/waste/update', {
           method: 'PUT',
           headers: {
@@ -63,20 +92,14 @@ export function WasteDetailModal({
 
         if (!response.ok) {
           const error = await response.json()
-          console.error('[v0] API error:', error)
           alert('เกิดข้อผิดพลาดในการบันทึก: ' + (error.error || 'Unknown error'))
           return
         }
-
-        const result = await response.json()
-        console.log('[v0] API response:', result)
       }
 
-      // Call the parent handler
       await onConfirm(editedRecord)
       onClose()
     } catch (error) {
-      console.error('[v0] Error in handleConfirmClick:', error)
       alert('เกิดข้อผิดพลาด: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setIsSavingApi(false)
@@ -136,57 +159,64 @@ export function WasteDetailModal({
             )}
           </div>
 
-          {/* Type Info - Editable */}
+          {/* Type Info - Dropdown */}
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">ประเภทขยะ</p>
-            <input
-              type="text"
-              value={editedRecord.waste_type}
-              onChange={(e) =>
-                setEditedRecord({ ...editedRecord, waste_type: e.target.value })
-              }
-              disabled={!isEditing}
-              className={cn(
-                'w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold',
-                isEditing ? 'bg-white cursor-text' : 'bg-white cursor-default'
-              )}
-            />
+            {isEditing ? (
+              <select
+                value={editedRecord.waste_type}
+                onChange={(e) => handleTypeChange(e.target.value)}
+                className="w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold bg-white appearance-none"
+              >
+                {WASTE_TYPES.map((wt) => (
+                  <option key={wt.id} value={wt.id}>
+                    {wt.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold bg-white">
+                {WASTE_TYPES.find((wt) => wt.id === editedRecord.waste_type)?.name ?? editedRecord.waste_type}
+              </div>
+            )}
           </div>
 
+          {/* Subtype - Dropdown */}
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">ประเภทย่อย</p>
-            <input
-              type="text"
-              value={editedRecord.waste_subtype}
-              onChange={(e) =>
-                setEditedRecord({ ...editedRecord, waste_subtype: e.target.value })
-              }
-              disabled={!isEditing}
-              className={cn(
-                'w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold',
-                isEditing ? 'bg-white cursor-text' : 'bg-white cursor-default'
-              )}
-            />
+            {isEditing ? (
+              <select
+                value={editedRecord.waste_subtype}
+                onChange={(e) => updateField({ waste_subtype: e.target.value })}
+                className="w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold bg-white appearance-none"
+              >
+                {(WASTE_SUBTYPES[editedRecord.waste_type as keyof typeof WASTE_SUBTYPES] ?? []).map((sub) => (
+                  <option key={sub.id} value={sub.name}>
+                    {sub.name.replace(/\n/g, ' ')}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold bg-white">
+                {editedRecord.waste_subtype}
+              </div>
+            )}
           </div>
 
           {/* Weight - Full Width */}
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">ระบุน้ำหนัก (กก.)</p>
-            <div className="flex items-end gap-2">
-              <input
-                type="number"
-                step="0.1"
-                value={editedRecord.weight_kg}
-                onChange={(e) =>
-                  setEditedRecord({ ...editedRecord, weight_kg: parseFloat(e.target.value) || 0 })
-                }
-                disabled={!isEditing}
-                className={cn(
-                  'flex-1 bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
-                  isEditing ? 'cursor-text' : 'cursor-default'
-                )}
-              />
-            </div>
+            <input
+              type="number"
+              step="0.1"
+              value={editedRecord.weight_kg}
+              onChange={(e) => updateField({ weight_kg: parseFloat(e.target.value) || 0 })}
+              disabled={!isEditing}
+              className={cn(
+                'w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
+                isEditing ? 'cursor-text' : 'cursor-default'
+              )}
+            />
           </div>
 
           {/* Timestamp - Read Only */}
@@ -204,22 +234,12 @@ export function WasteDetailModal({
             </div>
           </div>
 
-          {/* Points - Now Editable */}
+          {/* Points - Auto-calculated, read-only */}
           <div>
-            <p className="text-xs text-[#666666] font-medium mb-2">แต้มที่ได้รับ</p>
-            <input
-              type="number"
-              step="1"
-              value={editedRecord.points_earned}
-              onChange={(e) =>
-                setEditedRecord({ ...editedRecord, points_earned: parseInt(e.target.value) || 0 })
-              }
-              disabled={!isEditing}
-              className={cn(
-                'w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
-                isEditing ? 'cursor-text' : 'cursor-default'
-              )}
-            />
+            <p className="text-xs text-[#666666] font-medium mb-2">แต้มที่ได้รับ (คำนวณอัตโนมัติ)</p>
+            <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg cursor-default">
+              {editedRecord.points_earned} แต้ม
+            </div>
           </div>
 
           {/* Carbon Reduction - Read Only */}

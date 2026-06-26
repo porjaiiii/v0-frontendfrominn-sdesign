@@ -5,6 +5,7 @@ export const WASTE_TYPES: { id: WasteType; name: string; icon: string }[] = [
   { id: 'paper', name: 'กระดาษ', icon: '/images/waste/paper.svg' },
   { id: 'glass', name: 'แก้ว', icon: '/images/waste/glass.svg' },
   { id: 'aluminum', name: 'อลูมิเนียม', icon: '/images/waste/aluminum.svg' },
+  { id: 'oil', name: 'น้ำมัน', icon: '/images/waste/oil.svg' },
 ]
 
 export const WASTE_SUBTYPES: Record<WasteType, WasteSubType[]> = {

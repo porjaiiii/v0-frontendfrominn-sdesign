@@ -126,19 +126,6 @@ export default function HomePage() {
 
   // Called when user presses "กลับสู่ line" on success modal
   const handleReturnToLine = () => {
-    // ── TEMP DIAGNOSTIC — remove after debugging the home closeWindow issue ──
-    try {
-      alert(
-        'isInClient=' + liff.isInClient() +
-        '\nisLoggedIn=' + liff.isLoggedIn() +
-        '\nliffId=' + (liff.id ?? 'none') +
-        '\nhasCloseWindow=' + (typeof liff.closeWindow === 'function')
-      )
-    } catch (e) {
-      alert('liff check threw: ' + (e instanceof Error ? e.message : String(e)))
-    }
-    // ── END TEMP DIAGNOSTIC ─────────────────────────────────────────────────
-
     // Mirror the register flow exactly: inside LINE, close the LIFF window
     // FIRST (before any setState that would unmount this modal mid-handler),
     // and return. Only when we're not in the LINE client do we fall back to
@@ -148,7 +135,7 @@ export default function HomePage() {
         liff.closeWindow()
         return
       } catch (e) {
-        alert('[home] liff.closeWindow() failed: ' + (e instanceof Error ? e.message : String(e)))
+        console.error('[home] liff.closeWindow() failed:', e)
       }
     }
 

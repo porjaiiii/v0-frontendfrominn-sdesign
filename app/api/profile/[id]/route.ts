@@ -3,6 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 // Allow up to 60 s so fetchWithRetry (25 s × 2 + 1 s back-off) can complete
 export const maxDuration = 60
 
+// Never cache profile lookups. A stale 404 (e.g. fetched right after a row was
+// deleted during testing) would otherwise keep a re-registered user flagged as
+// "not registered" until their browser cache cleared.
+export const dynamic = 'force-dynamic'
+
+const NO_STORE = { 'Cache-Control': 'no-store' } as const
+
 const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxXbPMRk1PXSbw5vLEvbCQPfFkPZithJXStciUM2oZ__y9ct1OPVUlM-YfvF7ZpDVKG/exec'
 
 export async function GET(
@@ -82,7 +89,7 @@ export async function GET(
 
     if (result.status === 'success' && result.data) {
       console.log('[v0] Found user:', result.data.fullName)
-      return NextResponse.json(result.data)
+      return NextResponse.json(result.data, { headers: NO_STORE })
     } else if (result.status === 'error') {
       // GAS returns 'error' both for "user not found" and for transient failures.
       // To avoid redirecting registered users to /register due to a cold-start
@@ -100,7 +107,7 @@ export async function GET(
         console.log('[v0] User definitively not found:', result.message)
         return NextResponse.json(
           { error: result.message || 'User not found' },
-          { status: 404 }
+          { status: 404, headers: NO_STORE }
         )
       }
 

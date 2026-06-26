@@ -56,6 +56,7 @@ export function useProfileGuard(): { status: GuardStatus } {
       try {
         const res = await fetch(`/api/profile/${encodeURIComponent(lineUserId)}`, {
           signal: controller.signal,
+          cache: 'no-store',
         })
         clearTimeout(timeoutId)
 

@@ -72,7 +72,9 @@ export default function ProfilePage() {
       
       try {
         setProfileLoading(true)
-        const response = await fetch(`/api/profile/${encodeURIComponent(liffProfile.userId)}`)
+        const response = await fetch(`/api/profile/${encodeURIComponent(liffProfile.userId)}`, {
+          cache: 'no-store',
+        })
         
         if (response.ok) {
           const data = await response.json()
@@ -101,6 +103,7 @@ export default function ProfilePage() {
     const controller = new AbortController()
     fetch(`/api/points?action=get_co2_collection&user_id=${encodeURIComponent(userId)}`, {
       signal: controller.signal,
+      cache: 'no-store',
     })
       .then((res) => res.json())
       .then((data) =>

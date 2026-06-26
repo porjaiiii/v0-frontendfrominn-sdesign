@@ -95,7 +95,8 @@ export function PointsProvider({ children }: { children: ReactNode }) {
       // then fall through to the GAS path below so their account gets created.
       try {
         const fastRes = await fetch(
-          `/api/points?action=get_account_fast&user_id=${encodeURIComponent(uid)}`
+          `/api/points?action=get_account_fast&user_id=${encodeURIComponent(uid)}`,
+          { cache: 'no-store' }
         )
         const fast = await fastRes.json()
         if (fast?.success && fast.account) {

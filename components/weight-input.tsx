@@ -137,7 +137,7 @@ export function WeightInput({ value, onChange, noWeight = false, onNoWeightChang
           onFocus={handleFocus}
           onBlur={handleBlur}
           disabled={noWeight}
-          placeholder="0"
+          placeholder="0.0"
           className={cn(
             'w-40 text-center text-3xl font-semibold py-4 px-4 rounded-3xl border-2',
             'focus:border-[#154212] focus:outline-none',

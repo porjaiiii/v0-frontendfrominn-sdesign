@@ -42,14 +42,24 @@ const TOUR_STEPS = [
     message: 'คุณเป็นคนในชุมชนคุ้งบางกะเจ้าหรือนักท่องเที่ยวครับ? เลือกให้ตรงกับสถานะของคุณเลย',
   },
   {
-    fieldId: 'field-fullName',
-    title: 'ชื่อ-นามสกุล',
-    message: 'เริ่มต้นด้วยการกรอกชื่อนามสกุลของท่าน',
+    fieldId: 'field-firstName',
+    title: 'ชื่อจริง',
+    message: 'กรอกชื่อจริงของท่านครับ',
+  },
+  {
+    fieldId: 'field-nickname',
+    title: 'ชื่อเล่น',
+    message: 'ชื่อเล่นดึงมาจาก LINE อัตโนมัติครับ สามารถแก้ไขได้ตามต้องการ',
   },
   {
     fieldId: 'field-phoneNumber',
     title: 'เบอร์ติดต่อ',
     message: 'กรอกเบอร์โทรศัพท์ที่ติดต่อได้ครับ เจ้าหน้าที่จะใช้เบอร์นี้เมื่อจำเป็นต้องติดต่อกับท่าน',
+  },
+  {
+    fieldId: 'field-address',
+    title: 'ที่อยู่',
+    message: 'กรอกที่อยู่ของท่านครับ เช่น บ้านเลขที่ ถนน หมู่บ้าน',
   },
   {
     fieldId: 'field-gender',
@@ -134,8 +144,6 @@ export default function RegisterPage() {
   const router = useRouter()
 
   // After registration: close the LIFF window to return to LINE.
-  // Outside the LINE client (e.g. plain browser) that does nothing, so
-  // fall back to navigating home.
   const handleFinish = () => {
     if (liff.isInClient()) {
       liff.closeWindow()
@@ -148,14 +156,16 @@ export default function RegisterPage() {
     lineUserId: '',
     userId: '',
     pdpaConsent: false,
-    fullName: '',
+    firstName: '',
+    lastName: '',
+    nickname: '',
     phoneNumber: '',
+    address: '',
     gender: '',
     ageRange: '',
     userType: '',
     subdistrict: '',
     occupation: '',
-    // houseNumber is mock-only — not sent to the API
     houseNumber: '',
   })
 
@@ -166,7 +176,7 @@ export default function RegisterPage() {
         ...prev,
         lineUserId: profile.userId,
         userId: generatedUserId,
-        fullName: profile.displayName || '',
+        nickname: profile.displayName || '',
       }))
     }
   }, [profile])
@@ -229,7 +239,7 @@ export default function RegisterPage() {
 
   const closeTour = () => { setShowTour(false); setBubblePos(null) }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
     if (type === 'checkbox') {
       setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }))
@@ -242,42 +252,58 @@ export default function RegisterPage() {
   const handleChoiceChange = (field: string) => (val: string) => {
     setFormData(prev => ({ ...prev, [field]: prev[field as keyof typeof prev] === val ? '' : val }))
   }
-  async function notifyRegistrationComplete(lineUserId: string, data: typeof formData) {
-  const N8N_WEBHOOK_URL = 'https://prorate-squeak-perennial.ngrok-free.dev/webhook/registration-complete'
-  const SECRET = 'dwa-secret-2024'
 
-  try {
-    await fetch(N8N_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-registration-secret': SECRET },
-      body: JSON.stringify({
-        lineUserId: data.lineUserId,
-        userId: data.userId,
-        pdpaConsent: data.pdpaConsent ? 'ยอมรับ' : 'ไม่ยอมรับ',
-        fullName: data.fullName,
-        phoneNumber: data.phoneNumber,
-        gender: data.gender,
-        ageRange: data.ageRange,
-        userType: data.userType,
-        subdistrict: data.subdistrict,
-        occupation: data.occupation,
-        registrationDate: new Date().toLocaleDateString('th-TH'),
-      }),
-    })
-  } catch (err) {
-    console.error('Webhook notification failed:', err)
+  async function notifyRegistrationComplete(lineUserId: string, data: typeof formData) {
+    const N8N_WEBHOOK_URL = 'https://prorate-squeak-perennial.ngrok-free.dev/webhook/registration-complete'
+    const SECRET = 'dwa-secret-2024'
+    const fullName = `${data.firstName} ${data.lastName}`.trim()
+
+    try {
+      await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-registration-secret': SECRET },
+        body: JSON.stringify({
+          lineUserId: data.lineUserId,
+          userId: data.userId,
+          pdpaConsent: data.pdpaConsent ? 'ยอมรับ' : 'ไม่ยอมรับ',
+          fullName,
+          nickname: data.nickname,
+          phoneNumber: data.phoneNumber,
+          address: data.address,
+          gender: data.gender,
+          ageRange: data.ageRange,
+          userType: data.userType,
+          subdistrict: data.subdistrict,
+          occupation: data.occupation,
+          registrationDate: new Date().toLocaleDateString('th-TH'),
+        }),
+      })
+    } catch (err) {
+      console.error('Webhook notification failed:', err)
+    }
   }
-}
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
-    if (!formData.lineUserId || !formData.fullName || !formData.phoneNumber || !formData.gender || !formData.ageRange || !formData.pdpaConsent) {
+    if (
+      !formData.lineUserId ||
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.address ||
+      !formData.phoneNumber ||
+      !formData.gender ||
+      !formData.ageRange ||
+      !formData.pdpaConsent
+    ) {
       setError('กรุณากรอกข้อมูลที่จำเป็นทั้งหมด')
       setLoading(false)
       return
     }
+
+    const fullName = `${formData.firstName} ${formData.lastName}`.trim()
 
     try {
       const response = await fetch('/api/register', {
@@ -287,14 +313,15 @@ export default function RegisterPage() {
           lineUserId: formData.lineUserId,
           userId: formData.userId,
           pdpaConsent: formData.pdpaConsent ? 'ยอมรับ' : 'ไม่ยอมรับ',
-          fullName: formData.fullName,
+          fullName,
+          nickname: formData.nickname,
           phoneNumber: formData.phoneNumber,
+          address: formData.address,
           gender: formData.gender,
           ageRange: formData.ageRange,
           userType: formData.userType,
           subdistrict: formData.subdistrict,
           occupation: formData.occupation,
-          // houseNumber intentionally excluded — mock only
           registrationDate: new Date().toLocaleDateString('th-TH'),
         }),
       })
@@ -309,11 +336,11 @@ export default function RegisterPage() {
       }
 
       setSuccess(true)
-      
+
       setFormData({
-        lineUserId: '', userId: '', pdpaConsent: false, fullName: '',
-        phoneNumber: '', gender: '', ageRange: '', userType: '', subdistrict: '', occupation: '',
-        houseNumber: '',
+        lineUserId: '', userId: '', pdpaConsent: false, firstName: '', lastName: '',
+        nickname: '', phoneNumber: '', address: '', gender: '', ageRange: '',
+        userType: '', subdistrict: '', occupation: '', houseNumber: '',
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการลงทะเบียน')
@@ -336,9 +363,6 @@ export default function RegisterPage() {
 
   const isLocalResident = formData.userType === 'คนในชุมชนคุ้งบางกะเจ้า'
 
-  // Wait for LIFF to finish initialising before rendering the form.
-  // The LiffLoadingOverlay handles the visual loading state globally,
-  // so we just return null here to avoid showing an empty / profileless form.
   if (!isReady) return null
 
   if (success) {
@@ -474,43 +498,53 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* ── 2. ชื่อ-นามสกุล ── */}
-          <div id="field-fullName" className={fieldWrapClass('field-fullName')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">ชื่อ-นามสกุล *</label>
+          {/* ── 2. ชื่อจริง + นามสกุล (แยกสองบล็อก) ── */}
+          <div className="grid grid-cols-2 gap-3">
+            <div id="field-firstName" className={fieldWrapClass('field-firstName')}>
+              <label className="block text-gray-700 font-medium mb-2 text-sm">ชื่อจริง *</label>
+              <input
+                type="text"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                placeholder="เช่น สมหวัง"
+                className={inputClass('field-firstName')}
+                required
+              />
+            </div>
+            <div id="field-lastName">
+              <label className="block text-gray-700 font-medium mb-2 text-sm">นามสกุล *</label>
+              <input
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                placeholder="เช่น ใจดี"
+                className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all"
+                required
+              />
+            </div>
+          </div>
+
+          {/* ── 3. ชื่อเล่น (default จาก LINE displayName) ── */}
+          <div id="field-nickname" className={fieldWrapClass('field-nickname')}>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">
+              ชื่อเล่น
+              <span className="ml-2 text-xs font-normal text-[#154212] bg-[#e8f5e2] px-2 py-0.5 rounded-full">
+                ดึงจาก LINE อัตโนมัติ
+              </span>
+            </label>
             <input
               type="text"
-              name="fullName"
-              value={formData.fullName}
+              name="nickname"
+              value={formData.nickname}
               onChange={handleChange}
-              placeholder="เช่น นายสมหวัง ใจดี"
-              className={inputClass('field-fullName')}
-              required
+              placeholder="ชื่อเล่น"
+              className={inputClass('field-nickname')}
             />
           </div>
 
-          {/* ── 3. เพศ ── */}
-          <div id="field-gender" className={fieldWrapClass('field-gender')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">เพศ *</label>
-            <ChoiceGroup
-              options={GENDERS}
-              value={formData.gender}
-              onChange={handleChoiceChange('gender')}
-              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-gender'}
-            />
-          </div>
-
-          {/* ── 4. ช่วงอายุ ── */}
-          <div id="field-ageRange" className={fieldWrapClass('field-ageRange')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">ช่วงอายุ *</label>
-            <ChoiceGroup
-              options={AGE_RANGES}
-              value={formData.ageRange}
-              onChange={handleChoiceChange('ageRange')}
-              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-ageRange'}
-            />
-          </div>
-
-          {/* ── 5. เบอร์โทรศัพท์ ── */}
+          {/* ── 4. เบอร์โทรศัพท์ ── */}
           <div id="field-phoneNumber" className={fieldWrapClass('field-phoneNumber')}>
             <label className="block text-gray-700 font-medium mb-2 text-sm">เบอร์โทรศัพท์ *</label>
             <input
@@ -529,7 +563,47 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* ── 6. อาชีพ ── */}
+          {/* ── 5. ที่อยู่ (บังคับ) ── */}
+          <div id="field-address" className={fieldWrapClass('field-address')}>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">ที่อยู่ *</label>
+            <textarea
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              placeholder="เช่น 99/1 ม.5 ถนนสุขุมวิท ตำบลแสนสุข"
+              rows={3}
+              className={`w-full px-4 py-3 rounded-lg border bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all resize-none ${
+                showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-address'
+                  ? 'border-[#154212]'
+                  : 'border-[#e5e5e5]'
+              }`}
+              required
+            />
+          </div>
+
+          {/* ── 6. เพศ ── */}
+          <div id="field-gender" className={fieldWrapClass('field-gender')}>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">เพศ *</label>
+            <ChoiceGroup
+              options={GENDERS}
+              value={formData.gender}
+              onChange={handleChoiceChange('gender')}
+              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-gender'}
+            />
+          </div>
+
+          {/* ── 7. ช่วงอายุ ── */}
+          <div id="field-ageRange" className={fieldWrapClass('field-ageRange')}>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">ช่วงอายุ *</label>
+            <ChoiceGroup
+              options={AGE_RANGES}
+              value={formData.ageRange}
+              onChange={handleChoiceChange('ageRange')}
+              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-ageRange'}
+            />
+          </div>
+
+          {/* ── 8. อาชีพ ── */}
           <div id="field-occupation" className={fieldWrapClass('field-occupation')}>
             <label className="block text-gray-700 font-medium mb-2 text-sm">อาชีพปัจจุบัน / อดีต</label>
             <ChoiceGroup
@@ -540,42 +614,17 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* ── 7. ที่อยู่ (conditional — เฉพาะคนในชุมชน) ── */}
+          {/* ── 9. พื้นที่ตำบล (conditional — เฉพาะคนในชุมชน) ── */}
           {isLocalResident && (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2 text-sm">บ้านเลขที่</label>
-                  <input
-                    type="text"
-                    name="houseNumber"
-                    value={formData.houseNumber}
-                    onChange={handleChange}
-                    placeholder="เช่น 12/3"
-                    className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2 text-sm">หมู่ที่</label>
-                  <input
-                    type="text"
-                    name="mooNumber"
-                    placeholder="เช่น 4"
-                    className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all text-sm"
-                  />
-                </div>
-              </div>
-
-              <div id="field-subdistrict" className={fieldWrapClass('field-subdistrict')}>
-                <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ตำบลหลัก</label>
-                <ChoiceGroup
-                  options={SUBDISTRICTS}
-                  value={formData.subdistrict}
-                  onChange={handleChoiceChange('subdistrict')}
-                  highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-subdistrict'}
-                />
-              </div>
-            </>
+            <div id="field-subdistrict" className={fieldWrapClass('field-subdistrict')}>
+              <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ตำบลหลัก</label>
+              <ChoiceGroup
+                options={SUBDISTRICTS}
+                value={formData.subdistrict}
+                onChange={handleChoiceChange('subdistrict')}
+                highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-subdistrict'}
+              />
+            </div>
           )}
 
           {/* ── PDPA (อยู่ล่างสุด) ── */}

@@ -412,7 +412,7 @@ export default function RegisterPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-[#154212] mb-3">ลง��ะเบียนสำเร็จ</h2>
+            <h2 className="text-2xl font-bold text-[#154212] mb-3">ลงทะเบียนสำเร็จ</h2>
             <p className="text-gray-600 mb-2">ยินดีต้อนรับสู่ Digital Wasted Account</p>
             <p className="text-sm text-gray-500 mb-6">คุณได้ลงทะเบียนเรียบร้อยแล้ว</p>
             <button

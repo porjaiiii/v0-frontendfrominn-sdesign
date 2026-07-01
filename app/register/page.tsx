@@ -94,6 +94,39 @@ const PDPA_TEXT = `นโยบายการคุ้มครองข้อ�
 
 ข้อมูลของท่านจะถูกเก็บรักษาอย่างปลอดภัยและจะไม่ถูกเปิดเผยต่อบุคคลภายนอกโดยไม่ได้รับความยินยอม ท่านมีสิทธิ์ขอดู แก้ไข หรือลบข้อมูลของตนเองได้ตลอดเวลา`
 
+// Reusable native select dropdown
+function SelectField({
+  options,
+  value,
+  onChange,
+  placeholder,
+  highlighted = false,
+}: {
+  options: string[]
+  value: string
+  onChange: (val: string) => void
+  placeholder: string
+  highlighted?: boolean
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className={`w-full px-4 py-3 pr-10 rounded-lg border bg-white text-gray-900 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all appearance-none ${
+          !value ? 'text-gray-400' : 'text-gray-900'
+        } ${highlighted ? 'border-[#154212]' : 'border-[#e5e5e5]'}`}
+      >
+        <option value="" disabled>{placeholder}</option>
+        {options.map(opt => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+    </div>
+  )
+}
+
 // Reusable choice-button group
 function ChoiceGroup({
   options,
@@ -611,10 +644,11 @@ export default function RegisterPage() {
           {/* ── 8. อาชีพ ── */}
           <div id="field-occupation" className={fieldWrapClass('field-occupation')}>
             <label className="block text-gray-700 font-medium mb-2 text-sm">อาชีพปัจจุบัน / อดีต</label>
-            <ChoiceGroup
+            <SelectField
               options={OCCUPATIONS}
               value={formData.occupation}
-              onChange={handleChoiceChange('occupation')}
+              onChange={val => setFormData(prev => ({ ...prev, occupation: val }))}
+              placeholder="-- เลือกอาชีพ --"
               highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-occupation'}
             />
           </div>
@@ -623,10 +657,11 @@ export default function RegisterPage() {
           {isLocalResident && (
             <div id="field-subdistrict" className={fieldWrapClass('field-subdistrict')}>
               <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ตำบลหลัก</label>
-              <ChoiceGroup
+              <SelectField
                 options={SUBDISTRICTS}
                 value={formData.subdistrict}
-                onChange={handleChoiceChange('subdistrict')}
+                onChange={val => setFormData(prev => ({ ...prev, subdistrict: val }))}
+                placeholder="-- เลือกตำบล --"
                 highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-subdistrict'}
               />
             </div>

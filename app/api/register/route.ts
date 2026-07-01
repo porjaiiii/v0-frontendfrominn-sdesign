@@ -21,8 +21,9 @@ export async function POST(request: NextRequest) {
       registrationDate,
     } = body
 
-    // Validate required fields
-    if (!lineUserId || !fullName || !address || !phoneNumber || !gender || !ageRange || !pdpaConsent) {
+    // Validate required fields (address is only required for community residents, not tourists)
+    const isTourist = userType === 'นักท่องเที่ยว'
+    if (!lineUserId || !fullName || (!isTourist && !address) || !phoneNumber || !gender || !ageRange || !pdpaConsent) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }

@@ -641,19 +641,7 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* ── 8. อาชีพ ── */}
-          <div id="field-occupation" className={fieldWrapClass('field-occupation')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">อาชีพปัจจุบัน / อดีต</label>
-            <SelectField
-              options={OCCUPATIONS}
-              value={formData.occupation}
-              onChange={val => setFormData(prev => ({ ...prev, occupation: val }))}
-              placeholder="-- เลือกอาชีพ --"
-              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-occupation'}
-            />
-          </div>
-
-          {/* ── 9. พื้นที่ตำบล (conditional — เฉพาะคนในชุมชน) ── */}
+          {/* ── 8. พื้นที่ตำบล (conditional — เฉพาะคนในชุมชน) ── */}
           {isLocalResident && (
             <div id="field-subdistrict" className={fieldWrapClass('field-subdistrict')}>
               <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ตำบลหลัก</label>
@@ -666,6 +654,18 @@ export default function RegisterPage() {
               />
             </div>
           )}
+
+          {/* ── 9. อาชีพ ── */}
+          <div id="field-occupation" className={fieldWrapClass('field-occupation')}>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">อาชีพปัจจุบัน / อดีต</label>
+            <SelectField
+              options={OCCUPATIONS}
+              value={formData.occupation}
+              onChange={val => setFormData(prev => ({ ...prev, occupation: val }))}
+              placeholder="-- เลือกอาชีพ --"
+              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-occupation'}
+            />
+          </div>
 
           {/* ── PDPA (อยู่ล่างสุด) ── */}
           <div className={`rounded-xl border transition-colors ${formData.pdpaConsent ? 'border-[#154212] bg-[#f0fdf0]' : 'border-[#e5e5e5] bg-[#f9f9f9]'}`}>

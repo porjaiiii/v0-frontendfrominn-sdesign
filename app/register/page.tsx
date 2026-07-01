@@ -288,11 +288,14 @@ export default function RegisterPage() {
     setError(null)
     setLoading(true)
 
+    const isTourist = formData.userType === 'นักท่องเที่ยว'
+    const addressRequired = !isTourist && !formData.address
+
     if (
       !formData.lineUserId ||
       !formData.firstName ||
       !formData.lastName ||
-      !formData.address ||
+      addressRequired ||
       !formData.phoneNumber ||
       !formData.gender ||
       !formData.ageRange ||
@@ -563,23 +566,25 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* ── 5. ที่อยู่ (บังคับ) ── */}
-          <div id="field-address" className={fieldWrapClass('field-address')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">ที่อยู่ *</label>
-            <textarea
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              placeholder="เช่น 99/1 ม.5 ถนนสุขุมวิท ตำบลแสนสุข"
-              rows={3}
-              className={`w-full px-4 py-3 rounded-lg border bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all resize-none ${
-                showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-address'
-                  ? 'border-[#154212]'
-                  : 'border-[#e5e5e5]'
-              }`}
-              required
-            />
-          </div>
+          {/* ── 5. ที่อยู่ (บังคับ — ซ่อนสำหรับนักท่องเที่ยว) ── */}
+          {isLocalResident && (
+            <div id="field-address" className={fieldWrapClass('field-address')}>
+              <label className="block text-gray-700 font-medium mb-2 text-sm">ที่อยู่ *</label>
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                placeholder="เช่น 99/1 ม.5 ถนนสุขุมวิท ตำบลแสนสุข"
+                rows={3}
+                className={`w-full px-4 py-3 rounded-lg border bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all resize-none ${
+                  showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-address'
+                    ? 'border-[#154212]'
+                    : 'border-[#e5e5e5]'
+                }`}
+                required={isLocalResident}
+              />
+            </div>
+          )}
 
           {/* ── 6. เพศ ── */}
           <div id="field-gender" className={fieldWrapClass('field-gender')}>

@@ -319,7 +319,7 @@ export default function ProfilePage() {
             
             {/* User ID from fetched profile */}
             <div className="w-full">
-              <p className="text-xs text-[#666666] mb-1">LINE User ID</p>
+              <p className="text-xs text-[#666666] mb-1">User ID</p>
               <div className="flex items-center gap-2 bg-[#f5f5f5] rounded-lg p-3">
                 <span className="text-sm font-medium text-[#154212] flex-1 break-all">
                   {fetchedProfile?.userId ||  'กำลังโหลดข้อมูล'}

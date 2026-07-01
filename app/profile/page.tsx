@@ -317,13 +317,13 @@ export default function ProfilePage() {
               />
             </div>
             
-            {/* LINE ID Display and Copy */}
+            {/* LINE Display Name and Copy */}
             <div className="w-full">
               <p className="text-xs text-[#666666] mb-1">LINE User ID</p>
               <div className="flex items-center gap-2 bg-[#f5f5f5] rounded-lg p-3">
-                <code className="text-sm font-mono text-[#154212] flex-1 break-all">
-                  {liffProfile?.userId || 'ไม่พบ User ID'}
-                </code>
+                <span className="text-sm font-medium text-[#154212] flex-1 break-all">
+                  {liffProfile?.displayName || user.lineUsername || 'ไม่พบชื่อผู้ใช้'}
+                </span>
                 <Button
                   size="sm"
                   variant="ghost"

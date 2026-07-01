@@ -31,7 +31,7 @@ export function CarbonResultModal({
 
   if (!isOpen) return null
 
-  const treesEquivalent = Math.max(1, Math.ceil(carbonAmount / 5))
+  const treesEquivalent = Math.max(1, Math.ceil(carbonAmount / 9.5))
 
   const handleHistory = () => {
     onClose()

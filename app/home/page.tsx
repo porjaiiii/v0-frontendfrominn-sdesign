@@ -18,11 +18,11 @@ import { cn } from '@/lib/utils'
 
 // Carbon factors per kg for each waste type
 const CARBON_FACTORS: Record<WasteType, number> = {
-  plastic: 2.5,
-  paper: 1.8,
-  glass: 0.8,
-  aluminum: 4.0,
-  oil: 3.0,
+  plastic: 1.0310,
+  paper: 3.5460,
+  glass: 0.2760,
+  aluminum: 9.1270,
+  oil: 3.0, 
 }
 
 // Waste type images

@@ -649,7 +649,7 @@ export default function RegisterPage() {
                 options={SUBDISTRICTS}
                 value={formData.subdistrict}
                 onChange={val => setFormData(prev => ({ ...prev, subdistrict: val }))}
-                placeholder="-- เลือกตำบล --"
+                placeholder=" เลือกตำบล "
                 highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-subdistrict'}
               />
             </div>
@@ -662,7 +662,7 @@ export default function RegisterPage() {
               options={OCCUPATIONS}
               value={formData.occupation}
               onChange={val => setFormData(prev => ({ ...prev, occupation: val }))}
-              placeholder="-- เลือกอาชีพ --"
+              placeholder=" เลือกอาชีพ "
               highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-occupation'}
             />
           </div>

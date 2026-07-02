@@ -182,34 +182,44 @@ export function WasteDetailModal({
   }
 }
 
-  const handleConfirmClick = async () => {
-    if (!editedRecord) return
+const handleConfirmClick = async () => {
+  if (!editedRecord) return
 
-    try {
-      setIsSavingApi(true)
+  try {
+    setIsSavingApi(true)
 
-      if (isEditing) {
-        const response = await fetch('/api/waste/update', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(editedRecord),
-        })
-
-        if (!response.ok) {
-          const error = await response.json()
-          alert('เกิดข้อผิดพลาดในการบันทึก: ' + (error.error || 'Unknown error'))
-          return
-        }
-      }
-
-      await onConfirm(editedRecord)
-      onClose()
-    } catch (error) {
-      alert('เกิดข้อผิดพลาด: ' + (error instanceof Error ? error.message : 'Unknown error'))
-    } finally {
-      setIsSavingApi(false)
+    // 🌟 จัดเตรียม Payload ให้ตรงกับที่ API / Sheet ต้องการ
+    const payload = {
+      ...editedRecord,
+      // แปลงจาก array กลับเป็น string คั่นด้วยลูกน้ำ (หรือเอาแค่รูปแรกก็ได้ตามต้องการ)
+      image_url: editedRecord.image_urls && editedRecord.image_urls.length > 0 
+        ? editedRecord.image_urls.join(',') 
+        : null
     }
+
+    if (isEditing) {
+      const response = await fetch('/api/waste/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload), // 👈 ส่ง payload ตัวที่ปรับชื่อ key แล้ว
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        alert('เกิดข้อผิดพลาดในการบันทึก: ' + (error.error || 'Unknown error'))
+        return
+      }
+    }
+
+    // อาจจะต้องปรับ type ของ onConfirm ถ้ารับค่าต่างกัน
+    await onConfirm(editedRecord)
+    onClose()
+  } catch (error) {
+    alert('เกิดข้อผิดพลาด: ' + (error instanceof Error ? error.message : 'Unknown error'))
+  } finally {
+    setIsSavingApi(false)
   }
+}
 
   if (!isOpen || !record || !editedRecord) return null
 

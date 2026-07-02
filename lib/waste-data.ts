@@ -37,7 +37,7 @@ export const WASTE_SUBTYPES: Record<WasteType, WasteSubType[]> = {
 export const REWARDS = [
   // --- ข้อมูลเดิมของท่าน (4 อย่าง) ---
   { id: 1, name: 'มาม่า รสแซ่บ', description: 'แพ็ก 5 ซอง', points: 30, image: '/images/rewards/mama.jpg' },
-  { id: 2, name: 'ไข่ไก่สด (เบอเล็ก)', description: 'แพ็ก 10 ฟอง', points: 37, image: '/images/rewards/eggs.jpg' },
+  { id: 2, name: 'ไข่ไก่สด (เบอร์เล็ก)', description: 'แพ็ก 10 ฟอง', points: 37, image: '/images/rewards/eggs.jpg' },
   { id: 3, name: 'ข้าวสารขาว (เสาไห้)', description: 'ถุง 5 กิโลกรัม', points: 110, image: '/images/rewards/rice-white.jpg' },
   { id: 4, name: 'ข้าวหอมมะลิ 100%', description: 'ถุง 5 กิโลกรัม', points: 200, image: '/images/rewards/rice-jasmine.jpg' },
 

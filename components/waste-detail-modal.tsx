@@ -9,10 +9,10 @@ import { compressImage } from '@/lib/compress-image'
 
 // CARBON_FACTORS ต้องตรงกับ /api/waste/update/route.ts
 const CARBON_FACTORS: Record<string, number> = {
-  plastic: 2.5,
-  paper: 1.8,
-  glass: 0.8,
-  aluminum: 4.0,
+  plastic: 1.0310,
+  paper: 3.5460,
+  glass: 0.2760,
+  aluminum: 9.1270,
   oil: 3.0,
 }
 
@@ -38,9 +38,9 @@ interface WasteDetailModalProps {
 }
 
 function recalculate(record: WasteRecord): WasteRecord {
-  const factor = CARBON_FACTORS[record.waste_type] ?? 2.0
+  const factor = CARBON_FACTORS[record.waste_type] ?? 1.0
   const carbonReduction = record.weight_kg * factor
-  const pointsEarned = Math.round(carbonReduction * 10)
+  const pointsEarned = Math.round(carbonReduction)
   return { ...record, carbon_reduction: carbonReduction, points_earned: pointsEarned }
 }
 
@@ -398,7 +398,7 @@ export function WasteDetailModal({
               {editedRecord.points_earned} แต้ม
               {isEditing && editedRecord.weight_kg > 0 && (
                 <span className="text-xs text-[#888888] font-normal ml-2">
-                  ({editedRecord.weight_kg} กก. × {CARBON_FACTORS[editedRecord.waste_type] ?? 2.0} × 10)
+                  ({editedRecord.weight_kg} กก. × {CARBON_FACTORS[editedRecord.waste_type] ?? 1.0})
                 </span>
               )}
             </div>

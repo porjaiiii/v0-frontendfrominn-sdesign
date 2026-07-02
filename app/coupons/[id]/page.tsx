@@ -101,12 +101,13 @@ export default function CouponDetailPage({
 
             {/* Top: dark green section */}
             <div className="bg-[#154212] relative flex flex-col items-center pb-8 overflow-hidden">
-              <div className="relative w-full flex justify-center" style={{ height: 120 }}>
+              <div className="relative w-full flex justify-start" style={{ height: 120 }}>
                 <Image
                   src="/mascot.png"
                   alt="mascot"
-                  width={160}
-                  height={160}
+                  width={180}
+                  height={180}
+                  opacity-50
                   className="absolute -top-4 object-contain drop-shadow-lg"
                   style={{ transform: 'scaleY(-1)' }}
                 />
@@ -179,7 +180,7 @@ export default function CouponDetailPage({
         </div>
 
         <p className="text-center text-xs text-[#888888] mt-6 leading-relaxed">
-          แสดง QR code นี้ให้เจ้าหน้าที���สแกน เพื่อรับสินค้าของคุณ
+          แสดง QR code นี้ให้เจ้าหน้าทีทำการสแกน เพื่อรับสินค้าของคุณ
         </p>
       </main>
     </div>

@@ -329,7 +329,7 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
                 disabled={isSubmitting}
                 className={cn(
                   'px-8 py-2.5 rounded-full font-semibold text-sm transition-colors',
-                  isDataReady
+                  !isDataReady
                     ? 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
                     : 'bg-[#154212] text-white hover:bg-[#0d3308]'
                 )}

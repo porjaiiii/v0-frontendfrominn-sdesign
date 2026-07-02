@@ -232,90 +232,60 @@ export function WasteDetailModal({
           {/* Image section */}
           {isEditing ? (
             /* Edit mode: แสดงรูปปัจจุบัน + ปุ่มเปลี่ยนรูป */
-            <div className="space-y-2">
-              <p className="text-xs text-[#666666] font-medium">รูปประกอบ</p>
-              <div className="relative rounded-xl overflow-hidden h-40 bg-gray-100 border-2 border-dashed border-[#aaaaaa] flex items-center justify-center">
-                {isUploading ? (
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <Loader2 className="w-8 h-8 animate-spin text-[#154212]" />
-                    <span className="text-xs text-[#666666]">กำลังอัปโหลด...</span>
-                  </div>
-                ) : editedRecord.image_url ? (
-                  <>
-                    <Image
-                      src={editedRecord.image_url}
-                      alt="รูปขยะ"
-                      fill
-                      className="object-cover"
-                    />
-                    {/* ปุ่มเปลี่ยนรูป */}
-                    <label className="absolute bottom-2 right-2 bg-[#154212] text-white rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer flex items-center gap-1.5 hover:bg-[#0f300c] transition-colors shadow-md">
-                      <Camera size={13} />
-                      เปลี่ยนรูป
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handleFileChange}
-                        disabled={isUploading}
-                        className="hidden"
-                      />
-                    </label>
-                  </>
-                ) : (
-                  <label className="flex flex-col items-center justify-center gap-2 cursor-pointer w-full h-full">
-                    <Camera size={36} className="text-[#888888]" />
-                    <span className="text-xs text-[#666666] font-semibold">กดเพื่อแนบรูป</span>
-                    <span className="text-[10px] text-[#999999]">(กรุณาถ่ายรูปพร้อมเลขน้ำหนัก)</span>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleFileChange}
-                      disabled={isUploading}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-              {uploadError && (
-                <p className="text-xs text-[#c06161] font-medium">{uploadError}</p>
-              )}
-            </div>
+     <div className="space-y-2">
+  <p className="text-xs text-[#666666] font-medium">รูปประกอบ</p>
+  
+  <div className="grid grid-cols-2 gap-2">
+    {/* แสดงรูปที่มีอยู่แล้ว */}
+    {editedRecord.image_urls?.map((url, i) => (
+      <div key={i} className="relative rounded-xl overflow-hidden h-32 border border-[#aaaaaa]">
+        <Image src={url} alt="รูปขยะ" fill className="object-cover" />
+        {/* ปุ่มลบรูป (ถ้าต้องการ) */}
+        <button 
+          onClick={() => { /* ฟังก์ชันลบรูปจาก Array */ }}
+          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+        >
+          ×
+        </button>
+      </div>
+    ))}
+
+    {/* ปุ่มกดเพิ่มรูปใหม่ (ปุ่มนี้จะโชว์เสมอเพื่อเพิ่มรูปเข้าไปใน Array) */}
+    <label className="h-32 flex flex-col items-center justify-center gap-1 cursor-pointer border-2 border-dashed border-[#aaaaaa] rounded-xl bg-gray-50 hover:bg-gray-100">
+      <Camera size={24} className="text-[#888888]" />
+      <span className="text-[10px] text-[#666666]">เพิ่มรูป</span>
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileChange} // ฟังก์ชันนี้ต้องปรับให้ push รูปใหม่เข้า array
+        className="hidden"
+      />
+    </label>
+  </div>
+  
+  {isUploading && <p className="text-xs text-[#154212]">กำลังอัปโหลด...</p>}
+</div>
           ) : (
             /* View mode: แสดงรูปอย่างเดียว */
-            <div className="rounded-xl overflow-hidden h-40 bg-gray-100 flex items-center justify-center border-2 border-[#d4d4d4]">
-              {record.image_url ? (
-                <Image
-                  src={record.image_url}
-                  alt={`${record.waste_type} - ${record.waste_subtype}`}
-                  width={400}
-                  height={300}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const img = e.target as HTMLImageElement
-                    img.style.display = 'none'
-                    const parent = img.parentElement
-                    if (parent) {
-                      const placeholder = document.createElement('div')
-                      placeholder.className = 'flex flex-col items-center justify-center gap-2'
-                      placeholder.innerHTML =
-                        '<svg class="w-16 h-16 text-[#999999]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span class="text-[#666666] font-semibold text-sm">รูปไม่พบ</span>'
-                      parent.appendChild(placeholder)
-                    }
-                  }}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-2">
-                  <svg className="w-16 h-16 text-[#999999]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  <span className="text-[#666666] font-semibold text-sm">รูปไม่พบ</span>
-                </div>
-              )}
-            </div>
+            <div className="grid grid-cols-2 gap-2">
+  {record.image_urls && record.image_urls.length > 0 ? (
+    record.image_urls.map((url, i) => (
+      <div key={i} className="relative rounded-xl overflow-hidden h-32 bg-gray-100 border border-[#d4d4d4]">
+        <Image
+          src={url}
+          alt={`รูปขยะที่ ${i + 1}`}
+          fill
+          className="object-cover"
+        />
+      </div>
+    ))
+  ) : (
+    <div className="col-span-2 h-32 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl text-gray-400">
+      ไม่มีรูปภาพ
+    </div>
+  )}
+</div>
           )}
 
           {/* Type - Dropdown */}

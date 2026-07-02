@@ -3,13 +3,14 @@
 import Image from 'next/image'
 import { Camera } from 'lucide-react'
 
+// 🌟 ปรับ Interface ให้ตรงกับระบบใหม่
 interface WasteRecord {
   timestamp: string
   user_id: string
   waste_type: string
   waste_subtype: string
   weight_kg: number
-  image_url: string
+  image_urls: string[] // เปลี่ยนจาก string เป็น string[]
   carbon_reduction: number
   points_earned: number
   status: string
@@ -37,26 +38,25 @@ export function WasteCard({ record, onEdit, onSave, isSaving = false }: WasteCar
     <div className="bg-white border border-[#cccccc] rounded-lg overflow-hidden">
       {/* Main Content */}
       <div className="flex gap-3 p-3">
-        {/* Photo area — dashed border */}
-        <div className="flex-shrink-0 w-28 h-28 rounded border-2 border-dashed border-[#888888] flex flex-col items-center justify-center bg-white gap-1">
-          {record.image_url ? (
-            <Image
-              src={record.image_url}
-              alt={`${record.waste_type} - ${record.waste_subtype}`}
-              width={112}
-              height={112}
-              className="w-full h-full object-cover rounded"
-              onError={(e) => {
-                const img = e.target as HTMLImageElement
-                img.style.display = 'none'
-              }}
-            />
+        {/* Photo area — ปรับให้แสดงหลายรูปได้ */}
+        <div className="flex-shrink-0 w-28 h-28 flex gap-1 overflow-x-auto">
+          {record.image_urls && record.image_urls.length > 0 ? (
+            record.image_urls.map((url, index) => (
+              <div key={index} className="w-28 h-28 flex-shrink-0 rounded border border-[#cccccc] overflow-hidden">
+                <Image
+                  src={url}
+                  alt={`${record.waste_type} - ${index + 1}`}
+                  width={112}
+                  height={112}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))
           ) : (
-            <>
+            <div className="w-28 h-28 rounded border-2 border-dashed border-[#888888] flex flex-col items-center justify-center bg-white gap-1">
               <Camera size={28} className="text-[#888888]" />
-              <p className="text-[10px] text-[#666666] text-center leading-tight px-1">ถ่ายรูป</p>
-              <p className="text-[9px] text-[#888888] text-center leading-tight px-1">(กรุณาถ่ายรูปประกอบ<br />ด้วยน้ำหนัก)</p>
-            </>
+              <p className="text-[9px] text-[#888888] text-center px-1">ไม่มีรูปภาพ</p>
+            </div>
           )}
         </div>
 
@@ -74,7 +74,7 @@ export function WasteCard({ record, onEdit, onSave, isSaving = false }: WasteCar
 
           <div className="flex justify-between items-start gap-2">
             <span className="text-xs text-[#154212] whitespace-nowrap">ระบุน้ำหนัก (กก.)</span>
-            <span className="text-xs font-bold text-[#444444]">{record.weight_kg}</span>
+            <span className="text-xs font-bold text-[#444444]">{record.weight_kg === -1 ? 'ยังไม่ได้ระบุ' : record.weight_kg}</span>
           </div>
         </div>
       </div>

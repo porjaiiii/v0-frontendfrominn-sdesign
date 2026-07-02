@@ -1,28 +1,3 @@
-/**
- * POST /api/coupons/use
- *
- * สแกน QR code แล้วเปลี่ยน status ของ coupon เป็น 'used'
- * ใช้โดยฝั่งเจ้าหน้าที่ / scanner หน้าร้าน
- *
- * Request body:
- * {
- *   coupon_id    : string   — รหัส coupon ที่สแกนได้จาก QR (required)
- *   scanned_by   : string   — LINE userId / staff ID ของผู้สแกน (optional)
- * }
- *
- * Response 200:
- * {
- *   success  : true
- *   coupon   : CouponRecord   — record ที่อัปเดตแล้ว
- * }
- *
- * Error cases:
- *   400  missing coupon_id
- *   404  coupon not found
- *   409  coupon already used / expired
- *   500  GAS error
- */
-
 import { NextRequest, NextResponse } from 'next/server'
 import { COUPON_SCRIPT_URL, type CouponRecord } from '@/lib/coupon-config'
 
@@ -35,16 +10,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing coupon_id' }, { status: 400 })
     }
 
-    // GAS Web App ไม่รองรับ JSON POST โดยตรง (จะ redirect ไป Google login)
-    // ใช้ GET + query string แทนเหมือนกับ route อื่น ๆ ในโปรเจกต์นี้
-    const scriptUrl = new URL(COUPON_SCRIPT_URL)
-    scriptUrl.searchParams.set('action', 'useCoupon')
-    scriptUrl.searchParams.set('coupon_id', coupon_id)
-    scriptUrl.searchParams.set('scanned_by', scanned_by ?? '')
-    scriptUrl.searchParams.set('used_at', new Date().toISOString())
-
-    const response = await fetch(scriptUrl.toString(), {
-      method: 'GET',
+    // 🔥 แก้ไขจุดที่ 1: ส่งเป็น POST หา GAS ตรงๆ พร้อมแนบ JSON body ให้ตรงกับ GAS doPost
+    const response = await fetch(COUPON_SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8', // ใช้ text/plain เพื่อป้องกันปัญหา CORS/Redirect ของ GAS
+      },
+      body: JSON.stringify({
+        action: 'use', // 🔥 แก้ไขจุดที่ 2: เปลี่ยนจาก 'useCoupon' เป็น 'use' ให้ตรงกับในสคริปต์ GAS
+        coupon_id: coupon_id,
+        scanned_by: scanned_by ?? '',
+      }),
       redirect: 'follow',
     })
 
@@ -61,7 +37,6 @@ export async function POST(request: NextRequest) {
     try {
       result = await response.json()
     } catch {
-      // GAS อาจส่ง non-JSON กลับมา
       const text = await response.text().catch(() => '')
       console.error('[coupons/use] GAS returned non-JSON:', text.substring(0, 200))
       return NextResponse.json({ error: 'Invalid response from GAS' }, { status: 500 })
@@ -69,12 +44,12 @@ export async function POST(request: NextRequest) {
 
     console.log('[coupons/use] GAS result:', JSON.stringify(result))
 
-    // GAS return: { status: 'success', message: '...', data?: CouponRecord }
+    // GAS return: { status: 'success', message: '...' }
     if (result.status === 'success') {
       return NextResponse.json({ success: true, coupon: result.data ?? null })
     }
 
-    // Handle specific error codes from GAS
+    // Handle specific error codesจาก GAS
     const msg: string = (result.message ?? '').toLowerCase()
 
     if (msg.includes('not found') || msg.includes('ไม่พบ')) {

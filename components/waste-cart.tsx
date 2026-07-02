@@ -53,35 +53,41 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
         
         // Map records จาก array format ใน Google Sheet
         const mappedRecords = filteredRecords.map((record: any) => {
-          let parsedImageUrls: string[] = []
-          const rawImageData = record[5] // คอลัมน์ F ใน Google Sheet
-          
-          if (rawImageData) {
-            if (rawImageData.startsWith('[') && rawImageData.endsWith(']')) {
-              try {
-                parsedImageUrls = JSON.parse(rawImageData)
-              } catch (e) {
-                parsedImageUrls = [rawImageData]
-              }
-            } else {
-              parsedImageUrls = [rawImageData]
-            }
-          }
+  let parsedImageUrls: string[] = []
+  const rawImageData = record[5] // คอลัมน์ F ใน Google Sheet
+  
+  if (rawImageData) {
+    // กรณีที่ 1: ถ้าเป็น JSON Array (มี [] ครอบ)
+    if (typeof rawImageData === 'string' && rawImageData.startsWith('[') && rawImageData.endsWith(']')) {
+      try {
+        parsedImageUrls = JSON.parse(rawImageData)
+      } catch (e) {
+        parsedImageUrls = [rawImageData]
+      }
+    } 
+    // 🌟 กรณีที่ 2: ถ้าเป็น String ที่มี comma คั่น (เช่น "url1,url2")
+    else if (typeof rawImageData === 'string' && rawImageData.includes(',')) {
+      parsedImageUrls = rawImageData.split(',').map(url => url.trim())
+    }
+    // กรณีที่ 3: มีแค่ลิงก์เดียว หรือข้อมูลปกติ
+    else {
+      parsedImageUrls = [rawImageData]
+    }
+  }
 
-          return {
-            timestamp: record[0],
-            user_id: record[1],
-            waste_type: record[2],
-            waste_subtype: record[3],
-            weight_kg: parseFloat(record[4]) || 0,
-            image_urls: parsedImageUrls,
-            carbon_reduction: parseFloat(record[6]) || 0,
-            points_earned: parseFloat(record[7]) || 0,
-            status: record[8],
-            notes: record[9],
-          }
-        })
-        
+  return {
+    timestamp: record[0],
+    user_id: record[1],
+    waste_type: record[2],
+    waste_subtype: record[3],
+    weight_kg: parseFloat(record[4]) || 0,
+    image_urls: parsedImageUrls, // ตอนนี้จะได้เป็น ["url1", "url2"] ที่ถูกต้อง
+    carbon_reduction: parseFloat(record[6]) || 0,
+    points_earned: parseFloat(record[7]) || 0,
+    status: record[8],
+    notes: record[9],
+  }
+})
         setRecords(mappedRecords)
 
         // 🌟 แก้ไขจุดที่ 1: คำนวณน้ำหนักรวมเฉพาะรายการที่เป็น pending และค่าน้ำหนักต้องไม่ใช่ -1

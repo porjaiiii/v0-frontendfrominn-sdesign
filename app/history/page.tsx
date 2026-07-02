@@ -1,13 +1,20 @@
 'use client'
 
-import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
-import { ChevronLeft, MoreVertical, Recycle, Gift, Coins } from 'lucide-react'
+import { ChevronLeft, MoreVertical, Recycle, Gift, Coins, ChevronRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useLiffContext } from '@/lib/liff-context'
+import {
+  mapWasteRecords,
+  wasteTypeName,
+  wasteSubtypeName,
+  type WasteRecord,
+} from '@/lib/waste-records'
+import type { Coupon } from '@/lib/coupon-context'
 
 // One color per type, shared by the filter chips and the timeline dots so they
 // always match. recycle = blue, points = green, reward = yellow.
@@ -33,12 +40,18 @@ type HistoryItem = {
   type: string        // 'recycle' | 'points' | 'reward'
   title: string
   color: string
-  hasDetail?: boolean
+  // recycle-specific (from the trash-side submission sheet)
+  image?: string      // first uploaded photo, shown as a thumbnail
+  subtitle?: string   // short topic: weight + points earned
+  detailId?: string   // encoded record timestamp -> /history/[id]
+  // points-specific
+  pointsEarned?: number
   // reward-specific (from spend_details)
   quantity?: number
   status?: string
   pointsSpent?: number
   category?: 'reward' | 'donate'
+  txId?: string       // links a reward row to its coupon (shared key)
 }
 
 // A single transaction row from /api/points?action=get_transactions
@@ -79,23 +92,47 @@ function fmtTime(d: Date) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-// Earn transactions -> recycle / points entries. (Spends are handled by
-// spend_details so we can show item names + status, so 'spend' is skipped here.)
-function txToHistoryItem(tx: Transaction): HistoryItem | null {
-  if (tx.type === 'spend') return null
-  const d = parseTs(tx.timestamp)
-  const base = { id: tx.tx_id, ts: d.getTime(), date: fmtDate(d), time: fmtTime(d) }
-  // Round away floating-point artifacts from the sheet (weight × factor sums):
-  // weight to 2 decimals, points to a whole number.
-  const weight = Math.round((Number(tx.weight) || 0) * 100) / 100
-  const points = Math.round(Number(tx.points) || 0)
-
-  // earn with recycled weight -> recycle entry (has detail)
-  if (weight > 0) {
-    return { ...base, type: 'recycle', title: `เก็บของรีไซเคิล ${weight} KG`, color: TYPE_COLOR.recycle, hasDetail: true }
+// Trash-side submission record -> rich recycle entry (type/subtype, weight,
+// points, photo). This is the source for the recycle timeline + its detail page.
+function wasteToHistoryItem(r: WasteRecord): HistoryItem {
+  const d = parseTs(r.timestamp)
+  const typeName = wasteTypeName(r.waste_type)
+  const subName = wasteSubtypeName(r.waste_type, r.waste_subtype)
+  const weight = Math.round(r.weight_kg * 100) / 100
+  const points = Math.round(r.points_earned)
+  const hasWeight = r.weight_kg > 0
+  return {
+    id: `waste-${r.timestamp}`,
+    ts: d.getTime(),
+    date: fmtDate(d),
+    time: fmtTime(d),
+    type: 'recycle',
+    title: subName ? `${typeName} · ${subName}` : typeName,
+    color: TYPE_COLOR.recycle,
+    image: r.image_urls[0],
+    subtitle: `${hasWeight ? `${weight} KG · ` : ''}+${points.toLocaleString()} คะแนน`,
+    detailId: encodeURIComponent(r.timestamp),
+    pointsEarned: points,
   }
-  // earn without weight (e.g. bonus) -> points entry
-  return { ...base, type: 'points', title: `คุณมีคะแนนสะสมเพิ่ม ${points} คะแนน`, color: TYPE_COLOR.points }
+}
+
+// Every earn transaction -> a point-gain entry for the คะแนน tab. Covers both
+// recycling earns and any weightless bonuses.
+function earnTxToPointItem(tx: Transaction): HistoryItem | null {
+  if (tx.type !== 'earn') return null
+  const points = Math.round(Number(tx.points) || 0)
+  if (points <= 0) return null
+  const d = parseTs(tx.timestamp)
+  return {
+    id: `pt-${tx.tx_id}`,
+    ts: d.getTime(),
+    date: fmtDate(d),
+    time: fmtTime(d),
+    type: 'points',
+    title: `คุณได้รับ +${points.toLocaleString()} คะแนน`,
+    color: TYPE_COLOR.points,
+    pointsEarned: points,
+  }
 }
 
 // Spend detail rows -> rich reward/donation entries.
@@ -116,71 +153,9 @@ function spendDetailToItem(d: SpendDetailRow): HistoryItem {
     status: isDonate ? 'บริจาคสำเร็จ' : (d.status || 'เตรียมจัดส่งในรอบถัดไป'),
     pointsSpent: Number(d.points) || 0,
     category: d.category,
+    txId: d.tx_id,
   }
 }
-
-// Mock history data with time
-const historyData: HistoryItem[] = [
-  {
-    id: '1',
-    date: '27 พฤษภาคม 2569',
-    time: '14:30',
-    type: 'points',
-    title: 'คุณมีคะแนนสะสมเพิ่ม 21 คะแนน',
-    color: TYPE_COLOR.points,
-  },
-  {
-    id: '2',
-    date: '27 พฤษภาคม 2569',
-    time: '12:15',
-    type: 'recycle',
-    title: 'เก็บของรีไซเคิล 7.95 KG',
-    color: TYPE_COLOR.recycle,
-    hasDetail: true,
-  },
-  {
-    id: '3',
-    date: '27 พฤษภาคม 2569',
-    time: '10:00',
-    type: 'reward',
-    title: 'แลกรางวัลจากคะแนน 35 คะแนน',
-    color: TYPE_COLOR.reward,
-  },
-  {
-    id: '4',
-    date: '27 พฤษภาคม 2569',
-    time: '09:30',
-    type: 'points',
-    title: 'คุณมีคะแนนสะสมเพิ่ม 21 คะแนน',
-    color: TYPE_COLOR.points,
-  },
-  {
-    id: '5',
-    date: '26 พฤษภาคม 2569',
-    time: '16:45',
-    type: 'recycle',
-    title: 'เก็บของรีไซเคิล 7.95 KG',
-    color: TYPE_COLOR.recycle,
-    hasDetail: true,
-  },
-  {
-    id: '6',
-    date: '26 พฤษภาคม 2569',
-    time: '11:20',
-    type: 'points',
-    title: 'คุณมีคะแนนสะสมเพิ่ม 21 คะแนน',
-    color: TYPE_COLOR.points,
-  },
-  {
-    id: '7',
-    date: '25 พฤษภาคม 2569',
-    time: '08:00',
-    type: 'recycle',
-    title: 'เก็บของรีไซเคิล 7.95 KG',
-    color: TYPE_COLOR.recycle,
-    hasDetail: true,
-  },
-]
 
 // Group data by date
 function groupByDate(data: HistoryItem[]) {
@@ -201,6 +176,8 @@ function formatTime(time: string) {
   return `${hour}.${minutes} น.`
 }
 
+const byTsDesc = (a: HistoryItem, b: HistoryItem) => (b.ts ?? 0) - (a.ts ?? 0)
+
 export default function HistoryPage() {
   const router = useRouter()
   const { profile: liffProfile } = useLiffContext()
@@ -208,8 +185,11 @@ export default function HistoryPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [transactions, setTransactions] = useState<Transaction[] | null>(null)
   const [spendDetails, setSpendDetails] = useState<SpendDetailRow[] | null>(null)
+  const [wasteRecords, setWasteRecords] = useState<WasteRecord[] | null>(null)
+  const [coupons, setCoupons] = useState<Coupon[] | null>(null)
 
-  // Pull this user's real transactions + spend details from the points sheet.
+  // Pull this user's real transactions, spend details, waste submissions
+  // (for photos + type detail) and coupons (to link reward rows).
   useEffect(() => {
     const userId = liffProfile?.userId
     if (!userId) return
@@ -226,26 +206,45 @@ export default function HistoryPage() {
       .then(data => setSpendDetails(data?.success ? (data.details as SpendDetailRow[]) : []))
       .catch(err => { if (err.name !== 'AbortError') setSpendDetails([]) })
 
+    fetch(`/api/waste/records?user_id=${q}`, { signal: controller.signal })
+      .then(res => res.json())
+      .then(data => setWasteRecords(mapWasteRecords(data?.records ?? [], userId)))
+      .catch(err => { if (err.name !== 'AbortError') setWasteRecords([]) })
+
+    fetch(`/api/coupons?user_id=${q}`, { signal: controller.signal })
+      .then(res => res.json())
+      .then(data => setCoupons(data?.success ? (data.coupons as Coupon[]) : []))
+      .catch(err => { if (err.name !== 'AbortError') setCoupons([]) })
+
     return () => controller.abort()
   }, [liffProfile?.userId])
 
-  // Earn -> recycle/points entries; spend_details -> rich reward entries.
-  const earnItems = (transactions ?? [])
-    .map(txToHistoryItem)
-    .filter((i): i is HistoryItem => i !== null)
+  // Recycle entries from the trash sheet (only confirmed/"done" submissions);
+  // reward entries from spend_details; point-gain entries from earn transactions.
+  const recycleItems = (wasteRecords ?? [])
+    .filter(r => r.status === 'done')
+    .map(wasteToHistoryItem)
   const rewardItems = (spendDetails ?? []).map(spendDetailToItem)
-  const realItems = [...earnItems, ...rewardItems].sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0))
+  const pointItems = (transactions ?? [])
+    .map(earnTxToPointItem)
+    .filter((i): i is HistoryItem => i !== null)
 
-  // Still waiting on the Google Sheet fetch for a logged-in user.
+  // tx_id -> coupon, so a reward row can link to (and reflect the status of) its coupon.
+  const couponByTx = new Map<string, Coupon>()
+  for (const c of coupons ?? []) {
+    if (c.tx_id) couponByTx.set(c.tx_id, c)
+  }
+
+  // Still waiting on any of the source fetches for a logged-in user.
   const isLoading =
-    !!liffProfile?.userId && (transactions === null || spendDetails === null)
+    !!liffProfile?.userId &&
+    (transactions === null || spendDetails === null || wasteRecords === null || coupons === null)
 
-  // Show only real data — no mock fallback.
-  const sourceData = realItems
-
-  const filteredData = activeFilter === 'all'
-    ? sourceData
-    : sourceData.filter(item => item.type === activeFilter)
+  const filteredData =
+    activeFilter === 'recycle' ? [...recycleItems].sort(byTsDesc)
+    : activeFilter === 'reward' ? [...rewardItems].sort(byTsDesc)
+    : activeFilter === 'points' ? [...pointItems].sort(byTsDesc)
+    : [...recycleItems, ...rewardItems].sort(byTsDesc)
 
   const groupedData = groupByDate(filteredData)
 
@@ -256,7 +255,7 @@ export default function HistoryPage() {
       <main className="max-w-md mx-auto px-4 py-4">
         {/* Back Button and Title */}
         <div className="flex items-center gap-2 mb-4">
-          <button 
+          <button
             onClick={() => router.back()}
             className="p-1 rounded-full hover:bg-[#f5f5f5]"
           >
@@ -336,70 +335,63 @@ export default function HistoryPage() {
               {/* Timeline Items */}
               <div className="ml-[3px] border-l-2 border-[#e5e5e5] pl-5 space-y-3">
                 {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="relative"
-                  >
+                  <div key={item.id} className="relative">
                     {/* Timeline dot */}
                     <div className="absolute -left-[25px] top-3 w-3 h-3 rounded-full bg-white border-2 border-[#154212]" />
 
                     {item.type === 'reward' ? (
-                      /* Rich reward / donation card */
-                      <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-[#e5e5e5]">
-                        <div className={cn('w-10 h-10 rounded-full flex-shrink-0', item.color)} />
+                      <RewardCard item={item} coupon={item.txId ? couponByTx.get(item.txId) : undefined} />
+                    ) : item.type === 'recycle' ? (
+                      /* Recycle card — photo thumbnail + short topic + detail menu */
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#e5e5e5]">
+                        {item.image ? (
+                          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 relative bg-[#f0f0f0]">
+                            <Image src={item.image} alt="รูปขยะ" fill className="object-cover" />
+                          </div>
+                        ) : (
+                          <div className={cn('w-10 h-10 rounded-full flex-shrink-0', item.color)} />
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-[#154212] font-medium mb-0.5">{formatTime(item.time)}</p>
-                          <p className="text-sm font-medium text-[#444444] mb-1.5">
-                            {item.title} {item.quantity ? `× ${item.quantity}` : ''}
-                          </p>
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-xs text-[#666666]">อัพเดต {item.date} {formatTime(item.time)}</p>
-                            <span className="text-xs bg-[#f5f5f5] rounded px-2 py-0.5 text-[#444444] flex-shrink-0">
-                              จำนวน {item.quantity ?? 1}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs text-[#666666] truncate">
-                              สถานะ : {item.status || 'เตรียมจัดส่งในรอบถัดไป'}
-                            </p>
-                            <p className="text-sm font-bold text-[#c06161] flex-shrink-0 ml-2">
-                              -{(item.pointsSpent ?? 0).toLocaleString()} คะแนน
-                            </p>
-                          </div>
+                          <p className="text-sm text-[#444444] truncate">{item.title}</p>
+                          {item.subtitle && (
+                            <p className="text-xs text-[#666666] mt-0.5">{item.subtitle}</p>
+                          )}
+                        </div>
+
+                        {/* Three-dot menu (recycle detail) */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                            className="p-1 rounded-full hover:bg-[#f5f5f5]"
+                          >
+                            <MoreVertical className="w-5 h-5 text-[#999999]" />
+                          </button>
+
+                          {openMenuId === item.id && (
+                            <div className="absolute right-0 top-8 bg-white border border-[#e5e5e5] rounded-lg shadow-lg z-10 py-1 min-w-[160px]">
+                              <Link
+                                href={`/history/${item.detailId}`}
+                                className="block px-4 py-2 text-sm text-[#444444] hover:bg-[#f5f5f5]"
+                                onClick={() => setOpenMenuId(null)}
+                              >
+                                ดูรายละเอียด
+                              </Link>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ) : (
-                      /* Simple recycle / points card */
+                      /* Points card — a point-gain entry */
                       <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#e5e5e5]">
                         <div className={cn('w-10 h-10 rounded-full flex-shrink-0', item.color)} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-[#154212] font-medium mb-0.5">{formatTime(item.time)}</p>
                           <p className="text-sm text-[#444444]">{item.title}</p>
                         </div>
-
-                        {/* Three-dot menu (recycle detail) */}
-                        {item.hasDetail && (
-                          <div className="relative">
-                            <button
-                              onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
-                              className="p-1 rounded-full hover:bg-[#f5f5f5]"
-                            >
-                              <MoreVertical className="w-5 h-5 text-[#999999]" />
-                            </button>
-
-                            {openMenuId === item.id && (
-                              <div className="absolute right-0 top-8 bg-white border border-[#e5e5e5] rounded-lg shadow-lg z-10 py-1 min-w-[160px]">
-                                <Link
-                                  href={`/history/${item.id}`}
-                                  className="block px-4 py-2 text-sm text-[#444444] hover:bg-[#f5f5f5]"
-                                  onClick={() => setOpenMenuId(null)}
-                                >
-                                  ดูรายละเอียด
-                                </Link>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <p className="text-sm font-bold text-[#157b03] flex-shrink-0">
+                          +{(item.pointsEarned ?? 0).toLocaleString()}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -413,4 +405,68 @@ export default function HistoryPage() {
       {/* <BottomNav /> */}
     </div>
   )
+}
+
+// Reward / donation card. When the row has an active coupon it becomes a link
+// to that coupon; a used/expired coupon is shown but not clickable.
+function RewardCard({ item, coupon }: { item: HistoryItem; coupon?: Coupon }) {
+  const isReward = item.category === 'reward'
+  const isActiveCoupon = isReward && coupon?.status === 'active'
+  const isUsedCoupon = isReward && coupon?.status === 'used'
+  const isExpiredCoupon = isReward && coupon?.status === 'expired'
+
+  let statusLabel = item.status
+  if (isActiveCoupon) statusLabel = 'รอใช้งานคูปอง'
+  else if (isUsedCoupon) statusLabel = 'ใช้คูปองแล้ว'
+  else if (isExpiredCoupon) statusLabel = 'คูปองหมดอายุ'
+
+  const card = (
+    <div
+      className={cn(
+        'flex items-start gap-3 p-3 bg-white rounded-xl border border-[#e5e5e5]',
+        (isUsedCoupon || isExpiredCoupon) && 'opacity-70',
+        isActiveCoupon && 'hover:border-[#154212] transition-colors'
+      )}
+    >
+      <div className={cn('w-10 h-10 rounded-full flex-shrink-0', item.color)} />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-[#154212] font-medium mb-0.5">{formatTime(item.time)}</p>
+        <p className="text-sm font-medium text-[#444444] mb-1.5">
+          {item.title} {item.quantity ? `× ${item.quantity}` : ''}
+        </p>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs text-[#666666]">อัพเดต {item.date} {formatTime(item.time)}</p>
+          <span className="text-xs bg-[#f5f5f5] rounded px-2 py-0.5 text-[#444444] flex-shrink-0">
+            จำนวน {item.quantity ?? 1}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <p
+            className={cn(
+              'text-xs truncate flex items-center gap-0.5',
+              isActiveCoupon ? 'text-[#157b03] font-medium' : 'text-[#666666]'
+            )}
+          >
+            สถานะ : {statusLabel}
+            {isActiveCoupon && <ChevronRight className="w-3.5 h-3.5" />}
+          </p>
+          <p className="text-sm font-bold text-[#c06161] flex-shrink-0 ml-2">
+            -{(item.pointsSpent ?? 0).toLocaleString()} คะแนน
+          </p>
+        </div>
+        {isActiveCoupon && (
+          <p className="text-[11px] text-[#157b03] mt-1">แตะเพื่อดูคูปอง ›</p>
+        )}
+      </div>
+    </div>
+  )
+
+  if (isActiveCoupon && coupon) {
+    return (
+      <Link href={`/coupons/${coupon.coupon_id}`} className="block">
+        {card}
+      </Link>
+    )
+  }
+  return card
 }

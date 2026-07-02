@@ -10,6 +10,7 @@ export type AdminLoginResult =
 
 interface AdminContextType {
   isAdmin: boolean
+  isInitializing: boolean // 👈 1. เพิ่ม State นี้เข้าไปใน Type
   adminLogin: (key: string, userId: string) => Promise<AdminLoginResult>
   adminLogout: () => void
 }
@@ -18,6 +19,7 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined)
 
 export function AdminProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true) // 👈 2. สร้าง State ให้ค่าเริ่มต้นเป็น true (กำลังเช็คอยู่)
 
   // Restore session on mount
   useEffect(() => {
@@ -25,6 +27,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       const saved = sessionStorage.getItem(SESSION_KEY)
       if (saved === 'true') setIsAdmin(true)
     }
+    setIsInitializing(false) // 👈 3. เช็ค sessionStorage เสร็จแล้ว ค่อยบอกว่าโหลดเสร็จ
   }, [])
 
   const adminLogin = useCallback(async (key: string, userId: string): Promise<AdminLoginResult> => {
@@ -58,7 +61,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AdminContext.Provider value={{ isAdmin, adminLogin, adminLogout }}>
+    // 👈 4. ส่ง isInitializing ออกไปให้หน้าอื่นๆ ใช้ด้วย
+    <AdminContext.Provider value={{ isAdmin, isInitializing, adminLogin, adminLogout }}>
       {children}
     </AdminContext.Provider>
   )

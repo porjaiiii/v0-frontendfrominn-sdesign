@@ -234,7 +234,7 @@ function RegisterPageContent() {
           firstName: firstName || prev.firstName,
           lastName: lastName || prev.lastName,
           nickname: data.displayName || prev.nickname,
-          phoneNumber: data.phone || prev.phoneNumber,
+          phoneNumber: data.phoneNumber || prev.phoneNumber,
           gender: data.gender || prev.gender,
           ageRange: data.age || prev.ageRange,
           userType: data.type || prev.userType,

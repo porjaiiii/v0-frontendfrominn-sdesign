@@ -93,6 +93,7 @@ export default function ProfileViewPage() {
               <p className="text-xs 154212-[#666666] mb-0.5">ชื่อ-นามสกุล</p>
               <p className="font-bold text-[#222222] text-sm">{profile.name || '-'}</p>
               <p className="text-xs 154212-[#666666] mt-1">เพศ <span className="font-semibold text-[#222222]">{profile.gender || '-'}</span></p>
+              <p className="text-xs 154212-[#666666] mt-1">เบอร์ <span className="font-semibold text-[#222222]">{profile.phoneNumber || '-'}</span></p>
             </div>
           </div>
 
@@ -118,12 +119,8 @@ export default function ProfileViewPage() {
               <p className="text-xs text-[#154212] mb-1">อาชีพ</p>
               <p className="text-sm font-bold text-[#222222]">{profile.occupation || '-'}</p>
             </div>
-                {/* อาชีพ */}
-            <div className="border-t border-[#cccccc] pt-3 pl-3 border-l border-l-[#cccccc]">
-              <p className="text-xs text-[#154212] mb-1">เบอร์โทรศัพท์</p>
-              <p className="text-sm font-bold text-[#222222]">{profile.phoneNumber || '-'}</p>
-            </div>
-           
+            
+          
           </div>
         </div>
 

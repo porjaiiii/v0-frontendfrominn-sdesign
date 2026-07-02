@@ -45,7 +45,7 @@ const WASTE_IMAGES: Record<WasteType, string> = {
 
 export default function HomePage() {
   const liffContext = useLiffContext()
-  const { status: guardStatus } = useProfileGuard()
+ 
   const router = useRouter()
   const [step, setStep] = useState(1)
 

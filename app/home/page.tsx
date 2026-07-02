@@ -159,7 +159,7 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
     setSelectedSubType(null)
     setWeight(0)
     setNoWeight(false)
-    setImageEvidence(null)
+    setImageEvidence([]); // ส่ง Array ว่างไปแทนครับ
     router.push('/home')
   }
 
@@ -305,14 +305,14 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
               onNoWeightChange={setNoWeight}
             />
 
-            <ImageEvidence
-              imageUrl={imageEvidence}
-              onImageChange={setImageEvidence}
-              referenceImage="/images/weighing-scale-example.png"
-              referenceLabel="ตัวอย่างการชั่ง"
-              wasteType={selectedType || ''}
-              weight={weight}
-            />
+           <ImageEvidence
+  imageUrls={imageEvidence}          // เปลี่ยนจาก imageUrl เป็น imageUrls
+  onImagesChange={setImageEvidence}  // เปลี่ยนจาก onImageChange เป็น onImagesChange
+  referenceImage="/images/weighing-scale-example.png"
+  referenceLabel="ตัวอย่างการชั่ง"
+  wasteType={selectedType || ''}
+  weight={weight}
+/>
 
             {/* Bottom navigation buttons */}
             <div className="flex items-center justify-between gap-3">

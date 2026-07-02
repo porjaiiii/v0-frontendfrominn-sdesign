@@ -12,7 +12,7 @@ import { useAdmin } from '@/lib/admin-context'
 export default function ProfileViewPage() {
   const params = useParams()
   const lineUserId = decodeURIComponent(params.lineUserId as string)
-   const { isAdmin, adminLogout } = useAdmin()
+  const { isAdmin, isInitializing, adminLogout } = useAdmin()
 
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -41,7 +41,7 @@ export default function ProfileViewPage() {
       }
     }
     if (lineUserId) fetchProfile()
-  }, [lineUserId])
+  }, [lineUserId,isAdmin])
 
   if (loading) {
     return (

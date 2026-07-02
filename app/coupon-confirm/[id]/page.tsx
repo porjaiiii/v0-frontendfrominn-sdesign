@@ -69,7 +69,7 @@ export default function CouponConfirmPage({
     }
 
     fetchCoupon()
-  }, [couponId])
+  }, [couponId,isAdmin])
 
   const handleConfirm = async () => {
     if (!coupon) return

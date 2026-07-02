@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useEffect } from 'react'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
-import { Award, TreePine, ChevronLeft, ChevronRight, QrCode, ExternalLink, Copy, Check, ArrowLeft } from 'lucide-react'
+import { Award, TreePine, ChevronLeft, ChevronRight, QrCode, ExternalLink, Copy, Check, ArrowLeft, Pencil } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -242,6 +242,17 @@ export default function ProfilePage() {
 
           {/* White Card with gray border */}
           <div className="bg-white border border-[#e5e5e5] rounded-2xl pt-14 pb-5 px-4 shadow-sm">
+            {/* Edit button — top-right corner of card */}
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => router.push('/register?mode=edit')}
+                aria-label="แก้ไขข้อมูลโปรไฟล์"
+                className="flex items-center gap-1 text-[#154212] hover:text-white hover:bg-[#154212] border border-[#154212] rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
+              >
+                <Pencil className="w-3 h-3" />
+                <span>แก้ไข</span>
+              </button>
+            </div>
             {/* Profile Info */}
             <div className="space-y-3 text-sm">
               {/* Row 1: Name & Gender */}

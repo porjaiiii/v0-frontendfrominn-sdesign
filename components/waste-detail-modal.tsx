@@ -31,7 +31,7 @@ interface WasteRecord {
   waste_type: string
   waste_subtype: string
   weight_kg: number
-  image_url: string
+  image_urls: string[] // เปลี่ยนจาก string เป็น string[]
   carbon_reduction: number
   points_earned: number
   status: string
@@ -138,46 +138,49 @@ export function WasteDetailModal({
 
   // --- image upload handler (copy pattern จาก ImageEvidence ใน weight-input.tsx) ---
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !editedRecord) return
+  const file = e.target.files?.[0]
+  if (!file || !editedRecord) return
 
-    try {
-      setIsUploading(true)
-      setUploadError(null)
+  try {
+    setIsUploading(true)
+    setUploadError(null)
 
-      const { dataUrl: base64String } = await compressImage(file)
+    const { dataUrl: base64String } = await compressImage(file)
 
-      const response = await fetch('/api/upload-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          base64Data: base64String.split(',')[1],
-          fileName: `${editedRecord.user_id}_${editedRecord.waste_type}_${editedRecord.weight_kg}_${Date.now()}.jpg`,
-          userId: editedRecord.user_id,
-          wasteType: editedRecord.waste_type,
-          weight: editedRecord.weight_kg,
-          mimeType: 'image/jpeg',
-        }),
-      })
+    const response = await fetch('/api/upload-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        base64Data: base64String.split(',')[1],
+        fileName: `${editedRecord.user_id}_${editedRecord.waste_type}_${editedRecord.weight_kg}_${Date.now()}.jpg`,
+        userId: editedRecord.user_id,
+        wasteType: editedRecord.waste_type,
+        weight: editedRecord.weight_kg,
+        mimeType: 'image/jpeg',
+      }),
+    })
 
-      const result = await response.json()
+    const result = await response.json()
 
-      if (result.success && result.imageUrl) {
-        updateField({ image_url: result.imageUrl })
-      } else {
-        // fallback: ใช้ local object URL แสดงก่อน
-        const localUrl = URL.createObjectURL(file)
-        updateField({ image_url: localUrl })
-        setUploadError(result.details || result.error || 'อัปโหลดไม่สำเร็จ (ใช้รูป local แทน)')
-      }
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการอัปโหลด')
-    } finally {
-      setIsUploading(false)
-      // reset input เพื่อให้เลือกไฟล์เดิมซ้ำได้
-      if (fileInputRef.current) fileInputRef.current.value = ''
+    // 🌟 ส่วนที่ต้องแก้: เพิ่มรูปใหม่เข้าไปต่อท้ายอาเรย์เดิม
+    // เราใช้ (editedRecord.image_urls || []) เพื่อป้องกันกรณีที่ค่าเดิมเป็น undefined หรือ null
+    const currentUrls = editedRecord.image_urls || []
+
+    if (result.success && result.imageUrl) {
+      updateField({ image_urls: [...currentUrls, result.imageUrl] })
+    } else {
+      // fallback: ใช้ local object URL
+      const localUrl = URL.createObjectURL(file)
+      updateField({ image_urls: [...currentUrls, localUrl] })
+      setUploadError(result.details || result.error || 'อัปโหลดไม่สำเร็จ (ใช้รูป local แทน)')
     }
+  } catch (err) {
+    setUploadError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการอัปโหลด')
+  } finally {
+    setIsUploading(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
+}
 
   const handleConfirmClick = async () => {
     if (!editedRecord) return

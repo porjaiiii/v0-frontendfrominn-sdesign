@@ -103,12 +103,7 @@ export function CarbonResultModal({
 
         {/* Footer buttons */}
         <div className="px-6 pb-8 flex gap-3">
-          <button
-            onClick={handleHistory}
-            className="flex-1 py-3 rounded-full font-semibold border-2 border-[#154212] text-[#154212] text-sm hover:bg-[#f0fdf0] transition-colors"
-          >
-            ประวัติ
-          </button>
+      
           <button
             onClick={handleDone}
             className="flex-1 py-3 rounded-full font-semibold bg-[#154212] text-white text-sm hover:bg-[#0d3308] transition-colors"

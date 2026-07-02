@@ -326,7 +326,7 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
 
               <button
                 onClick={handleSaveClick}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isDataReady}
                 className={cn(
                   'px-8 py-2.5 rounded-full font-semibold text-sm transition-colors',
                   !isDataReady

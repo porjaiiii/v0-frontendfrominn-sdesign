@@ -83,7 +83,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
         // on both desktop and mobile browsers.
         if (!liff.isLoggedIn()) {
           setLoadingStep('requesting_permission')
-          liff.login({ redirectUri: window.location.href })
+          liff.login({ redirectUri: window.location.origin + '/register' })
           return
         }
 

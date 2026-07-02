@@ -31,7 +31,7 @@ interface WasteRecord {
   waste_type: string
   waste_subtype: string
   weight_kg: number
-  image_url: string
+  image_urls: string[] // เปลี่ยนจาก string เป็น string[]
   carbon_reduction: number
   points_earned: number
   status: string

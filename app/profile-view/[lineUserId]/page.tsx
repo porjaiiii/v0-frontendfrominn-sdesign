@@ -19,6 +19,7 @@ export default function ProfileViewPage() {
   const [error, setError] = useState<string | null>(null)
   const [totalWeight, setTotalWeight] = useState(0)
   const [sortMode, setSortMode] = useState<'date' | 'weight'>('date')
+  console.log('1. isAdmin:', isAdmin)
 
   useEffect(() => {
     if (!isAdmin) return

@@ -31,6 +31,7 @@ export default function CouponConfirmPage({
   const [coupon, setCoupon] = useState<Coupon | null>(null)
   const [status, setStatus] = useState<Status>('loading')
   const [errorMsg, setErrorMsg] = useState<string>('')
+  console.log('1. isAdmin:', isAdmin)
 
   // Fetch coupon info when page loads
   useEffect(() => {

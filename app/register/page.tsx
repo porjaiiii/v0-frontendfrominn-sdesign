@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import liff from '@line/liff'
 import Image from 'next/image'
@@ -164,7 +164,7 @@ function ChoiceGroup({
   )
 }
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const { profile, isReady } = useLiffContext()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -763,5 +763,13 @@ export default function RegisterPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-[#154212]">กำลังโหลด...</div></div>}>
+      <RegisterPageContent />
+    </Suspense>
   )
 }

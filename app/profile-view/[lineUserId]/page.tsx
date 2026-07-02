@@ -7,10 +7,12 @@ import { PageHeader } from '@/components/page-header'
 import { WasteCart } from '@/components/waste-cart'
 import { AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useAdmin } from '@/lib/admin-context'
 
 export default function ProfileViewPage() {
   const params = useParams()
   const lineUserId = decodeURIComponent(params.lineUserId as string)
+   const { isAdmin, adminLogout } = useAdmin()
 
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -19,6 +21,7 @@ export default function ProfileViewPage() {
   const [sortMode, setSortMode] = useState<'date' | 'weight'>('date')
 
   useEffect(() => {
+    if (!isAdmin) return
     const fetchProfile = async () => {
       try {
         setLoading(true)

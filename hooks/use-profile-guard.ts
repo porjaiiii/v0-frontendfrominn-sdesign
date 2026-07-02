@@ -62,8 +62,8 @@ export function useProfileGuard(): { status: GuardStatus } {
 
         if (res.status === 404) {
           // Definitive: user has never registered
-          setStatus('redirecting')
-          router.replace('/register')
+          
+         
           return
         }
 
@@ -83,7 +83,7 @@ export function useProfileGuard(): { status: GuardStatus } {
           typeof data?.fullName === 'string' && data.fullName.trim() !== ''
 
         if (!hasProfile) {
-          setStatus('redirecting')
+       
          
           return
         }

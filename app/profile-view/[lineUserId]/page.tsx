@@ -118,6 +118,12 @@ export default function ProfileViewPage() {
               <p className="text-xs text-[#154212] mb-1">อาชีพ</p>
               <p className="text-sm font-bold text-[#222222]">{profile.occupation || '-'}</p>
             </div>
+                {/* อาชีพ */}
+            <div className="border-t border-[#cccccc] pt-3 pl-3 border-l border-l-[#cccccc]">
+              <p className="text-xs text-[#154212] mb-1">เบอร์โทรศัพท์</p>
+              <p className="text-sm font-bold text-[#222222]">{profile.phoneNumber || '-'}</p>
+            </div>
+           
           </div>
         </div>
 

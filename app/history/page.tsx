@@ -54,16 +54,6 @@ type HistoryItem = {
   txId?: string       // links a reward row to its coupon (shared key)
 }
 
-// A single transaction row from /api/points?action=get_transactions
-type Transaction = {
-  tx_id: string
-  type: string
-  points: number
-  co2: number
-  weight?: number
-  timestamp: string
-}
-
 // A single spend line from /api/points?action=get_spend_details
 type SpendDetailRow = {
   tx_id: string
@@ -116,22 +106,20 @@ function wasteToHistoryItem(r: WasteRecord): HistoryItem {
   }
 }
 
-// Every earn transaction -> a point-gain entry for the คะแนน tab. Covers both
-// recycling earns and any weightless bonuses.
-function earnTxToPointItem(tx: Transaction): HistoryItem | null {
-  if (tx.type !== 'earn') return null
-  const points = Math.round(Number(tx.points) || 0)
-  if (points <= 0) return null
-  const d = parseTs(tx.timestamp)
+// Each recycling record also appears in the คะแนน tab as a point-gain entry,
+// reusing the same points_earned shown on its recycle card. Sourced from the
+// waste records so the tab always mirrors what shows under รีไซเคิล.
+function recycleItemToPointItem(r: HistoryItem): HistoryItem {
+  const points = r.pointsEarned ?? 0
   return {
-    id: `pt-${tx.tx_id}`,
-    ts: d.getTime(),
-    date: fmtDate(d),
-    time: fmtTime(d),
+    ...r,
+    id: `pt-${r.id}`,
     type: 'points',
     title: `คุณได้รับ +${points.toLocaleString()} คะแนน`,
     color: TYPE_COLOR.points,
-    pointsEarned: points,
+    image: undefined,
+    subtitle: undefined,
+    detailId: undefined,
   }
 }
 
@@ -176,30 +164,30 @@ function formatTime(time: string) {
   return `${hour}.${minutes} น.`
 }
 
-const byTsDesc = (a: HistoryItem, b: HistoryItem) => (b.ts ?? 0) - (a.ts ?? 0)
+// Newest first. A recycle entry and its mirrored points entry share the same
+// timestamp, so the tie-break (recycle before points) keeps คะแนน right after
+// the รีไซเคิล it came from.
+const TYPE_ORDER: Record<string, number> = { recycle: 0, points: 1, reward: 2 }
+const byTsDesc = (a: HistoryItem, b: HistoryItem) =>
+  (b.ts ?? 0) - (a.ts ?? 0) ||
+  (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9)
 
 export default function HistoryPage() {
   const router = useRouter()
   const { profile: liffProfile } = useLiffContext()
   const [activeFilter, setActiveFilter] = useState('all')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const [transactions, setTransactions] = useState<Transaction[] | null>(null)
   const [spendDetails, setSpendDetails] = useState<SpendDetailRow[] | null>(null)
   const [wasteRecords, setWasteRecords] = useState<WasteRecord[] | null>(null)
   const [coupons, setCoupons] = useState<Coupon[] | null>(null)
 
-  // Pull this user's real transactions, spend details, waste submissions
-  // (for photos + type detail) and coupons (to link reward rows).
+  // Pull this user's spend details, waste submissions (for photos + type
+  // detail + earned points) and coupons (to link reward rows).
   useEffect(() => {
     const userId = liffProfile?.userId
     if (!userId) return
     const controller = new AbortController()
     const q = encodeURIComponent(userId)
-
-    fetch(`/api/points?action=get_transactions&user_id=${q}`, { signal: controller.signal })
-      .then(res => res.json())
-      .then(data => setTransactions(data?.success ? (data.transactions as Transaction[]) : []))
-      .catch(err => { if (err.name !== 'AbortError') setTransactions([]) })
 
     fetch(`/api/points?action=get_spend_details&user_id=${q}`, { signal: controller.signal })
       .then(res => res.json())
@@ -220,14 +208,15 @@ export default function HistoryPage() {
   }, [liffProfile?.userId])
 
   // Recycle entries from the trash sheet (only confirmed/"done" submissions);
-  // reward entries from spend_details; point-gain entries from earn transactions.
+  // reward entries from spend_details; point-gain entries mirror the recycle
+  // records (each recycling event = points earned).
   const recycleItems = (wasteRecords ?? [])
     .filter(r => r.status === 'done')
     .map(wasteToHistoryItem)
   const rewardItems = (spendDetails ?? []).map(spendDetailToItem)
-  const pointItems = (transactions ?? [])
-    .map(earnTxToPointItem)
-    .filter((i): i is HistoryItem => i !== null)
+  const pointItems = recycleItems
+    .filter(r => (r.pointsEarned ?? 0) > 0)
+    .map(recycleItemToPointItem)
 
   // tx_id -> coupon, so a reward row can link to (and reflect the status of) its coupon.
   const couponByTx = new Map<string, Coupon>()
@@ -238,13 +227,15 @@ export default function HistoryPage() {
   // Still waiting on any of the source fetches for a logged-in user.
   const isLoading =
     !!liffProfile?.userId &&
-    (transactions === null || spendDetails === null || wasteRecords === null || coupons === null)
+    (spendDetails === null || wasteRecords === null || coupons === null)
 
   const filteredData =
     activeFilter === 'recycle' ? [...recycleItems].sort(byTsDesc)
     : activeFilter === 'reward' ? [...rewardItems].sort(byTsDesc)
     : activeFilter === 'points' ? [...pointItems].sort(byTsDesc)
-    : [...recycleItems, ...rewardItems].sort(byTsDesc)
+    // "all": recycle + its mirrored points entry (points shown right after the
+    // recycle it came from) + rewards, newest first.
+    : [...recycleItems, ...pointItems, ...rewardItems].sort(byTsDesc)
 
   const groupedData = groupByDate(filteredData)
 
@@ -415,10 +406,15 @@ function RewardCard({ item, coupon }: { item: HistoryItem; coupon?: Coupon }) {
   const isUsedCoupon = isReward && coupon?.status === 'used'
   const isExpiredCoupon = isReward && coupon?.status === 'expired'
 
+  // The spend_details status column is unreliable for rewards (coupon usage
+  // lives in a different sheet), so the coupon is the source of truth. Every
+  // reward row gets coupon wording; only donations keep their own status.
   let statusLabel = item.status
-  if (isActiveCoupon) statusLabel = 'รอใช้งานคูปอง'
-  else if (isUsedCoupon) statusLabel = 'ใช้คูปองแล้ว'
-  else if (isExpiredCoupon) statusLabel = 'คูปองหมดอายุ'
+  if (isReward) {
+    if (isUsedCoupon) statusLabel = 'ใช้คูปองแล้ว'
+    else if (isExpiredCoupon) statusLabel = 'คูปองหมดอายุ'
+    else statusLabel = 'รอใช้งานคูปอง' // active coupon, or none matched yet
+  }
 
   const card = (
     <div
@@ -454,9 +450,6 @@ function RewardCard({ item, coupon }: { item: HistoryItem; coupon?: Coupon }) {
             -{(item.pointsSpent ?? 0).toLocaleString()} คะแนน
           </p>
         </div>
-        {isActiveCoupon && (
-          <p className="text-[11px] text-[#157b03] mt-1">แตะเพื่อดูคูปอง ›</p>
-        )}
       </div>
     </div>
   )

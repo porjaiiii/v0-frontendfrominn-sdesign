@@ -28,8 +28,11 @@ function formatThaiDate(ts: string): string {
 export default function HistoryDetailPage() {
   const router = useRouter()
   const params = useParams()
-  // The route id is the waste record's timestamp (URL-decoded by Next).
-  const id = Array.isArray(params.id) ? params.id[0] : params.id
+  // The route id is the waste record's timestamp. Decode defensively — depending
+  // on the router it may arrive still percent-encoded (":" -> "%3A").
+  const rawId = Array.isArray(params.id) ? params.id[0] : params.id
+  let id = rawId ?? ''
+  try { id = decodeURIComponent(id) } catch { /* keep raw */ }
   const { profile: liffProfile } = useLiffContext()
   const { points: accountPoints } = usePoints()
 
@@ -45,7 +48,14 @@ export default function HistoryDetailPage() {
       .then(res => res.json())
       .then(data => {
         const records = mapWasteRecords(data?.records ?? [], userId)
-        const found = records.find(r => r.timestamp === id)
+        // Prefer an exact string match; fall back to comparing the parsed date
+        // value so differences in timestamp formatting can't break the lookup.
+        const idTime = new Date(String(id).replace(' ', 'T')).getTime()
+        const found =
+          records.find(r => r.timestamp === id) ??
+          (Number.isFinite(idTime)
+            ? records.find(r => new Date(String(r.timestamp).replace(' ', 'T')).getTime() === idTime)
+            : undefined)
         setRecord(found ?? null)
       })
       .catch(err => { if (err.name !== 'AbortError') setRecord(null) })

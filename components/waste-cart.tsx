@@ -10,10 +10,11 @@ interface WasteRecord {
   waste_type: string
   waste_subtype: string
   weight_kg: number
-  image_url: string
+  image_urls: string[] // รองรับหลายรูปภาพตาม GAS
   carbon_reduction: number
   points_earned: number
   status: string
+  notes?: string
 }
 
 interface WasteCartProps {
@@ -51,25 +52,43 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
         )
         
         // Map records จาก array format ใน Google Sheet
-        const mappedRecords = filteredRecords.map((record: any) => ({
-          timestamp: record[0],
-          user_id: record[1],
-          waste_type: record[2],
-          waste_subtype: record[3],
-          weight_kg: parseFloat(record[4]) || 0,
-          image_url: record[5],
-          carbon_reduction: parseFloat(record[6]) || 0,
-          points_earned: parseFloat(record[7]) || 0,
-          status: record[8],
-          notes: record[9],
-        }))
+        const mappedRecords = filteredRecords.map((record: any) => {
+          let parsedImageUrls: string[] = []
+          const rawImageData = record[5] // คอลัมน์ F ใน Google Sheet
+          
+          if (rawImageData) {
+            if (rawImageData.startsWith('[') && rawImageData.endsWith(']')) {
+              try {
+                parsedImageUrls = JSON.parse(rawImageData)
+              } catch (e) {
+                parsedImageUrls = [rawImageData]
+              }
+            } else {
+              parsedImageUrls = [rawImageData]
+            }
+          }
+
+          return {
+            timestamp: record[0],
+            user_id: record[1],
+            waste_type: record[2],
+            waste_subtype: record[3],
+            weight_kg: parseFloat(record[4]) || 0,
+            image_urls: parsedImageUrls,
+            carbon_reduction: parseFloat(record[6]) || 0,
+            points_earned: parseFloat(record[7]) || 0,
+            status: record[8],
+            notes: record[9],
+          }
+        })
         
         setRecords(mappedRecords)
 
-        // Calculate total weight from pending records only
+        // 🌟 แก้ไขจุดที่ 1: คำนวณน้ำหนักรวมเฉพาะรายการที่เป็น pending และค่าน้ำหนักต้องไม่ใช่ -1
         const calculatedTotal = mappedRecords
-          .filter((r: WasteRecord) => r.status === 'pending')
+          .filter((r: WasteRecord) => r.status === 'pending' && r.weight_kg !== -1)
           .reduce((sum: number, r: WasteRecord) => sum + r.weight_kg, 0)
+        
         setTotalWeight(calculatedTotal)
         if (onTotalWeightChange) {
           onTotalWeightChange(calculatedTotal)
@@ -95,10 +114,11 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
       )
       setRecords(newRecords)
       
-      // Recalculate total weight from pending records only
+      // 🌟 แก้ไขจุดที่ 2: อัปเดตค่าน้ำหนักรวมหลังกดยืนยัน (กรอง -1 ออกด้วย)
       const newTotal = newRecords
-        .filter(r => r.status === 'pending')
+        .filter(r => r.status === 'pending' && r.weight_kg !== -1)
         .reduce((sum, r) => sum + r.weight_kg, 0)
+      
       setTotalWeight(newTotal)
       if (onTotalWeightChange) {
         onTotalWeightChange(newTotal)
@@ -114,7 +134,6 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
   }
 
   const handleEditRecord = (record: WasteRecord, isEditing: boolean) => {
-    // Open modal in edit mode
     setSelectedRecord(record)
     setIsModalOpen(true)
     setIsEditingMode(isEditing)
@@ -124,7 +143,7 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
     try {
       const recordId = `${record.timestamp}-${record.user_id}`
       setSavingRecordId(recordId)
-      // Call API to update record - change status from pending to done
+      
       const response = await fetch('/api/waste/update', {
         method: 'PUT',
         headers: {
@@ -144,10 +163,11 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
       )
       setRecords(newRecords)
 
-      // Recalculate total weight from pending records only
+      // 🌟 แก้ไขจุดที่ 3: อัปเดตค่าน้ำหนักรวมหลังเซฟเสร็จ (กรอง -1 ออกด้วย)
       const newTotal = newRecords
-        .filter(r => r.status === 'pending')
+        .filter(r => r.status === 'pending' && r.weight_kg !== -1)
         .reduce((sum, r) => sum + r.weight_kg, 0)
+      
       setTotalWeight(newTotal)
       if (onTotalWeightChange) {
         onTotalWeightChange(newTotal)
@@ -193,13 +213,11 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
     if (sortMode === 'weight') {
       return b.weight_kg - a.weight_kg
     }
-    // default: sort by latest date
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   })
 
   return (
     <div className="space-y-3">
-      {/* Detail Modal */}
       <WasteDetailModal
         record={selectedRecord}
         isOpen={isModalOpen}

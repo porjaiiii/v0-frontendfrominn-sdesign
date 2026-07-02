@@ -84,7 +84,7 @@ export function useProfileGuard(): { status: GuardStatus } {
 
         if (!hasProfile) {
           setStatus('redirecting')
-          router.replace('/register')
+         
           return
         }
 

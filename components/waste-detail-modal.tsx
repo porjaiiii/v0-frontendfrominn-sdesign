@@ -7,13 +7,13 @@ import { cn } from '@/lib/utils'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
 import { compressImage } from '@/lib/compress-image'
 
-// CARBON_FACTORS ต้องตรงกับ /api/waste/update/route.ts
-const CARBON_FACTORS: Record<string, number> = {
-  plastic: 1.0310,
-  paper: 3.5460,
-  glass: 0.2760,
-  aluminum: 9.1270,
-  oil: 3.0,
+// POINTS_PER_KG ต้องตรงกับ /api/waste/update/route.ts
+const POINTS_PER_KG: Record<string, number> = {
+  plastic: 6,
+  paper: 4,
+  glass: 4,
+  aluminum: 25,
+  oil: 3,
 }
 
 interface WasteRecord {
@@ -38,9 +38,9 @@ interface WasteDetailModalProps {
 }
 
 function recalculate(record: WasteRecord): WasteRecord {
-  const factor = CARBON_FACTORS[record.waste_type] ?? 1.0
-  const carbonReduction = record.weight_kg * factor
-  const pointsEarned = Math.round(carbonReduction)
+  const rate = POINTS_PER_KG[record.waste_type] ?? 3
+  const pointsEarned = Math.round(record.weight_kg * rate)
+  const carbonReduction = record.weight_kg
   return { ...record, carbon_reduction: carbonReduction, points_earned: pointsEarned }
 }
 
@@ -398,7 +398,7 @@ export function WasteDetailModal({
               {editedRecord.points_earned} แต้ม
               {isEditing && editedRecord.weight_kg > 0 && (
                 <span className="text-xs text-[#888888] font-normal ml-2">
-                  ({editedRecord.weight_kg} กก. × {CARBON_FACTORS[editedRecord.waste_type] ?? 1.0})
+                  ({editedRecord.weight_kg} กก. × {POINTS_PER_KG[editedRecord.waste_type] ?? 3} แต้ม/กก.)
                 </span>
               )}
             </div>

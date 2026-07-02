@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzti99z__Gstc8IZZIbe8_hdjG9x4IHRh8UPaqc9nUx2j2-7WWCd-WqGy29zpkRGjTF/exec'
-const CARBON_FACTORS = {
-  plastic: 2.5,
-  paper: 1.8,
-  glass: 0.8,
-  aluminum: 4.0,
-  oil: 3.0,
+const POINTS_PER_KG = {
+  plastic: 6,
+  paper: 4,
+  glass: 4,
+  aluminum: 25,
+  oil: 3,
 }
 
 export async function POST(request: NextRequest) {
@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // คำนวณ carbon reduction
-    const carbonFactor = CARBON_FACTORS[waste_type as keyof typeof CARBON_FACTORS] || 2.0
-    const carbonReduction = weight_kg * carbonFactor
-    const pointsEarned = Math.round(carbonReduction * 10)
+    // คำนวณแต้มและ carbon reduction
+    const pointsRate = POINTS_PER_KG[waste_type as keyof typeof POINTS_PER_KG] || 3
+    const pointsEarned = Math.round(weight_kg * pointsRate)
+    const carbonReduction = weight_kg
 
     // บันทึก timestamp
     const timestamp = new Date().toISOString()

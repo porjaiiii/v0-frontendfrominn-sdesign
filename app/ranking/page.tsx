@@ -41,10 +41,77 @@ const tabs = [
   { id: 'district', label: 'ตำบล' },
 ]
 
-// Black-and-white logo used as the fallback when a user has no profile picture.
-const LOGO_PLACEHOLDER = '/images/icon/logo.png'
+// Circular mascot logo used as the fallback when a user has no profile picture.
+const CIRCLE_LOGO = '/images/icon/Circle logo.png'
 function isMissingAvatar(url?: string): boolean {
   return !url || url.includes('placeholder')
+}
+
+// Earth-tone palette. Feel free to add/reorder — the tint is chosen by index, so
+// any change here just reshuffles which name maps to which color. NOTE: only each
+// color's HUE is used (via hue-rotate below); the muted look comes from the
+// reduced saturation in TintedLogo, so pick hues that are spread apart.
+const EARTH_COLORS = [
+  '#a5432b', // terracotta   (~12°)
+  '#c98a2b', // ochre        (~36°)
+  '#7d8a3f', // olive        (~70°)
+  '#5f7d4f', // sage         (~99°)
+  '#4a7d55', // moss green   (~133°)
+  '#3f7d63', // pine / teal  (~155°)
+  '#4e6d82', // slate blue   (~204°)
+]
+
+// Deterministic string hash — same input always yields the same number, so a
+// given nickname always maps to the same earth tone across sessions/devices.
+function hashString(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash)
+}
+
+function colorForName(name: string): string {
+  return EARTH_COLORS[hashString(name) % EARTH_COLORS.length]
+}
+
+// Approx hue (deg) of the mascot's green in the logo. Tints are applied as a
+// rotation away from this base, and hue-rotate leaves achromatic pixels (the
+// white circle background, grey eyes) untouched — so only the mascot recolors.
+const LOGO_BASE_HUE = 118
+
+function hexToHue(hex: string): number {
+  const n = hex.replace('#', '')
+  const r = parseInt(n.slice(0, 2), 16) / 255
+  const g = parseInt(n.slice(2, 4), 16) / 255
+  const b = parseInt(n.slice(4, 6), 16) / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const d = max - min
+  if (d === 0) return 0
+  let h: number
+  if (max === r) h = ((g - b) / d) % 6
+  else if (max === g) h = (b - r) / d + 2
+  else h = (r - g) / d + 4
+  h *= 60
+  return h < 0 ? h + 360 : h
+}
+
+// Fallback avatar: the circle mascot logo recolored to the nickname's earth tone.
+// Only the mascot's colored pixels shift; the white circle stays white. The
+// reduced saturation (< 1) mutes the green into an earthy hue — and since white
+// has zero saturation, scaling it leaves the circle background untouched.
+function TintedLogo({ name }: { name: string }) {
+  const rotation = hexToHue(colorForName(name)) - LOGO_BASE_HUE
+  return (
+    <Image
+      src={CIRCLE_LOGO}
+      alt={name}
+      fill
+      className="object-cover"
+      style={{ filter: `hue-rotate(${rotation}deg) saturate(0.55)` }}
+    />
+  )
 }
 
 export default function RankingPage() {
@@ -305,13 +372,12 @@ export default function RankingPage() {
                   const avatarMissing = isMissingAvatar(u.avatar)
                   return (
                     <div key={u.rank} ref={isPodiumCurrent ? currentUserRowRef : undefined} className="flex flex-col items-center relative">
-                      <div className={cn('w-16 h-16 rounded-full overflow-hidden relative mb-2 shadow-md', avatarMissing ? 'bg-[#eef0ee]' : 'bg-[#0f3b14]')}>
-                        <Image
-                          src={avatarMissing ? LOGO_PLACEHOLDER : u.avatar}
-                          alt={u.name}
-                          fill
-                          className={avatarMissing ? 'object-contain p-2 grayscale opacity-70' : 'object-cover'}
-                        />
+                      <div className={cn('w-16 h-16 rounded-full overflow-hidden relative mb-2 shadow-md', avatarMissing ? 'bg-white' : 'bg-[#0f3b14]')}>
+                        {avatarMissing ? (
+                          <TintedLogo name={u.name} />
+                        ) : (
+                          <Image src={u.avatar} alt={u.name} fill className="object-cover" />
+                        )}
                       </div>
                       <div className="text-sm font-medium text-[#154212] mb-2 text-center">
                         {obfuscateName(u.name, u.rank === currentUser.rank || u.name === currentUser.name || u.lineUserId === liffProfile?.userId)}
@@ -387,13 +453,12 @@ export default function RankingPage() {
                             <div className="w-8 h-8 rounded-full bg-[#f5f5f5] flex items-center justify-center text-sm font-semibold text-[#154212]">
                               {displayUser.rank}
                             </div>
-                            <div className={cn('w-10 h-10 rounded-full overflow-hidden relative flex-shrink-0', isMissingAvatar(displayUser.avatar) ? 'bg-[#eef0ee]' : 'bg-[#d9d9d9]')}>
-                              <Image
-                                src={isMissingAvatar(displayUser.avatar) ? LOGO_PLACEHOLDER : displayUser.avatar}
-                                alt={displayUser.name}
-                                fill
-                                className={isMissingAvatar(displayUser.avatar) ? 'object-contain p-1.5 grayscale opacity-70' : 'object-cover'}
-                              />
+                            <div className={cn('w-10 h-10 rounded-full overflow-hidden relative flex-shrink-0', isMissingAvatar(displayUser.avatar) ? 'bg-white' : 'bg-[#d9d9d9]')}>
+                              {isMissingAvatar(displayUser.avatar) ? (
+                                <TintedLogo name={displayUser.name} />
+                              ) : (
+                                <Image src={displayUser.avatar} alt={displayUser.name} fill className="object-cover" />
+                              )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-[#444444] truncate">

@@ -128,6 +128,7 @@ export default function ProfilePage() {
     occupation: fetchedProfile?.occupation || MOCK_USER.occupation,
     avatar: fetchedProfile?.avatar || liffProfile?.pictureUrl || userProfile?.pictureUrl || MOCK_USER.avatar,
     phone: fetchedProfile?.phone || '',
+    nickname: fetchedProfile?.nickname
   }
 
   // CO2 and recycled weight come from the points database (total_co2 / total_weight).

@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { X, CheckCircle2 } from 'lucide-react'
+import { X, CheckCircle2, Camera, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
+import { compressImage } from '@/lib/compress-image'
 
+// CARBON_FACTORS ต้องตรงกับ /api/waste/update/route.ts
 const CARBON_FACTORS: Record<string, number> = {
   plastic: 2.5,
   paper: 1.8,
@@ -53,9 +55,20 @@ export function WasteDetailModal({
   const [editedRecord, setEditedRecord] = useState<WasteRecord | null>(null)
   const [isSavingApi, setIsSavingApi] = useState(false)
 
+  // --- weight input state (รองรับ "0" ต้นและทศนิยม) ---
+  const [weightDisplay, setWeightDisplay] = useState<string>('')
+  const [isFocused, setIsFocused] = useState(false)
+
+  // --- image upload state ---
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     if (record) {
       setEditedRecord(record)
+      setWeightDisplay(record.weight_kg > 0 ? String(record.weight_kg) : '')
+      setUploadError(null)
     }
   }, [record])
 
@@ -75,18 +88,97 @@ export function WasteDetailModal({
     updateField({ waste_type: newType, waste_subtype: firstSubtype })
   }
 
+  // --- weight input handlers: ป้องกันเลข 0 หาย ---
+  const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value
+    // อนุญาตเฉพาะตัวเลขและทศนิยมจุดเดียว
+    if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+      setWeightDisplay(raw)
+      if (raw === '' || raw === '.') {
+        updateField({ weight_kg: 0 })
+        return
+      }
+      const parsed = parseFloat(raw)
+      if (!isNaN(parsed)) {
+        updateField({ weight_kg: parsed })
+      }
+    }
+  }
+
+  const handleWeightBlur = () => {
+    setIsFocused(false)
+    if (weightDisplay === '' || weightDisplay === '.') {
+      setWeightDisplay('')
+      updateField({ weight_kg: 0 })
+      return
+    }
+    const parsed = parseFloat(weightDisplay)
+    if (!isNaN(parsed)) {
+      setWeightDisplay(parsed > 0 ? String(parsed) : '')
+      updateField({ weight_kg: parsed })
+    }
+  }
+
+  const handleWeightFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setIsFocused(true)
+    e.target.select()
+  }
+
+  const shownWeight = isFocused ? weightDisplay : (editedRecord && editedRecord.weight_kg > 0 ? String(editedRecord.weight_kg) : '')
+
+  // --- image upload handler (copy pattern จาก ImageEvidence ใน weight-input.tsx) ---
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !editedRecord) return
+
+    try {
+      setIsUploading(true)
+      setUploadError(null)
+
+      const { dataUrl: base64String } = await compressImage(file)
+
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base64Data: base64String.split(',')[1],
+          fileName: `${editedRecord.user_id}_${editedRecord.waste_type}_${editedRecord.weight_kg}_${Date.now()}.jpg`,
+          userId: editedRecord.user_id,
+          wasteType: editedRecord.waste_type,
+          weight: editedRecord.weight_kg,
+          mimeType: 'image/jpeg',
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success && result.imageUrl) {
+        updateField({ image_url: result.imageUrl })
+      } else {
+        // fallback: ใช้ local object URL แสดงก่อน
+        const localUrl = URL.createObjectURL(file)
+        updateField({ image_url: localUrl })
+        setUploadError(result.details || result.error || 'อัปโหลดไม่สำเร็จ (ใช้รูป local แทน)')
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการอัปโหลด')
+    } finally {
+      setIsUploading(false)
+      // reset input เพื่อให้เลือกไฟล์เดิมซ้ำได้
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   const handleConfirmClick = async () => {
     if (!editedRecord) return
 
     try {
       setIsSavingApi(true)
-      
+
       if (isEditing) {
         const response = await fetch('/api/waste/update', {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(editedRecord),
         })
 
@@ -111,7 +203,7 @@ export function WasteDetailModal({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
       <div className="w-full bg-white rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto">
-        {/* Header with Green Tab */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="bg-[#154212] text-white px-4 py-2 rounded-lg font-semibold text-sm">
@@ -126,40 +218,97 @@ export function WasteDetailModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="space-y-5">
-          {/* Image with Fallback */}
-          <div className="rounded-xl overflow-hidden h-40 bg-gray-100 flex items-center justify-center border-2 border-[#d4d4d4]">
-            {record.image_url ? (
-              <Image
-                src={record.image_url}
-                alt={`${record.waste_type} - ${record.waste_subtype}`}
-                width={400}
-                height={300}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const img = e.target as HTMLImageElement
-                  img.style.display = 'none'
-                  const parent = img.parentElement
-                  if (parent) {
-                    const placeholder = document.createElement('div')
-                    placeholder.className = 'flex flex-col items-center justify-center gap-2'
-                    placeholder.innerHTML = '<svg class="w-16 h-16 text-[#999999]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span class="text-[#666666] font-semibold text-sm">รูปไม่พบ</span>'
-                    parent.appendChild(placeholder)
-                  }
-                }}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-2">
-                <svg className="w-16 h-16 text-[#999999]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                <span className="text-[#666666] font-semibold text-sm">รูปไม่พบ</span>
+          {/* Image section */}
+          {isEditing ? (
+            /* Edit mode: แสดงรูปปัจจุบัน + ปุ่มเปลี่ยนรูป */
+            <div className="space-y-2">
+              <p className="text-xs text-[#666666] font-medium">รูปประกอบ</p>
+              <div className="relative rounded-xl overflow-hidden h-40 bg-gray-100 border-2 border-dashed border-[#aaaaaa] flex items-center justify-center">
+                {isUploading ? (
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="w-8 h-8 animate-spin text-[#154212]" />
+                    <span className="text-xs text-[#666666]">กำลังอัปโหลด...</span>
+                  </div>
+                ) : editedRecord.image_url ? (
+                  <>
+                    <Image
+                      src={editedRecord.image_url}
+                      alt="รูปขยะ"
+                      fill
+                      className="object-cover"
+                    />
+                    {/* ปุ่มเปลี่ยนรูป */}
+                    <label className="absolute bottom-2 right-2 bg-[#154212] text-white rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer flex items-center gap-1.5 hover:bg-[#0f300c] transition-colors shadow-md">
+                      <Camera size={13} />
+                      เปลี่ยนรูป
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleFileChange}
+                        disabled={isUploading}
+                        className="hidden"
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <label className="flex flex-col items-center justify-center gap-2 cursor-pointer w-full h-full">
+                    <Camera size={36} className="text-[#888888]" />
+                    <span className="text-xs text-[#666666] font-semibold">กดเพื่อแนบรูป</span>
+                    <span className="text-[10px] text-[#999999]">(กรุณาถ่ายรูปพร้อมเลขน้ำหนัก)</span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleFileChange}
+                      disabled={isUploading}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
-            )}
-          </div>
+              {uploadError && (
+                <p className="text-xs text-[#c06161] font-medium">{uploadError}</p>
+              )}
+            </div>
+          ) : (
+            /* View mode: แสดงรูปอย่างเดียว */
+            <div className="rounded-xl overflow-hidden h-40 bg-gray-100 flex items-center justify-center border-2 border-[#d4d4d4]">
+              {record.image_url ? (
+                <Image
+                  src={record.image_url}
+                  alt={`${record.waste_type} - ${record.waste_subtype}`}
+                  width={400}
+                  height={300}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement
+                    img.style.display = 'none'
+                    const parent = img.parentElement
+                    if (parent) {
+                      const placeholder = document.createElement('div')
+                      placeholder.className = 'flex flex-col items-center justify-center gap-2'
+                      placeholder.innerHTML =
+                        '<svg class="w-16 h-16 text-[#999999]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span class="text-[#666666] font-semibold text-sm">รูปไม่พบ</span>'
+                      parent.appendChild(placeholder)
+                    }
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <svg className="w-16 h-16 text-[#999999]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span className="text-[#666666] font-semibold text-sm">รูปไม่พบ</span>
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Type Info - Dropdown */}
+          {/* Type - Dropdown */}
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">ประเภทขยะ</p>
             {isEditing ? (
@@ -203,18 +352,22 @@ export function WasteDetailModal({
             )}
           </div>
 
-          {/* Weight - Full Width */}
+          {/* Weight - ใช้ type="text" + inputMode="decimal" เพื่อป้องกันเลข 0 หาย */}
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">ระบุน้ำหนัก (กก.)</p>
             <input
-              type="number"
-              step="0.1"
-              value={editedRecord.weight_kg}
-              onChange={(e) => updateField({ weight_kg: parseFloat(e.target.value) || 0 })}
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9]*\.?[0-9]*"
+              value={shownWeight}
+              onChange={handleWeightChange}
+              onFocus={handleWeightFocus}
+              onBlur={handleWeightBlur}
               disabled={!isEditing}
+              placeholder="0.0"
               className={cn(
                 'w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
-                isEditing ? 'cursor-text' : 'cursor-default'
+                isEditing ? 'cursor-text' : 'cursor-default bg-gray-100'
               )}
             />
           </div>
@@ -227,18 +380,27 @@ export function WasteDetailModal({
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
-              })} {new Date(editedRecord.timestamp).toLocaleTimeString('th-TH', {
+              })}{' '}
+              {new Date(editedRecord.timestamp).toLocaleTimeString('th-TH', {
                 hour: '2-digit',
                 minute: '2-digit',
-              })} น.
+              })}{' '}
+              น.
             </div>
           </div>
 
-          {/* Points - Auto-calculated, read-only */}
+          {/* Points - คำนวณอัตโนมัติจาก weight × carbon factor × 10 */}
           <div>
-            <p className="text-xs text-[#666666] font-medium mb-2">แต้มที่ได้รับ (คำนวณอัตโนมัติ)</p>
+            <p className="text-xs text-[#666666] font-medium mb-2">
+              แต้มที่ได้รับ{isEditing ? ' (คำนวณอัตโนมัติจากน้ำหนัก)' : ' (คำนวณอัตโนมัติ)'}
+            </p>
             <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg cursor-default">
               {editedRecord.points_earned} แต้ม
+              {isEditing && editedRecord.weight_kg > 0 && (
+                <span className="text-xs text-[#888888] font-normal ml-2">
+                  ({editedRecord.weight_kg} กก. × {CARBON_FACTORS[editedRecord.waste_type] ?? 2.0} × 10)
+                </span>
+              )}
             </div>
           </div>
 
@@ -261,7 +423,7 @@ export function WasteDetailModal({
             {isEditing ? (
               <button
                 onClick={handleConfirmClick}
-                disabled={isSavingApi || isConfirming}
+                disabled={isSavingApi || isConfirming || isUploading}
                 className="flex-1 px-4 py-3 bg-[#154212] text-white font-semibold rounded-full hover:bg-[#0f300c] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <CheckCircle2 size={20} />

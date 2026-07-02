@@ -320,34 +320,37 @@ function RegisterPageContent() {
   }
 
   async function notifyRegistrationComplete(lineUserId: string, data: typeof formData) {
-    const N8N_WEBHOOK_URL = 'https://prorate-squeak-perennial.ngrok-free.dev/webhook/registration-complete'
-    const SECRET = 'dwa-secret-2024'
-    const fullName = `${data.firstName} ${data.lastName}`.trim()
-
-    try {
-      await fetch(N8N_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-registration-secret': SECRET },
-        body: JSON.stringify({
-          lineUserId: data.lineUserId,
-          userId: data.userId,
-          pdpaConsent: data.pdpaConsent ? 'ยอมรับ' : 'ไม่ยอมรับ',
-          fullName,
-          nickname: data.nickname,
-          phoneNumber: data.phoneNumber,
-          address: data.address,
-          gender: data.gender,
-          ageRange: data.ageRange,
-          userType: data.userType,
-          subdistrict: data.subdistrict,
-          occupation: data.occupation,
-          registrationDate: new Date().toLocaleDateString('th-TH'),
-        }),
-      })
-    } catch (err) {
-      console.error('Webhook notification failed:', err)
-    }
+  // ✅ 1. URL ของ GAS web app + route=register
+  const GAS_WEBHOOK_URL =
+    'https://script.google.com/macros/s/AKfycbxi0bGZj1BUOoLtvmwPk6Qpnb6t6Kre_xy6Wls3xhmezNdJehYR5IXVgiPM-A9e4vB7/exec?route=register'
+  const SECRET = 'dwa-secret-2024'
+  const fullName = `${data.firstName} ${data.lastName}`.trim()
+  try {
+    await fetch(GAS_WEBHOOK_URL, {
+      method: 'POST',
+      // ✅ 3. text/plain เลี่ยง CORS preflight (เอา x-registration-secret ออก)
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        secret: SECRET,          // ✅ 2. ย้าย secret มาไว้ใน body
+        lineUserId: data.lineUserId,
+        userId: data.userId,
+        pdpaConsent: data.pdpaConsent ? 'ยอมรับ' : 'ไม่ยอมรับ',
+        fullName,
+        nickname: data.nickname,
+        phoneNumber: data.phoneNumber,
+        address: data.address,
+        gender: data.gender,
+        ageRange: data.ageRange,
+        userType: data.userType,
+        subdistrict: data.subdistrict,
+        occupation: data.occupation,
+        registrationDate: new Date().toLocaleDateString('th-TH'),
+      }),
+    })
+  } catch (err) {
+    console.error('Webhook notification failed:', err)
   }
+}
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()

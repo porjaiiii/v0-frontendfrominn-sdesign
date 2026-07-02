@@ -171,15 +171,15 @@ export function WeightInput({ value, onChange, noWeight = false, onNoWeightChang
 }
 
 interface ImageEvidenceProps {
-  imageUrl: string | null
-  onImageChange: (url: string | null) => void
+  imageUrls: string[] // เปลี่ยนเป็น Array
+  onImagesChange: (urls: string[]) => void // เปลี่ยนเป็นรับ Array
   referenceImage?: string
   referenceLabel?: string
   wasteType?: string
   weight?: number
 }
 
-export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referenceLabel, wasteType, weight }: ImageEvidenceProps) {
+export function ImageEvidence({ imageUrls = [], onImagesChange, referenceImage, referenceLabel, wasteType, weight }: ImageEvidenceProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [requirements, setRequirements] = useState({
@@ -196,179 +196,104 @@ export function ImageEvidence({ imageUrl, onImageChange, referenceImage, referen
       setIsUploading(true)
       setError(null)
 
-      // บีบอัดรูปให้ไม่เกิน 0.8 MB ก่อน upload
       const { dataUrl: base64String } = await compressImage(file)
 
       try {
-          const response = await fetch('/api/upload-image', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              base64Data: base64String.split(',')[1],
-              fileName: `${profile?.userId || 'unknown'}_${wasteType || 'unknown'}_${weight || 0}_${Date.now()}.jpg`,
-              userId: profile?.userId || 'unknown',
-              wasteType: wasteType || '',
-              weight: weight || 0,
-              mimeType: 'image/jpeg'
-            })
+        const response = await fetch('/api/upload-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            base64Data: base64String.split(',')[1],
+            fileName: `${profile?.userId || 'unknown'}_${wasteType || 'unknown'}_${weight || 0}_${Date.now()}.jpg`,
+            userId: profile?.userId || 'unknown'
           })
+        })
 
-          const result = await response.json()
-          
-          console.log('[v0] Full API response from upload:', JSON.stringify(result, null, 2))
-          console.log('[v0] Has imageUrl?', !!result.imageUrl)
-          
-          if (result.success && result.imageUrl) {
-            onImageChange(result.imageUrl)
-          } else {
-            const errorMsg = result.details || result.error || 'ไม่สามารถอัพโหลดรูปได้'
-            setError(errorMsg)
-            const localUrl = URL.createObjectURL(file)
-            onImageChange(localUrl)
-          }
-        } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด'
+        const result = await response.json()
+        
+        if (result.success && result.imageUrl) {
+          // เพิ่มรูปใหม่เข้าไปใน Array เดิม
+          onImagesChange([...imageUrls, result.imageUrl])
+        } else {
+          const errorMsg = result.error || 'ไม่สามารถอัพโหลดรูปได้'
           setError(errorMsg)
-          const localUrl = URL.createObjectURL(file)
-          onImageChange(localUrl)
         }
+      } catch (err) {
+        setError('เกิดข้อผิดพลาดในการอัปโหลด')
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบีบอัดรูป')
+      setError('เกิดข้อผิดพลาดในการบีบอัดรูป')
     } finally {
       setIsUploading(false)
     }
   }
 
   const handleRequirementChange = (key: keyof typeof requirements) => {
-    setRequirements(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }))
+    setRequirements(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
   return (
     <div className="space-y-6">
-      {/* Title */}
       <h2 className="text-xl font-semibold text-[#154212]">แนบรูปถ่าย</h2>
 
-      {/* Requirements info box */}
+      {/* ส่วนคำแนะนำ (คงเดิม) */}
       <div className="bg-white rounded-2xl p-4 border border-[#e5e5e5]">
-        {/* Header row */}
         <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#e5e5e5]">
-          <div className="relative w-5 h-5 shrink-0">
-            <Image src="/icons/tabler-icon-bulb.png" alt="คำแนะนำ" fill className="object-contain" />
-          </div>
           <span className="text-sm font-medium text-[#444444]">คำแนะนำในการแนบรูปถ่าย</span>
         </div>
-
-        {/* Image + checkboxes side by side */}
         <div className="flex items-start gap-3">
-          {/* Reference image */}
           {referenceImage && (
-            <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden relative border border-[#e5e5e5] bg-[#f5f5f5]">
-              <Image
-                src={referenceImage}
-                alt="ตัวอย่าง"
-                fill
-                className="object-cover"
-              />
+            <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden relative border bg-[#f5f5f5]">
+              <Image src={referenceImage} alt="ตัวอย่าง" fill className="object-cover" />
             </div>
           )}
-
-          {/* Checkboxes for requirements */}
           <div className="flex-1 space-y-3">
             <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={requirements.bagPreserved}
-                onChange={() => handleRequirementChange('bagPreserved')}
-                className="w-5 h-5 rounded border-2 border-[#154212] accent-[#154212]"
-              />
+              <input type="checkbox" checked={requirements.bagPreserved} onChange={() => handleRequirementChange('bagPreserved')} className="w-5 h-5 rounded border-2 border-[#154212] accent-[#154212]" />
               <span className="text-sm text-[#444444]">เห็นถุงขยะ</span>
             </label>
-
             <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={requirements.evidenceVisible}
-                onChange={() => handleRequirementChange('evidenceVisible')}
-                className="w-5 h-5 rounded border-2 border-[#154212] accent-[#154212] mt-0.5 shrink-0"
-              />
-              <span className="text-sm text-[#444444] leading-snug">เห็นเลขน้ำหนักบนตราชั่ง ชัดเจน</span>
+              <input type="checkbox" checked={requirements.evidenceVisible} onChange={() => handleRequirementChange('evidenceVisible')} className="w-5 h-5 rounded border-2 border-[#154212] accent-[#154212] mt-0.5 shrink-0" />
+              <span className="text-sm text-[#444444]">เห็นเลขน้ำหนักชัดเจน</span>
             </label>
           </div>
         </div>
       </div>
 
-      {/* Photo upload area — square box aligned left */}
-      <div className="flex items-start gap-4">
+      {/* ส่วนแสดงรูปถ่ายแบบ Grid */}
+      <div className="flex flex-wrap gap-4">
+        {/* วนลูปแสดงรูปที่มีทั้งหมด */}
+        {imageUrls.map((url, index) => (
+          <div key={index} className="w-36 h-36 shrink-0 rounded-2xl overflow-hidden relative border-2 border-[#154212]">
+            <Image src={url} alt="หลักฐาน" fill className="object-cover" />
+            <button
+              type="button"
+              onClick={() => onImagesChange(imageUrls.filter((_, i) => i !== index))}
+              className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80"
+            >
+              <X className="w-3.5 h-3.5 text-white" />
+            </button>
+          </div>
+        ))}
+
+        {/* ปุ่มเพิ่มรูป (ถ้าอัปโหลดอยู่แสดง Loading) */}
         <label className={cn(
-          'w-36 h-36 shrink-0 rounded-2xl cursor-pointer overflow-hidden relative',
-          'border-2 border-dashed transition-colors flex flex-col items-center justify-center',
-          imageUrl
-            ? 'border-[#154212]'
-            : 'border-[#aaaaaa] bg-white hover:border-[#154212]',
-          isUploading && 'opacity-75 cursor-wait'
+          "w-36 h-36 shrink-0 rounded-2xl cursor-pointer overflow-hidden relative border-2 border-dashed flex flex-col items-center justify-center transition-colors",
+          isUploading ? "border-gray-300 bg-gray-50" : "border-[#aaaaaa] hover:border-[#154212]"
         )}>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFileChange}
-            disabled={isUploading}
-            className="hidden"
-          />
           {isUploading ? (
-            <div className="flex flex-col items-center justify-center">
-              <Loader2 className="w-7 h-7 animate-spin text-[#154212] mb-1" />
-              <span className="text-xs font-medium text-[#666666]">กำลังอัพโหลด...</span>
-            </div>
-          ) : imageUrl ? (
-            <>
-              <Image
-                src={imageUrl}
-                alt="หลักฐาน"
-                fill
-                className="object-cover"
-              />
-              {/* ปุ่ม X ยกเลิกรูป */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  onImageChange(null)
-                  setError(null)
-                }}
-                className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
-                aria-label="ลบรูป"
-              >
-                <X className="w-3.5 h-3.5 text-white" />
-              </button>
-            </>
+            <Loader2 className="w-8 h-8 animate-spin text-[#154212]" />
           ) : (
-            <div className="flex flex-col items-center justify-center text-[#666666] px-2">
+            <>
               <Camera className="w-9 h-9 mb-2 text-[#888888]" />
-              <span className="text-xs font-semibold text-[#333333] text-center">ถ่ายรูปขยะ</span>
-              <span className="text-[10px] text-[#666666] mt-1 text-center leading-tight">
-                (กรุณาถ่ายรูปขยะพร้อมตัวเลขน้ำหนัก)
-              </span>
-            </div>
+              <span className="text-xs font-semibold text-center">ถ่ายรูปเพิ่ม</span>
+              <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} disabled={isUploading} className="hidden" />
+            </>
           )}
         </label>
-
-        {/* Helper text next to box */}
-        {!imageUrl && !isUploading && (
-          <p className="text-xs text-[#888888] leading-relaxed pt-1">
-            กดที่กรอบเพื่อถ่ายรูปหรือเลือกรูปจากคลัง
-          </p>
-        )}
       </div>
-      {error && (
-        <span className="text-xs text-[#c06161] mt-2 font-medium block">{error}</span>
-      )}
+      
+      {error && <span className="text-xs text-[#c06161] font-medium block">{error}</span>}
     </div>
   )
 }

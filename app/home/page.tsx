@@ -54,7 +54,7 @@ export default function HomePage() {
   const [selectedSubType, setSelectedSubType] = useState<WasteSubType | null>(null)
   const [weight, setWeight] = useState(0)
   const [noWeight, setNoWeight] = useState(false)
-  const [imageEvidence, setImageEvidence] = useState<string | null>(null)
+const [imageEvidence, setImageEvidence] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirmIncomplete, setShowConfirmIncomplete] = useState(false)
@@ -159,7 +159,7 @@ export default function HomePage() {
     setSelectedSubType(null)
     setWeight(0)
     setNoWeight(false)
-    setImageEvidence(null)
+    setImageEvidence([]); // ส่ง Array ว่างไปแทนครับ
     router.push('/home')
   }
 
@@ -305,14 +305,14 @@ export default function HomePage() {
               onNoWeightChange={setNoWeight}
             />
 
-            <ImageEvidence
-              imageUrl={imageEvidence}
-              onImageChange={setImageEvidence}
-              referenceImage="/images/weighing-scale-example.png"
-              referenceLabel="ตัวอย่างการชั่ง"
-              wasteType={selectedType || ''}
-              weight={weight}
-            />
+           <ImageEvidence
+  imageUrls={imageEvidence}          // เปลี่ยนจาก imageUrl เป็น imageUrls
+  onImagesChange={setImageEvidence}  // เปลี่ยนจาก onImageChange เป็น onImagesChange
+  referenceImage="/images/weighing-scale-example.png"
+  referenceLabel="ตัวอย่างการชั่ง"
+  wasteType={selectedType || ''}
+  weight={weight}
+/>
 
             {/* Bottom navigation buttons */}
             <div className="flex items-center justify-between gap-3">

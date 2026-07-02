@@ -32,6 +32,8 @@ const WASTE_TYPE_THAI: Record<string, string> = {
 }
 
 export function WasteCard({ record, onEdit, onSave, isSaving = false }: WasteCardProps) {
+  console.log('WasteCard - Record data:', record);
+  console.log('WasteCard - Image URLs:', record.image_urls);
   const wasteTypeThai = WASTE_TYPE_THAI[record.waste_type] || record.waste_type
 
   return (

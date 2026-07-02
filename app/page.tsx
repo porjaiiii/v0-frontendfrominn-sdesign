@@ -12,18 +12,34 @@
  * Registered users who land here via useProfileGuard will be redirected
  * to "/home" automatically by that hook after their profile is confirmed.
  */
-
+import { useLiff } from '@/hooks/use-liff'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function RootPage() {
   const router = useRouter()
+  const { isLoggedIn, profile, loadingStep, isReady } = useLiff()
 
   useEffect(() => {
-    router.replace('/register')
-  }, [router])
+    // รอจนกว่า liff จะโหลดเสร็จและพร้อมใช้งาน
+    if (!isReady) return
 
-  // Return null — LiffLoadingOverlay from LiffProvider covers the screen
-  // while LIFF initialises, so the user never sees a blank flash.
+    // หาก LIFF พร้อมแล้ว ให้เช็คสถานะการเข้าสู่ระบบและข้อมูลโปรไฟล์
+    // เงื่อนไข: ถ้าเข้าสู่ระบบแล้ว และมีข้อมูล profile (ซึ่งหมายถึงอนุญาตสิทธิ์แล้ว) 
+    // ให้ไปหน้า /home
+    if (isLoggedIn && profile) {
+      router.replace('/home')
+    }
+    // หากยังไม่ได้เข้าสู่ระบบ หรือยังไม่มีข้อมูล profile 
+    // ให้ไปหน้า /register เพื่อให้เริ่มขั้นตอนการให้สิทธิ์
+    else if (loadingStep === 'ready') {
+      router.replace('/register')
+    }
+  }, [isLoggedIn, profile, isReady, loadingStep, router])
+
+
+
+  // ในระหว่างที่ loadingStep ไม่ใช่ 'ready' หรือยังไม่พร้อม 
+  // ให้คืนค่า null เพื่อให้ LiffProvider หรือ Loading Overlay ทำงานแทน
   return null
 }

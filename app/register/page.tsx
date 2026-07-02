@@ -209,8 +209,55 @@ function RegisterPageContent() {
   })
 
   useEffect(() => {
-    if (profile?.userId) {
-      const generatedUserId = generateUserIdFromLineId(profile.userId)
+    if (!profile?.userId) return
+    const generatedUserId = generateUserIdFromLineId(profile.userId)
+
+    if (isEditMode) {
+      // Edit mode: fetch existing data first, then merge with LIFF identity fields
+      fetch(`/api/profile/${encodeURIComponent(profile.userId)}`, { cache: 'no-store' })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (!data) {
+            // Fallback: at least fill identity from LIFF
+            setFormData(prev => ({
+              ...prev,
+              lineUserId: profile.userId,
+              userId: generatedUserId,
+              nickname: prev.nickname || profile.displayName || '',
+            }))
+            return
+          }
+          const [firstName = '', ...rest] = (data.name || '').split(' ')
+          const lastName = rest.join(' ')
+          // Try both 'phone' and 'phoneNumber' field names from GAS
+          const phone = data.phone || data.phoneNumber || data.Phone || data.PhoneNumber || ''
+          setFormData(prev => ({
+            ...prev,
+            lineUserId: profile.userId,
+            userId: generatedUserId,
+            firstName: firstName || prev.firstName,
+            lastName: lastName || prev.lastName,
+            nickname: data.displayName || profile.displayName || prev.nickname,
+            phoneNumber: phone,
+            gender: data.gender || prev.gender,
+            ageRange: data.age || prev.ageRange,
+            userType: data.type || prev.userType,
+            subdistrict: data.subdistrict || prev.subdistrict,
+            occupation: data.occupation || prev.occupation,
+            address: data.address || prev.address,
+            pdpaConsent: true,
+          }))
+        })
+        .catch(() => {
+          setFormData(prev => ({
+            ...prev,
+            lineUserId: profile.userId,
+            userId: generatedUserId,
+            nickname: prev.nickname || profile.displayName || '',
+          }))
+        })
+    } else {
+      // Register mode: just fill identity from LIFF
       setFormData(prev => ({
         ...prev,
         lineUserId: profile.userId,
@@ -218,34 +265,7 @@ function RegisterPageContent() {
         nickname: prev.nickname || profile.displayName || '',
       }))
     }
-  }, [profile])
-
-  // In edit mode: fetch existing profile data and pre-fill the form
-  useEffect(() => {
-    if (!isEditMode || !profile?.userId) return
-    fetch(`/api/profile/${encodeURIComponent(profile.userId)}`, { cache: 'no-store' })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (!data) return
-        const [firstName = '', ...rest] = (data.name || '').split(' ')
-        const lastName = rest.join(' ')
-        setFormData(prev => ({
-          ...prev,
-          firstName: firstName || prev.firstName,
-          lastName: lastName || prev.lastName,
-          nickname: data.displayName || prev.nickname,
-          phoneNumber: data.phone || prev.phoneNumber,
-          gender: data.gender || prev.gender,
-          ageRange: data.age || prev.ageRange,
-          userType: data.type || prev.userType,
-          subdistrict: data.subdistrict || prev.subdistrict,
-          occupation: data.occupation || prev.occupation,
-          address: data.address || prev.address,
-          pdpaConsent: true,
-        }))
-      })
-      .catch(() => {/* silently ignore */})
-  }, [isEditMode, profile?.userId])
+  }, [profile, isEditMode])
 
   const measureBubble = useCallback(() => {
     if (!showTour) return

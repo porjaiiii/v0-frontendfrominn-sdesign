@@ -75,7 +75,7 @@ export default function CouponConfirmPage({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          coupon_id: couponId,
+          coupon_id: couponId ,
           scanned_by: profile?.userId ?? '',
         }),
       })

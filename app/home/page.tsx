@@ -54,7 +54,7 @@ export default function HomePage() {
   const [selectedSubType, setSelectedSubType] = useState<WasteSubType | null>(null)
   const [weight, setWeight] = useState(0)
   const [noWeight, setNoWeight] = useState(false)
-  const [imageEvidence, setImageEvidence] = useState<string | null>(null)
+  const [imageEvidence, setImageEvidence] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirmIncomplete, setShowConfirmIncomplete] = useState(false)

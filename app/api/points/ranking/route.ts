@@ -1,141 +1,41 @@
 import { NextResponse } from 'next/server'
 import { unstable_cache } from 'next/cache'
-import { POINTS_SCRIPT_URL } from '@/lib/points-config'
 import type { RankingEntry } from '@/app/api/ranking/route'
 
-// Leaderboard backed by the NEW points spreadsheet (points_account tab),
-// served through the Apps Script `get_leaderboard` action.
+// Leaderboard built by reading Google Sheets DIRECTLY (Sheets API v4) — no Apps
+// Script hop at all, mirroring the fast balance read on the rewards page:
 //
-// Carbon/points come from points_account; display names + locations are
-// cross-referenced from the REGISTRATION sheet (the same Apps Script the
-// profile page uses), keyed by LINE user id (== points_account.user_id).
+//   carbon / points  ← points_account tab of the POINTS spreadsheet (POINTS_SHEETS_ID)
+//   nickname / ตำบล   ← Registration tab of the REGISTRATION spreadsheet, keyed by
+//                       LINE user id (the same sheet the registration Apps Script
+//                       writes to — so names/nicknames match the profile page).
+//
+// Both are single Sheets reads run in parallel, so the whole build is well under
+// a second (the previous GAS getUser fallback took ~30 s on cold starts).
 
-// Allow time for the per-user fallback (getUser lookups) on cold starts.
-export const maxDuration = 60
+export const maxDuration = 30
 
-// Registration Apps Script — same web app as /api/register and /api/profile/[id].
-const REGISTRATION_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbxXbPMRk1PXSbw5vLEvbCQPfFkPZithJXStciUM2oZ__y9ct1OPVUlM-YfvF7ZpDVKG/exec'
+const POINTS_SHEETS_ID = process.env.POINTS_SHEETS_ID
+const SHEETS_API_KEY   = process.env.GOOGLE_SHEETS_API_KEY
 
-const SAMPLE_RANKING: Omit<RankingEntry, 'rank'>[] = [
-  { lineUserId: 'Usample001', name: 'สมชาย ใจดี', carbon: 256.5, points: 2565, avatar: '/placeholder.svg?height=40&width=40', location: 'ตำบลบางกะเจ้า' },
-  { lineUserId: 'Usample002', name: 'สมหญิง รักษ์โลก', carbon: 234.3, points: 2343, avatar: '/placeholder.svg?height=40&width=40', location: 'ตำบลบางน้ำผึ้ง' },
-  { lineUserId: 'Usample003', name: 'มนัส เกื้อกูล', carbon: 112.4, points: 1124, avatar: '/placeholder.svg?height=40&width=40', location: 'ตำบลบางกอบัว' },
-  { lineUserId: 'Usample004', name: 'กมลา ตาวุดีมี', carbon: 89.0, points: 890, avatar: '/placeholder.svg?height=40&width=40', location: '' },
-  { lineUserId: 'Usample005', name: 'ณัฐพล สิริมงคล', carbon: 78.0, points: 780, avatar: '/placeholder.svg?height=40&width=40', location: 'ตำบลบางกระสอบ' },
-  { lineUserId: 'Usample006', name: 'วรรณา เจริญสุข', carbon: 76.0, points: 760, avatar: '/placeholder.svg?height=40&width=40', location: 'ตำบลบางยอ' },
-  { lineUserId: 'Usample007', name: 'ประยุทธ รุ่งเรือง', carbon: 74.0, points: 740, avatar: '/placeholder.svg?height=40&width=40', location: 'ตำบลทรงคะนอง' },
-]
-
-function toNumber(value: unknown): number {
-  const n = typeof value === 'number' ? value : parseFloat(String(value ?? ''))
-  return Number.isFinite(n) ? n : 0
-}
+// Registration spreadsheet (bound to the registration Apps Script). Hardcoded to
+// match the existing pattern for the script URLs; override via env if it moves.
+const REG_SHEETS_ID = process.env.REGISTRATION_SHEETS_ID || '1PGowioVb4R961vkWB0nN2EhmTv6bEMJ9eQNtMQD7t8Y'
+const REG_TAB = 'Registration'
 
 const FALLBACK_AVATAR = '/placeholder.svg?height=40&width=40'
+
+const SAMPLE_RANKING: Omit<RankingEntry, 'rank'>[] = [
+  { lineUserId: 'Usample001', name: 'สมชาย ใจดี', carbon: 256.5, points: 2565, avatar: FALLBACK_AVATAR, location: 'ตำบลบางกะเจ้า' },
+  { lineUserId: 'Usample002', name: 'สมหญิง รักษ์โลก', carbon: 234.3, points: 2343, avatar: FALLBACK_AVATAR, location: 'ตำบลบางน้ำผึ้ง' },
+  { lineUserId: 'Usample003', name: 'มนัส เกื้อกูล', carbon: 112.4, points: 1124, avatar: FALLBACK_AVATAR, location: 'ตำบลบางกอบัว' },
+  { lineUserId: 'Usample004', name: 'กมลา ตาวุดีมี', carbon: 89.0, points: 890, avatar: FALLBACK_AVATAR, location: '' },
+  { lineUserId: 'Usample005', name: 'ณัฐพล สิริมงคล', carbon: 78.0, points: 780, avatar: FALLBACK_AVATAR, location: 'ตำบลบางกระสอบ' },
+  { lineUserId: 'Usample006', name: 'วรรณา เจริญสุข', carbon: 76.0, points: 760, avatar: FALLBACK_AVATAR, location: 'ตำบลบางยอ' },
+  { lineUserId: 'Usample007', name: 'ประยุทธ รุ่งเรือง', carbon: 74.0, points: 740, avatar: FALLBACK_AVATAR, location: 'ตำบลทรงคะนอง' },
+]
+
 type UserInfo = { name: string; avatar: string; location: string }
-
-function str(value: unknown): string {
-  return value == null ? '' : String(value).trim()
-}
-
-// Map a raw registration user object (tolerant of field-name variants) → UserInfo.
-function toUserInfo(u: any): UserInfo {
-  return {
-    name:     str(u?.fullName ?? u?.name ?? u?.displayName),
-    avatar:   str(u?.avatar ?? u?.pictureUrl ?? u?.picture) || FALLBACK_AVATAR,
-    location: str(u?.subdistrict ?? u?.location),
-  }
-}
-
-function userIdOf(u: any): string {
-  return str(u?.lineUserId ?? u?.line_user_id ?? u?.userId ?? u?.user_id)
-}
-
-// Bulk path: one `getAllUsers` call to the registration script (fast). Returns
-// an empty map if the action isn't implemented / yields nothing.
-async function fetchAllUsers(): Promise<Record<string, UserInfo>> {
-  const map: Record<string, UserInfo> = {}
-  try {
-    const res = await fetch(REGISTRATION_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'getAllUsers' }),
-      cache: 'no-store',
-    })
-    if (!res.ok) return map
-    const data = await res.json().catch(() => null)
-    const users: any[] = Array.isArray(data?.data)
-      ? data.data
-      : Array.isArray(data?.users)
-      ? data.users
-      : Array.isArray(data)
-      ? data
-      : []
-    users.forEach(u => {
-      const lid = userIdOf(u)
-      if (lid) map[lid] = toUserInfo(u)
-    })
-  } catch {
-    // ignore — caller falls back to per-user lookups
-  }
-  return map
-}
-
-// Fallback path: look up one user via the registration script's `getUser`
-// (already supported by the deployed script the profile page uses).
-async function fetchOneUser(lineUserId: string): Promise<UserInfo | null> {
-  try {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 12_000)
-    const res = await fetch(REGISTRATION_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'getUser', lineUserId }),
-      cache: 'no-store',
-      signal: controller.signal,
-    })
-    clearTimeout(timer)
-    if (!res.ok) return null
-    const data = await res.json().catch(() => null)
-    if (data?.status === 'success' && data?.data) return toUserInfo(data.data)
-    return null
-  } catch {
-    return null
-  }
-}
-
-// Run async tasks with a small concurrency cap (keep GAS happy).
-async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const results: R[] = new Array(items.length)
-  let next = 0
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const i = next++
-      results[i] = await fn(items[i])
-    }
-  })
-  await Promise.all(workers)
-  return results
-}
-
-// Pull display names / avatars / locations from the REGISTRATION sheet, keyed by
-// LINE user id. Tries the bulk `getAllUsers` action first; if that isn't
-// available it falls back to per-user `getUser` lookups for the leaderboard ids.
-async function buildNameMap(userIds: string[]): Promise<Record<string, UserInfo>> {
-  const bulk = await fetchAllUsers()
-  if (Object.keys(bulk).length > 0) return bulk
-
-  // Fallback — resolve each leaderboard user individually.
-  const map: Record<string, UserInfo> = {}
-  const infos = await mapWithConcurrency(userIds, 8, fetchOneUser)
-  userIds.forEach((id, i) => {
-    const info = infos[i]
-    if (info) map[id] = info
-  })
-  return map
-}
-
 type RankingResult = { ranking: RankingEntry[]; isSample: boolean }
 
 const SAMPLE_RESULT: RankingResult = {
@@ -143,37 +43,102 @@ const SAMPLE_RESULT: RankingResult = {
   isSample: true,
 }
 
-// Build the global leaderboard from the Apps Script (2 GAS calls + name lookups).
-// This is identical for every viewer, so we cache it server-side: the slow GAS
-// path runs at most once per `revalidate` window, and all other requests — even
-// from freshly-reopened LIFF tabs — get the warm cached copy instantly.
+function toNumber(value: unknown): number {
+  const n = typeof value === 'number' ? value : parseFloat(String(value ?? ''))
+  return Number.isFinite(n) ? n : 0
+}
+
+function str(value: unknown): string {
+  return value == null ? '' : String(value).trim()
+}
+
+// Exact (trim + case-insensitive) header match — for the stable points_account tab.
+function colIndex(headers: string[], name: string): number {
+  const target = name.trim().toLowerCase()
+  return headers.findIndex((h) => String(h ?? '').trim().toLowerCase() === target)
+}
+
+// Tolerant (substring) header match — the registration sheet's Thai headers vary.
+function findCol(headers: string[], candidates: string[]): number {
+  const norm = (s: unknown) => String(s ?? '').trim().toLowerCase()
+  return headers.findIndex((h) => candidates.some((c) => norm(h).includes(norm(c))))
+}
+
+async function readTab(sheetId: string, tab: string): Promise<string[][]> {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(
+    tab
+  )}?key=${SHEETS_API_KEY}`
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) throw new Error(`Sheets ${tab} read failed: ${res.status}`)
+  const json = await res.json()
+  return (json.values ?? []) as string[][]
+}
+
+// Names + locations from the Registration sheet, keyed by LINE user id. Prefers
+// the nickname (ชื่อเล่น) — matching the profile page — and falls back to the
+// full Thai name. The sheet has no avatar column, so everyone gets the
+// placeholder; the logged-in viewer's real photo is patched client-side (LIFF).
+async function buildNameMap(): Promise<Record<string, UserInfo>> {
+  const map: Record<string, UserInfo> = {}
+  if (!REG_SHEETS_ID || !SHEETS_API_KEY) return map
+  try {
+    const rows = await readTab(REG_SHEETS_ID, REG_TAB)
+    if (rows.length <= 1) return map
+
+    const h = rows[0]
+    const idIdx   = findCol(h, ['line user id', 'lineuserid', 'line_user_id'])
+    const nickIdx = findCol(h, ['ชื่อเล่น', 'nickname'])
+    const fullIdx = findCol(h, ['ชื่อ-นามสกุล', 'fullname', 'full name'])
+    const locIdx  = findCol(h, ['ตำบล', 'subdistrict'])
+    if (idIdx < 0) return map
+
+    for (const r of rows.slice(1)) {
+      const lid = str(r[idIdx])
+      if (!lid) continue
+      const nick = nickIdx >= 0 ? str(r[nickIdx]) : ''
+      const full = fullIdx >= 0 ? str(r[fullIdx]) : ''
+      map[lid] = {
+        name:     nick || full,
+        avatar:   FALLBACK_AVATAR,
+        location: locIdx >= 0 ? str(r[locIdx]) : '',
+      }
+    }
+  } catch (error) {
+    console.error('[points-ranking] registration read error:', error)
+  }
+  return map
+}
+
+// carbon / points straight from points_account.
+type AccountEntry = { lineUserId: string; carbon: number; points: number }
+
+async function readAccounts(): Promise<AccountEntry[]> {
+  if (!POINTS_SHEETS_ID || !SHEETS_API_KEY) return []
+  const rows = await readTab(POINTS_SHEETS_ID, 'points_account')
+  if (rows.length <= 1) return []
+
+  const h = rows[0]
+  const idIdx  = colIndex(h, 'user_id')
+  const co2Idx = colIndex(h, 'total_co2')
+  const ptsIdx = colIndex(h, 'total_points')
+  if (idIdx < 0) return []
+
+  return rows
+    .slice(1)
+    .map((r) => ({
+      lineUserId: str(r[idIdx]),
+      // carbon shows to 2 decimals; points are whole numbers.
+      carbon: Math.round(toNumber(r[co2Idx]) * 100) / 100,
+      points: Math.round(toNumber(r[ptsIdx])),
+    }))
+    .filter((e) => e.lineUserId)
+}
+
 async function buildRanking(): Promise<RankingResult> {
   try {
-    // The Apps Script guard requires a user_id; pass a sentinel for the leaderboard call.
-    const url = `${POINTS_SCRIPT_URL}?action=get_leaderboard&user_id=leaderboard`
-    const res = await fetch(url, { cache: 'no-store' })
-
-    if (!res.ok) {
-      console.error('[points-ranking] script error:', res.status, await res.text())
-      return SAMPLE_RESULT
-    }
-
-    const data = await res.json()
-    const accounts: any[] = Array.isArray(data?.accounts) ? data.accounts : []
-
-    const entries = accounts
-      .map(a => ({
-        lineUserId: String(a.user_id ?? '').trim(),
-        // Round away floating-point artifacts before they reach the (raw) UI:
-        // carbon shows to 2 decimals, points are whole numbers.
-        carbon:     Math.round(toNumber(a.total_co2) * 100) / 100,
-        points:     Math.round(toNumber(a.total_points)),
-      }))
-      .filter(e => e.lineUserId)
-
+    // Both reads are independent — run them in parallel.
+    const [entries, nameMap] = await Promise.all([readAccounts(), buildNameMap()])
     if (entries.length === 0) return SAMPLE_RESULT
-
-    const nameMap = await buildNameMap(entries.map(e => e.lineUserId))
 
     const ranking: RankingEntry[] = entries
       .sort((a, b) => b.carbon - a.carbon)
@@ -197,9 +162,8 @@ async function buildRanking(): Promise<RankingResult> {
   }
 }
 
-// Shared, viewer-independent cache. 60 s keeps the leaderboard fresh enough
-// (carbon totals change slowly) while removing the GAS cold-start from the hot
-// path. Bump the revalidate if you want fewer GAS hits.
+// Shared, viewer-independent cache. 60 s keeps the leaderboard fresh (carbon
+// totals change slowly) while collapsing bursts onto a single pair of reads.
 const getCachedRanking = unstable_cache(buildRanking, ['points-leaderboard'], {
   revalidate: 60,
   tags: ['points-leaderboard'],

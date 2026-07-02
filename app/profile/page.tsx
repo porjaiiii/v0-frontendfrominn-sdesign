@@ -128,6 +128,7 @@ export default function ProfilePage() {
     occupation: fetchedProfile?.occupation || MOCK_USER.occupation,
     avatar: fetchedProfile?.avatar || liffProfile?.pictureUrl || userProfile?.pictureUrl || MOCK_USER.avatar,
     phone: fetchedProfile?.phone || '',
+    nickname: fetchedProfile?.nickname
   }
 
   // CO2 and recycled weight come from the points database (total_co2 / total_weight).
@@ -270,8 +271,8 @@ export default function ProfilePage() {
               {/* Row 2: LINE Username */}
               <div className="flex">
                 <div className="flex-1">
-                  <span className="text-[#666666]">LINE Username</span>
-                  <span className="ml-4 text-[#154212] font-medium">{user.lineUsername}</span>
+                  <span className="text-[#666666]">ชื่อเล่น</span>
+                  <span className="ml-4 text-[#154212] font-medium">{user.nickname}</span>
                 </div>
               </div>
 

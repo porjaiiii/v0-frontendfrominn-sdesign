@@ -16,7 +16,16 @@ import { useProfileGuard } from '@/hooks/use-profile-guard'
 import liff from '@line/liff'
 import { cn } from '@/lib/utils'
 
-// Points per kg for each waste type
+// Carbon reduction factors per kg (CO2 kg saved)
+const CARBON_FACTORS: Record<WasteType, number> = {
+  plastic: 1.0310,
+  paper: 3.5460,
+  glass: 0.2760,
+  aluminum: 9.1270,
+  oil: 3.0,
+}
+
+// Points per kg for each waste type (คำนวณแยกจาก carbon)
 const POINTS_PER_KG: Record<WasteType, number> = {
   plastic: 6,
   paper: 4,
@@ -52,7 +61,11 @@ export default function HomePage() {
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
 
   const calculatedCarbon = selectedType
-    ? weight * POINTS_PER_KG[selectedType]
+    ? weight * CARBON_FACTORS[selectedType]
+    : 0
+
+  const calculatedPoints = selectedType
+    ? Math.round(weight * POINTS_PER_KG[selectedType])
     : 0
 
   const handleTypeSelect = (type: WasteType) => {
@@ -333,7 +346,7 @@ export default function HomePage() {
         onClose={() => setShowResult(false)}
         carbonAmount={calculatedCarbon}
         noWeight={noWeight}
-        pointsEarned={Math.round(calculatedCarbon)}
+        pointsEarned={calculatedPoints}
         onNext={handleShowQR}
       />
 

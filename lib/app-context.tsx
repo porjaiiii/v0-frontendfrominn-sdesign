@@ -62,7 +62,16 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
-// Points per kg for each waste type
+// Carbon reduction factors per kg (CO2 kg saved)
+const CARBON_FACTORS: Record<WasteType, number> = {
+  plastic: 1.0310,
+  paper: 3.5460,
+  glass: 0.2760,
+  aluminum: 9.1270,
+  oil: 3.0,
+}
+
+// Points per kg for each waste type (คำนวณแยกจาก carbon)
 const POINTS_PER_KG: Record<WasteType, number> = {
   plastic: 6,
   paper: 4,
@@ -87,7 +96,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   })
 
   const calculatedCarbon = selectedWasteType
-    ? weight * POINTS_PER_KG[selectedWasteType]
+    ? weight * CARBON_FACTORS[selectedWasteType]
+    : 0
+
+  const calculatedPoints = selectedWasteType
+    ? Math.round(weight * POINTS_PER_KG[selectedWasteType])
     : 0
 
   const resetSubmission = useCallback(() => {
@@ -115,7 +128,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return {
         ...prev,
         totalCarbon: prev.totalCarbon + calculatedCarbon,
-        totalPoints: prev.totalPoints + Math.floor(calculatedCarbon),
+        totalPoints: prev.totalPoints + calculatedPoints,
         submissions: [...prev.submissions, newSubmission]
       }
     })

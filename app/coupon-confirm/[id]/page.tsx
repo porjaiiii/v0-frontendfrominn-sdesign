@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { useLiffContext } from '@/lib/liff-context'
 import type { Coupon } from '@/lib/coupon-context'
+import { useAdmin } from '@/lib/admin-context'
 
 type Status = 'loading' | 'ready' | 'confirming' | 'success' | 'error' | 'already_used' | 'not_found'
 
@@ -25,6 +26,7 @@ export default function CouponConfirmPage({
     : rawId
   const router = useRouter()
   const { profile } = useLiffContext()
+  const { isAdmin, adminLogout } = useAdmin()
 
   const [coupon, setCoupon] = useState<Coupon | null>(null)
   const [status, setStatus] = useState<Status>('loading')
@@ -32,6 +34,7 @@ export default function CouponConfirmPage({
 
   // Fetch coupon info when page loads
   useEffect(() => {
+    if (!isAdmin) return
     const fetchCoupon = async () => {
       setStatus('loading')
       try {

@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import liff from '@line/liff'
 import Image from 'next/image'
 import { ChevronDown, ChevronUp, X } from 'lucide-react'
@@ -164,7 +164,7 @@ function ChoiceGroup({
   )
 }
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const { profile, isReady } = useLiffContext()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -175,9 +175,15 @@ export default function RegisterPage() {
   const [bubblePos, setBubblePos] = useState<{ top: number; bottom: number; useBottom: boolean } | null>(null)
   const tourStarted = useRef(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isEditMode = searchParams.get('mode') === 'edit'
 
-  // After registration: close the LIFF window to return to LINE.
+  // After registration/update: close the LIFF window or go back to profile.
   const handleFinish = () => {
+    if (isEditMode) {
+      router.push('/profile')
+      return
+    }
     if (liff.isInClient()) {
       liff.closeWindow()
     } else {
@@ -209,10 +215,37 @@ export default function RegisterPage() {
         ...prev,
         lineUserId: profile.userId,
         userId: generatedUserId,
-        nickname: profile.displayName || '',
+        nickname: prev.nickname || profile.displayName || '',
       }))
     }
   }, [profile])
+
+  // In edit mode: fetch existing profile data and pre-fill the form
+  useEffect(() => {
+    if (!isEditMode || !profile?.userId) return
+    fetch(`/api/profile/${encodeURIComponent(profile.userId)}`, { cache: 'no-store' })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!data) return
+        const [firstName = '', ...rest] = (data.name || '').split(' ')
+        const lastName = rest.join(' ')
+        setFormData(prev => ({
+          ...prev,
+          firstName: firstName || prev.firstName,
+          lastName: lastName || prev.lastName,
+          nickname: data.displayName || prev.nickname,
+          phoneNumber: data.phone || prev.phoneNumber,
+          gender: data.gender || prev.gender,
+          ageRange: data.age || prev.ageRange,
+          userType: data.type || prev.userType,
+          subdistrict: data.subdistrict || prev.subdistrict,
+          occupation: data.occupation || prev.occupation,
+          address: data.address || prev.address,
+          pdpaConsent: true,
+        }))
+      })
+      .catch(() => {/* silently ignore */})
+  }, [isEditMode, profile?.userId])
 
   const measureBubble = useCallback(() => {
     if (!showTour) return
@@ -342,29 +375,31 @@ export default function RegisterPage() {
     const fullName = `${formData.firstName} ${formData.lastName}`.trim()
 
     try {
+      const requestBody = {
+        lineUserId: formData.lineUserId,
+        userId: formData.userId,
+        pdpaConsent: formData.pdpaConsent ? 'ยอมรับ' : 'ไม่ยอมรับ',
+        fullName,
+        nickname: formData.nickname,
+        phoneNumber: formData.phoneNumber,
+        address: formData.address,
+        gender: formData.gender,
+        ageRange: formData.ageRange,
+        userType: formData.userType,
+        subdistrict: formData.subdistrict,
+        occupation: formData.occupation,
+        registrationDate: new Date().toLocaleDateString('th-TH'),
+      }
+
       const response = await fetch('/api/register', {
-        method: 'POST',
+        method: isEditMode ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lineUserId: formData.lineUserId,
-          userId: formData.userId,
-          pdpaConsent: formData.pdpaConsent ? 'ยอมรับ' : 'ไม่ยอมรับ',
-          fullName,
-          nickname: formData.nickname,
-          phoneNumber: formData.phoneNumber,
-          address: formData.address,
-          gender: formData.gender,
-          ageRange: formData.ageRange,
-          userType: formData.userType,
-          subdistrict: formData.subdistrict,
-          occupation: formData.occupation,
-          registrationDate: new Date().toLocaleDateString('th-TH'),
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || 'Failed to register')
+        throw new Error(data.error || (isEditMode ? 'Failed to update' : 'Failed to register'))
       }
 
       if (formData.lineUserId) {
@@ -412,14 +447,20 @@ export default function RegisterPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-[#154212] mb-3">ลงทะเบียนสำเร็จ</h2>
-            <p className="text-gray-600 mb-2">ยินดีต้อนรับสู่ Digital Wasted Account</p>
-            <p className="text-sm text-gray-500 mb-6">คุณได้ลงทะเบียนเรียบร้อยแล้ว</p>
+            <h2 className="text-2xl font-bold text-[#154212] mb-3">
+              {isEditMode ? 'อัพเดตข้อมูลสำเร็จ' : 'ลงทะเบียนสำเร็จ'}
+            </h2>
+            <p className="text-gray-600 mb-2">
+              {isEditMode ? 'ข้อมูลของคุณได้รับการอัพเดตแล้ว' : 'ยินดีต้อนรับสู่ Digital Wasted Account'}
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              {isEditMode ? '' : 'คุณได้ลงทะเบียนเรียบร้อยแล้ว'}
+            </p>
             <button
               onClick={handleFinish}
               className="inline-block bg-[#154212] text-white font-bold py-3 px-8 rounded-lg hover:bg-[#0d3308] transition-colors"
             >
-              กลับสู่ line
+              {isEditMode ? 'กลับสู่โปรไฟล์' : 'กลับสู่ line'}
             </button>
           </div>
         </div>
@@ -510,8 +551,12 @@ export default function RegisterPage() {
       {/* Form */}
       <div className="max-w-md mx-auto px-4 py-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#154212] mb-1">ลงทะเบียน</h1>
-          <p className="text-gray-500 text-sm">กรุณากรอกข้อมูลของคุณให้ครบถ้วน</p>
+          <h1 className="text-2xl font-bold text-[#154212] mb-1">
+            {isEditMode ? 'แก้ไขข้อมูล' : 'ลงทะเบียน'}
+          </h1>
+          <p className="text-gray-500 text-sm">
+            {isEditMode ? 'แก้ไขข้อมูลของคุณแล้วกดบันทึก' : 'กรุณากรอกข้อมูลของคุณให้ครบถ้วน'}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -710,10 +755,21 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full bg-[#154212] text-white font-bold py-3 rounded-lg hover:bg-[#0d3308] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
           >
-            {loading ? 'กำลังลงทะเบียน...' : 'ลงทะเบียน'}
+            {loading
+              ? (isEditMode ? 'กำลังบันทึก...' : 'กำลังลงทะเบียน...')
+              : (isEditMode ? 'บันทึกข้อมูล' : 'ลงทะเบียน')
+            }
           </button>
         </form>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-[#154212]">กำลังโหลด...</div></div>}>
+      <RegisterPageContent />
+    </Suspense>
   )
 }

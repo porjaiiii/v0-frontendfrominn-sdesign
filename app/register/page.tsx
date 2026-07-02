@@ -407,6 +407,7 @@ function RegisterPageContent() {
       }
 
       setSuccess(true)
+      localStorage.setItem('is_registered', 'true');
 
       setFormData({
         lineUserId: '', userId: '', pdpaConsent: false, firstName: '', lastName: '',

@@ -145,9 +145,12 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
     // and return. Only when we're not in the LINE client do we fall back to
     // resetting the form and navigating home.
     if (liff.isInClient()) {
-          liff.closeWindow()
-        } else {
-          router.push('/home')
+      // Inside LINE: close the LIFF window and return immediately. Any setState
+      // or router.push after this would unmount the modal / navigate mid-handler
+      // and interrupt the close before LINE acts on it (this is the difference
+      // from the register flow, which returns right after closeWindow).
+      liff.closeWindow()
+      return
     }
 
     setShowSaveSuccess(false)

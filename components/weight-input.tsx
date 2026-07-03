@@ -182,10 +182,6 @@ interface ImageEvidenceProps {
 export function ImageEvidence({ imageUrls = [], onImagesChange, referenceImage, referenceLabel, wasteType, weight }: ImageEvidenceProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [requirements, setRequirements] = useState({
-    bagPreserved: false,
-    evidenceVisible: false,
-  })
   const { profile } = useLiffContext()
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,17 +224,13 @@ export function ImageEvidence({ imageUrls = [], onImagesChange, referenceImage, 
     }
   }
 
-  const handleRequirementChange = (key: keyof typeof requirements) => {
-    setRequirements(prev => ({ ...prev, [key]: !prev[key] }))
-  }
-
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-[#154212]">แนบรูปถ่าย</h2>
 
       {/* ส่วนคำแนะนำ (คงเดิม) */}
       <div className="bg-white rounded-2xl p-4 border border-[#e5e5e5]">
-        <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#e5e5e5]">
+        <div className="flex items-center justify-center gap-2 mb-3 pb-3 border-b border-[#e5e5e5]">
           <span className="text-sm font-medium text-[#444444]">คำแนะนำในการแนบรูปถ่าย</span>
         </div>
         <div className="flex items-start gap-3">
@@ -248,14 +240,14 @@ export function ImageEvidence({ imageUrls = [], onImagesChange, referenceImage, 
             </div>
           )}
           <div className="flex-1 space-y-3">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" checked={requirements.bagPreserved} onChange={() => handleRequirementChange('bagPreserved')} className="w-5 h-5 rounded border-2 border-[#154212] accent-[#154212]" />
+            <div className="flex items-center gap-3">
+              <img src="/icons/light bulb.svg" alt="" className="w-5 h-5 shrink-0" />
               <span className="text-sm text-[#444444]">เห็นถุงขยะ</span>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input type="checkbox" checked={requirements.evidenceVisible} onChange={() => handleRequirementChange('evidenceVisible')} className="w-5 h-5 rounded border-2 border-[#154212] accent-[#154212] mt-0.5 shrink-0" />
+            </div>
+            <div className="flex items-start gap-3">
+              <img src="/icons/light bulb.svg" alt="" className="w-5 h-5 mt-0.5 shrink-0" />
               <span className="text-sm text-[#444444]">เห็นเลขน้ำหนักชัดเจน</span>
-            </label>
+            </div>
           </div>
         </div>
       </div>

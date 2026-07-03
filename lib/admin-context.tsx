@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 
-const SESSION_KEY = 'admin_session'
+// เปลี่ยนชื่อคีย์ให้สื่อถึง localStorage (หรือจะใช้ชื่อเดิมก็ได้ครับ)
+const LOCAL_STORAGE_KEY = 'admin_session_persistent'
 
 export type AdminLoginResult =
   | { success: true }
@@ -10,7 +11,7 @@ export type AdminLoginResult =
 
 interface AdminContextType {
   isAdmin: boolean
-  isInitializing: boolean // 👈 1. เพิ่ม State นี้เข้าไปใน Type
+  isInitializing: boolean
   adminLogin: (key: string, userId: string) => Promise<AdminLoginResult>
   adminLogout: () => void
 }
@@ -19,15 +20,18 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined)
 
 export function AdminProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false)
-  const [isInitializing, setIsInitializing] = useState(true) // 👈 2. สร้าง State ให้ค่าเริ่มต้นเป็น true (กำลังเช็คอยู่)
+  const [isInitializing, setIsInitializing] = useState(true)
 
-  // Restore session on mount
+  // Restore session from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem(SESSION_KEY)
-      if (saved === 'true') setIsAdmin(true)
+      // 🔄 เปลี่ยนจาก sessionStorage เป็น localStorage
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
+      if (saved === 'true') {
+        setIsAdmin(true)
+      }
     }
-    setIsInitializing(false) // 👈 3. เช็ค sessionStorage เสร็จแล้ว ค่อยบอกว่าโหลดเสร็จ
+    setIsInitializing(false)
   }, [])
 
   const adminLogin = useCallback(async (key: string, userId: string): Promise<AdminLoginResult> => {
@@ -40,7 +44,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       if (res.ok) {
         setIsAdmin(true)
-        sessionStorage.setItem(SESSION_KEY, 'true')
+        // 🔄 เปลี่ยนมาบันทึกลง localStorage เพื่อให้คงอยู่ยาวนานขึ้น
+        localStorage.setItem(LOCAL_STORAGE_KEY, 'true')
         return { success: true }
       }
 
@@ -57,11 +62,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const adminLogout = useCallback(() => {
     setIsAdmin(false)
-    sessionStorage.removeItem(SESSION_KEY)
+    // 🔄 ลบข้อมูลออกจาก localStorage เมื่อทำการ Logout
+    localStorage.removeItem(LOCAL_STORAGE_KEY)
   }, [])
 
   return (
-    // 👈 4. ส่ง isInitializing ออกไปให้หน้าอื่นๆ ใช้ด้วย
     <AdminContext.Provider value={{ isAdmin, isInitializing, adminLogin, adminLogout }}>
       {children}
     </AdminContext.Provider>

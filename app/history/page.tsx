@@ -200,9 +200,9 @@ function formatTime(time: string) {
 }
 
 // Newest first. A recycle entry and its mirrored points entry share the same
-// timestamp, so the tie-break (recycle before points) keeps คะแนน right after
-// the รีไซเคิล it came from.
-const TYPE_ORDER: Record<string, number> = { recycle: 0, points: 1, reward: 2 }
+// timestamp, so the tie-break (points before recycle) shows the คะแนน gain
+// first, with the รีไซเคิล detail it came from right underneath.
+const TYPE_ORDER: Record<string, number> = { points: 0, recycle: 1, reward: 2 }
 const byTsDesc = (a: HistoryItem, b: HistoryItem) =>
   (b.ts ?? 0) - (a.ts ?? 0) ||
   (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9)

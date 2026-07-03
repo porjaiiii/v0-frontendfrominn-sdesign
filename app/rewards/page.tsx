@@ -29,6 +29,10 @@ export default function RewardsPage() {
   const [redeemError, setRedeemError] = useState<string | null>(null)
   const [redeemSuccess, setRedeemSuccess] = useState(false)
   const [newCouponId, setNewCouponId] = useState<string | null>(null)
+  // Synchronous re-entry guard: the `disabled` attr only updates on re-render,
+  // so a fast double-tap can fire the handler twice before React catches up.
+  // This ref flips immediately and blocks the second call.
+  const redeemInFlight = useRef(false)
 
   const openRedeem = (reward: typeof REWARDS[number]) => {
     setRedeemTarget(reward)
@@ -39,6 +43,10 @@ export default function RewardsPage() {
 
   const handleConfirmRedeem = async () => {
     if (!redeemTarget) return
+    // Block re-entry synchronously — must run before any await so a second tap
+    // in the same frame (or during the addCoupon step below) can't start a
+    // second redeem and double-spend.
+    if (redeemInFlight.current) return
     setRedeemError(null)
 
     console.log('[v0] handleConfirmRedeem — redeemTarget:', redeemTarget)
@@ -50,45 +58,53 @@ export default function RewardsPage() {
       return
     }
 
+    redeemInFlight.current = true
     setProcessing(true)
     console.log('[v0] spendPoints — calling with amount:', redeemTarget.points, 'detail:', {
       category: 'reward',
       items: [{ name: redeemTarget.name, quantity: 1, points: redeemTarget.points }],
     })
 
-    const result = await spendPoints(redeemTarget.points, {
-      category: 'reward',
-      items: [{ name: redeemTarget.name, quantity: 1, points: redeemTarget.points }],
-    })
+    try {
+      const result = await spendPoints(redeemTarget.points, {
+        category: 'reward',
+        items: [{ name: redeemTarget.name, quantity: 1, points: redeemTarget.points }],
+      })
 
-    console.log('[v0] spendPoints — result:', result)
-    setProcessing(false)
+      console.log('[v0] spendPoints — result:', result)
 
-    if (result.success) {
-      console.log('[v0] spendPoints — success, tx_id:', result.tx_id)
-      try {
-        const payload = {
-          reward_id: redeemTarget.id,
-          reward_name: redeemTarget.name,
-          reward_description: redeemTarget.description ?? '',
-          reward_image: redeemTarget.image,
-          points_used: redeemTarget.points,
-          tx_id: result.tx_id,
+      if (result.success) {
+        console.log('[v0] spendPoints — success, tx_id:', result.tx_id)
+        try {
+          const payload = {
+            reward_id: redeemTarget.id,
+            reward_name: redeemTarget.name,
+            reward_description: redeemTarget.description ?? '',
+            reward_image: redeemTarget.image,
+            points_used: redeemTarget.points,
+            tx_id: result.tx_id,
+          }
+          console.log('[v0] addCoupon — calling with payload:', payload)
+
+          const coupon = await addCoupon(payload)
+
+          console.log('[v0] addCoupon — response coupon:', coupon)
+          setNewCouponId(coupon.coupon_id)
+          setRedeemSuccess(true)
+        } catch (err) {
+          console.error('[v0] addCoupon — error:', err)
+          setRedeemError('แลกคะแนนสำเร็จ แต่ไม่สามารถสร้างคูปองได้ กรุณาติดต่อเจ้าหน้าที่')
         }
-        console.log('[v0] addCoupon — calling with payload:', payload)
-
-        const coupon = await addCoupon(payload)
-
-        console.log('[v0] addCoupon — response coupon:', coupon)
-        setNewCouponId(coupon.coupon_id)
-        setRedeemSuccess(true)
-      } catch (err) {
-        console.error('[v0] addCoupon — error:', err)
-        setRedeemError('แลกคะแนนสำเร็จ แต่ไม่สามารถสร้างคูปองได้ กรุณาติดต่อเจ้าหน้าที่')
+      } else {
+        console.warn('[v0] spendPoints — failed:', result.message)
+        setRedeemError(result.message || 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่')
       }
-    } else {
-      console.warn('[v0] spendPoints — failed:', result.message)
-      setRedeemError(result.message || 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่')
+    } finally {
+      // Keep the button disabled through the whole flow (spend + coupon), only
+      // re-enabling once it's fully settled. On success the modal has already
+      // switched to the success screen, so the confirm button is gone.
+      redeemInFlight.current = false
+      setProcessing(false)
     }
   }
 

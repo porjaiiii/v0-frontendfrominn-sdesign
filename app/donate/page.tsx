@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { PageHeader } from '@/components/page-header'
 import { Heart, CheckCircle2, ChevronLeft, Minus, Plus, Leaf } from 'lucide-react'
@@ -71,8 +72,10 @@ const DONATIONS: DonationItem[] = [
 ]
 
 export default function DonatePage() {
+  const router = useRouter()
   const { points: userPoints, loading: pointsLoading, spendPoints } = usePoints()
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
 
   // Detail page state — opened by the "รายละเอียด" button
   const [detailDonation, setDetailDonation] = useState<DonationItem | null>(null)
@@ -146,9 +149,33 @@ export default function DonatePage() {
       <PageHeader />
 
       <main className="max-w-md mx-auto px-4 py-6">
-        {/* Header Section */}
-        <div className="mb-5">
-          <h1 className="text-2xl font-bold text-[#154212]">บริจาคคะแนน</h1>
+        {/* Header Section — back button, title, favourites filter */}
+        <div className="flex items-center gap-2 mb-5">
+          <button
+            onClick={() => router.back()}
+            aria-label="ย้อนกลับ"
+            className="p-1 -ml-1 rounded-full text-[#154212] hover:bg-black/5 transition-colors"
+          >
+            <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />
+          </button>
+          <h1 className="flex-1 text-2xl font-bold text-[#154212]">บริจาคคะแนน</h1>
+          <button
+            onClick={() => setShowFavoritesOnly(v => !v)}
+            aria-label="รายการโปรด"
+            aria-pressed={showFavoritesOnly}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors',
+              showFavoritesOnly
+                ? 'bg-red-500 text-white'
+                : 'bg-white text-[#154212] border border-[#e5e5e5] hover:bg-[#f0f8ff]'
+            )}
+          >
+            <Heart
+              size={18}
+              className={showFavoritesOnly ? 'fill-white text-white' : 'text-red-500'}
+            />
+            รายการโปรด
+          </button>
         </div>
 
         {/* Donate Banner */}
@@ -163,8 +190,17 @@ export default function DonatePage() {
         </div>
 
         {/* Donation Cards */}
+        {showFavoritesOnly && favorites.size === 0 ? (
+          <div className="flex flex-col items-center text-center py-16 text-[#999999]">
+            <Heart size={40} className="mb-3 text-[#d0d0d0]" />
+            <p className="text-sm">ยังไม่มีรายการโปรด</p>
+            <p className="text-xs mt-1">แตะรูปหัวใจบนแคมเปญที่คุณสนใจเพื่อบันทึก</p>
+          </div>
+        ) : (
         <div className="space-y-4">
-          {DONATIONS.map((donation, index) => {
+          {DONATIONS
+            .filter(donation => !showFavoritesOnly || favorites.has(donation.id))
+            .map((donation, index) => {
             const isFavorited = favorites.has(donation.id)
 
             return (
@@ -236,6 +272,7 @@ export default function DonatePage() {
             )
           })}
         </div>
+        )}
       </main>
 
       {/* Detail Page — opened by "รายละเอียด" */}

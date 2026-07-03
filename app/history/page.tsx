@@ -433,6 +433,27 @@ export default function HistoryPage() {
 // to that coupon; a used/expired coupon is shown but not clickable.
 function RewardCard({ item, coupon }: { item: HistoryItem; coupon?: Coupon }) {
   const isReward = item.category === 'reward'
+
+  // Donations have no coupon and no "quantity" — a donation is just an amount of
+  // points given. Show a stripped-down card: what was donated + points spent.
+  if (!isReward) {
+    return (
+      <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-[#e5e5e5]">
+        <ItemAvatar item={item} />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-[#154212] font-medium mb-0.5">{formatTime(item.time)}</p>
+          <p className="text-sm font-medium text-[#444444] mb-1.5">{item.title}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-[#666666]">สถานะ : {item.status}</p>
+            <p className="text-sm font-bold text-[#c06161] flex-shrink-0 ml-2">
+              -{(item.pointsSpent ?? 0).toLocaleString()} คะแนน
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const isActiveCoupon = isReward && coupon?.status === 'active'
   const isUsedCoupon = isReward && coupon?.status === 'used'
   const isExpiredCoupon = isReward && coupon?.status === 'expired'

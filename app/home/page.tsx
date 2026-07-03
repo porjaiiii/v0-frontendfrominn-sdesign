@@ -145,12 +145,9 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
     // and return. Only when we're not in the LINE client do we fall back to
     // resetting the form and navigating home.
     if (liff.isInClient()) {
-      try {
-        liff.closeWindow()
-        return
-      } catch (e) {
-        console.error('[home] liff.closeWindow() failed:', e)
-      }
+          liff.closeWindow()
+        } else {
+          router.push('/home')
     }
 
     setShowSaveSuccess(false)

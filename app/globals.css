@@ -27,7 +27,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Noto Sans Thai', 'Geist', sans-serif;
+  --font-sans: 'Noto Sans Thai Looped', 'Geist', sans-serif;
   --font-mono: 'Geist Mono', monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);

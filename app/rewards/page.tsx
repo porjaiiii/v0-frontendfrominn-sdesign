@@ -153,8 +153,8 @@ export default function RewardsPage() {
         <div className="bg-gradient-to-b from-[#154212] to-[#1a5a16] rounded-2xl p-5 mb-6 relative">
           {/* Icon Buttons - Top Right */}
           <div className="absolute top-4 right-4 flex gap-2">
-            {/* Cart Button with Badge */}
-            <div className="relative">
+            {/* Cart Button hidden for now — cart functionality disabled */}
+            {/* <div className="relative">
               <Link
                 href="/cart"
                 className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors flex items-center justify-center"
@@ -173,7 +173,7 @@ export default function RewardsPage() {
                   {cartCount}
                 </motion.div>
               )}
-            </div>
+            </div> */}
 
             {/* Favorites Button */}
             <Link 
@@ -284,7 +284,7 @@ export default function RewardsPage() {
                         onClick={() => openRedeem(reward)}
                         disabled={!canRedeem}
                         className={cn(
-                          'flex-[7] py-2 rounded-lg text-sm font-medium transition-colors',
+                          'flex-1 py-2 rounded-lg text-sm font-medium transition-colors',
                           canRedeem
                             ? 'bg-[#154212] text-white hover:bg-[#0d3308]'
                             : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
@@ -292,7 +292,8 @@ export default function RewardsPage() {
                       >
                         แลกเลย
                       </button>
-                      <motion.button
+                      {/* Add-to-cart button hidden for now — cart functionality disabled */}
+                      {/* <motion.button
                         ref={(el) => {
                           if (el) buttonRefs.current[reward.id] = el
                         }}
@@ -310,7 +311,7 @@ export default function RewardsPage() {
                         <div className="relative w-4 h-4">
                           <Image src="/icons/tabler-icon-add-cart.png" alt="ตะกร้า" fill className="object-contain" />
                         </div>
-                      </motion.button>
+                      </motion.button> */}
                     </div>
                   </div>
                 </div>

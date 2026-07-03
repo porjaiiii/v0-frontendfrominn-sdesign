@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from 'next'
-import { Noto_Sans_Thai } from 'next/font/google'
+import { Noto_Sans_Thai_Looped } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Providers } from '@/components/providers'
 import './globals.css'
 
-const notoSansThai = Noto_Sans_Thai({ 
+const notoSansThaiLooped = Noto_Sans_Thai_Looped({
   subsets: ['thai', 'latin'],
-  variable: '--font-noto-sans-thai',
+  variable: '--font-noto-sans-thai-looped',
   weight: ['300', '400', '500', '600', '700']
 })
 
@@ -40,7 +40,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://liff.line.me" />
         <link rel="dns-prefetch" href="https://profile.line-scdn.net" />
       </head>
-      <body className={`${notoSansThai.variable} font-sans antialiased`}>
+      <body className={`${notoSansThaiLooped.variable} font-sans antialiased`}>
         <Providers>
           {children}
         </Providers>

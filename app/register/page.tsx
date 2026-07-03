@@ -319,6 +319,37 @@ function RegisterPageContent() {
     setFormData(prev => ({ ...prev, [field]: prev[field as keyof typeof prev] === val ? '' : val }))
   }
 
+  // Ordered list of required fields (top→bottom, matching the form layout) with
+  // whether each is filled. Drives the grey submit button and the scroll-to-first
+  // -missing behaviour. ตำบล/อาชีพ are required only for non-tourists; the phone
+  // number must be a full 10 digits.
+  const getRequiredFields = (): { id: string; ok: boolean }[] => {
+    const isTourist = formData.userType === 'นักท่องเที่ยว'
+    const isLocal = formData.userType === 'คนในชุมชนคุ้งบางกะเจ้า'
+    const fields: { id: string; ok: boolean }[] = [
+      { id: 'field-userType', ok: Boolean(formData.userType) },
+      { id: 'field-firstName', ok: Boolean(formData.firstName.trim()) },
+      { id: 'field-lastName', ok: Boolean(formData.lastName.trim()) },
+      { id: 'field-phoneNumber', ok: formData.phoneNumber.length === 10 },
+    ]
+    if (isLocal) fields.push({ id: 'field-address', ok: Boolean(formData.address.trim()) })
+    fields.push({ id: 'field-gender', ok: Boolean(formData.gender) })
+    fields.push({ id: 'field-ageRange', ok: Boolean(formData.ageRange) })
+    if (isLocal) fields.push({ id: 'field-subdistrict', ok: Boolean(formData.subdistrict) })
+    if (!isTourist) fields.push({ id: 'field-occupation', ok: Boolean(formData.occupation) })
+    fields.push({ id: 'field-pdpa', ok: formData.pdpaConsent })
+    return fields
+  }
+
+  // Scroll the given field into view and focus its first control (if any).
+  const scrollToField = (id: string) => {
+    const el = document.getElementById(id)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const focusable = el.querySelector<HTMLElement>('input, select, textarea')
+    if (focusable) setTimeout(() => focusable.focus({ preventScroll: true }), 300)
+  }
+
   async function notifyRegistrationComplete(lineUserId: string, data: typeof formData) {
   // ✅ 1. URL ของ GAS web app + route=register
   const GAS_WEBHOOK_URL =
@@ -355,26 +386,26 @@ function RegisterPageContent() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
-    setLoading(true)
 
-    const isTourist = formData.userType === 'นักท่องเที่ยว'
-    const addressRequired = !isTourist && !formData.address
-
-    if (
-      !formData.lineUserId ||
-      !formData.firstName ||
-      !formData.lastName ||
-      addressRequired ||
-      !formData.phoneNumber ||
-      !formData.gender ||
-      !formData.ageRange ||
-      !formData.pdpaConsent
-    ) {
-      setError('กรุณากรอกข้อมูลที่จำเป็นทั้งหมด')
-      setLoading(false)
+    if (!formData.lineUserId) {
+      setError('ไม่พบข้อมูลผู้ใช้ LINE กรุณาเปิดหน้านี้ผ่าน LINE อีกครั้ง')
       return
     }
 
+    // Grey-button flow: if anything required is missing, jump to the first one
+    // instead of submitting.
+    const missing = getRequiredFields().find(f => !f.ok)
+    if (missing) {
+      scrollToField(missing.id)
+      setError(
+        missing.id === 'field-phoneNumber' && formData.phoneNumber.length > 0
+          ? 'เบอร์โทรศัพท์ต้องมี 10 หลัก'
+          : 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน'
+      )
+      return
+    }
+
+    setLoading(true)
     const fullName = `${formData.firstName} ${formData.lastName}`.trim()
 
     try {
@@ -437,6 +468,8 @@ function RegisterPageContent() {
       : ''
 
   const isLocalResident = formData.userType === 'คนในชุมชนคุ้งบางกะเจ้า'
+  const isTourist = formData.userType === 'นักท่องเที่ยว'
+  const isFormComplete = getRequiredFields().every(f => f.ok)
 
   if (!isReady) return null
 
@@ -564,12 +597,6 @@ function RegisterPageContent() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-700 text-sm">{error}</p>
-            </div>
-          )}
-
           {/* ── 1. ประเภทผู้ใช้งาน ── */}
           <div id="field-userType" className={fieldWrapClass('field-userType')}>
             <label className="block text-gray-700 font-semibold mb-2 text-sm">
@@ -594,7 +621,6 @@ function RegisterPageContent() {
                 onChange={handleChange}
                 placeholder="เช่น สมหวัง"
                 className={inputClass('field-firstName')}
-                required
               />
             </div>
             <div id="field-lastName">
@@ -606,7 +632,6 @@ function RegisterPageContent() {
                 onChange={handleChange}
                 placeholder="เช่น ใจดี"
                 className="w-full px-4 py-3 rounded-lg border border-[#e5e5e5] bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all"
-                required
               />
             </div>
           </div>
@@ -644,8 +669,12 @@ function RegisterPageContent() {
               placeholder="เช่น 0812345678"
               maxLength={10}
               className={inputClass('field-phoneNumber')}
-              required
             />
+            {formData.phoneNumber.length > 0 && formData.phoneNumber.length < 10 && (
+              <p className="mt-1.5 text-xs text-red-500">
+                เบอร์โทรศัพท์ต้องมี 10 หลัก (ตอนนี้ {formData.phoneNumber.length} หลัก)
+              </p>
+            )}
           </div>
 
           {/* ── 5. ที่อยู่ (บังคับ — ซ่อนสำหรับนักท่องเที่ยว) ── */}
@@ -663,7 +692,6 @@ function RegisterPageContent() {
                     ? 'border-[#154212]'
                     : 'border-[#e5e5e5]'
                 }`}
-                required={isLocalResident}
               />
             </div>
           )}
@@ -693,7 +721,7 @@ function RegisterPageContent() {
           {/* ── 8. พื้นที่ตำบล (conditional — เฉพาะคนในชุมชน) ── */}
           {isLocalResident && (
             <div id="field-subdistrict" className={fieldWrapClass('field-subdistrict')}>
-              <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ตำบลหลัก</label>
+              <label className="block text-gray-700 font-medium mb-2 text-sm">พื้นที่ 6 ตำบลหลัก *</label>
               <SelectField
                 options={SUBDISTRICTS}
                 value={formData.subdistrict}
@@ -706,7 +734,9 @@ function RegisterPageContent() {
 
           {/* ── 9. อาชีพ ── */}
           <div id="field-occupation" className={fieldWrapClass('field-occupation')}>
-            <label className="block text-gray-700 font-medium mb-2 text-sm">อาชีพปัจจุบัน / อดีต</label>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">
+              อาชีพปัจจุบัน / อดีต {!isTourist && '*'}
+            </label>
             <SelectField
               options={OCCUPATIONS}
               value={formData.occupation}
@@ -717,7 +747,7 @@ function RegisterPageContent() {
           </div>
 
           {/* ── PDPA (อยู่ล่างสุด) ── */}
-          <div className={`rounded-xl border transition-colors ${formData.pdpaConsent ? 'border-[#154212] bg-[#f0fdf0]' : 'border-[#e5e5e5] bg-[#f9f9f9]'}`}>
+          <div id="field-pdpa" className={`rounded-xl border transition-colors ${formData.pdpaConsent ? 'border-[#154212] bg-[#f0fdf0]' : 'border-[#e5e5e5] bg-[#f9f9f9]'}`}>
             <label className="flex items-start gap-3 cursor-pointer p-4">
               <input
                 type="checkbox"
@@ -725,7 +755,6 @@ function RegisterPageContent() {
                 checked={formData.pdpaConsent}
                 onChange={handleChange}
                 className="mt-0.5 w-5 h-5 shrink-0 rounded border-gray-300 text-[#154212] accent-[#154212]"
-                required
               />
               <span className="text-gray-800 text-sm leading-relaxed font-medium">
                 ฉันยอมรับนโยบายการคุ้มครองข้อมูลส่วนบุคคล (PDPA) *
@@ -753,17 +782,32 @@ function RegisterPageContent() {
             )}
           </div>
 
-          {/* ── Submit ── */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#154212] text-white font-bold py-3 rounded-lg hover:bg-[#0d3308] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-          >
-            {loading
-              ? (isEditMode ? 'กำลังบันทึก...' : 'กำลังลงทะเบียน...')
-              : (isEditMode ? 'บันทึกข้อมูล' : 'ลงทะเบียน')
-            }
-          </button>
+          {/* ── Submit (error shown right here so it's visible at the button) ── */}
+          <div className="pt-1 space-y-2">
+            {error && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                <svg className="w-4 h-4 mt-0.5 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+                </svg>
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={loading}
+              aria-disabled={!isFormComplete}
+              className={`w-full font-bold py-3 rounded-lg transition-colors disabled:cursor-not-allowed ${
+                isFormComplete
+                  ? 'bg-[#154212] text-white hover:bg-[#0d3308]'
+                  : 'bg-[#e5e5e5] text-[#8a8a8a] hover:bg-[#dcdcdc]'
+              } ${loading ? 'opacity-70' : ''}`}
+            >
+              {loading
+                ? (isEditMode ? 'กำลังบันทึก...' : 'กำลังลงทะเบียน...')
+                : (isEditMode ? 'บันทึกข้อมูล' : 'ลงทะเบียน')
+              }
+            </button>
+          </div>
         </form>
       </div>
     </div>

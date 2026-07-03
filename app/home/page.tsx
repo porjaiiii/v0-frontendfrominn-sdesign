@@ -140,28 +140,33 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
 
   // Called when user presses "กลับสู่ line" on success modal
   const handleReturnToLine = () => {
-    // Mirror the register flow exactly: inside LINE, close the LIFF window
-    // FIRST (before any setState that would unmount this modal mid-handler),
-    // and return. Only when we're not in the LINE client do we fall back to
-    // resetting the form and navigating home.
-    if (liff.isInClient()) {
-      // Inside LINE: close the LIFF window and return immediately. Any setState
-      // or router.push after this would unmount the modal / navigate mid-handler
-      // and interrupt the close before LINE acts on it (this is the difference
-      // from the register flow, which returns right after closeWindow).
+    // Like the reference LIFF page: attempt to close the LINE window
+    // UNCONDITIONALLY. We don't gate on liff.isInClient() because on the home
+    // page it can report false (e.g. when the page wasn't the LIFF entry point),
+    // which would silently skip the close and leave the user stuck. closeWindow()
+    // is a no-op / throws harmlessly outside the LINE client, so try it first and
+    // return immediately — any setState/router.push after it would unmount this
+    // modal mid-handler and interrupt the close before LINE acts on it.
+    try {
+      console.log('[v0] returnToLine — isInClient:', liff.isInClient(), 'isLoggedIn:', liff.isLoggedIn())
       liff.closeWindow()
-      return
+    } catch (err) {
+      console.error('[v0] liff.closeWindow() failed:', err)
     }
 
-    setShowSaveSuccess(false)
-    // Reset form
-    setStep(1)
-    setSelectedType(null)
-    setSelectedSubType(null)
-    setWeight(0)
-    setNoWeight(false)
-    setImageEvidence([]); // ส่ง Array ว่างไปแทนครับ
-    router.push('/home')
+    // If closeWindow() actually took us back to LINE, this component unmounts and
+    // the timeout never fires. In a plain browser closeWindow() is a silent no-op,
+    // so after a short delay we fall back to resetting the form and going home.
+    setTimeout(() => {
+      setShowSaveSuccess(false)
+      setStep(1)
+      setSelectedType(null)
+      setSelectedSubType(null)
+      setWeight(0)
+      setNoWeight(false)
+      setImageEvidence([]); // ส่ง Array ว่างไปแทนครับ
+      router.push('/home')
+    }, 400)
   }
 
   const handleNext = () => {

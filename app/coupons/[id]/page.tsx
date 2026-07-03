@@ -101,14 +101,13 @@ export default function CouponDetailPage({
 
             {/* Top: dark green section */}
             <div className="bg-[#154212] relative flex flex-col items-center pb-8 overflow-hidden">
-              <div className="relative w-full flex justify-start" style={{ height: 120 }}>
+              <div className="relative w-full flex justify-center" style={{ height: 70 }}>
                 <Image
                   src="/mascot.png"
                   alt="mascot"
                   width={180}
                   height={180}
-                  opacity-60
-                  className="absolute -top-4 object-contain drop-shadow-lg"
+                  className="absolute -top-24 object-contain opacity-60 drop-shadow-lg"
                   style={{ transform: 'scaleY(-1)' }}
                 />
               </div>

@@ -93,6 +93,25 @@ export default function CouponConfirmPage({
           throw new Error(err?.error ?? 'ไม่สามารถอัปเดตคูปองได้')
         }
 
+        // Coupon is now used — flip the matching spend_details row(s) to "used".
+        // Best-effort: the coupon has already been consumed, so don't fail the
+        // confirm if the points ledger update hiccups.
+        if (coupon.tx_id && coupon.user_id) {
+          try {
+            await fetch('/api/points', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'mark_spend_used',
+                user_id: coupon.user_id,
+                tx_id: coupon.tx_id,
+              }),
+            })
+          } catch (syncErr) {
+            console.error('[coupon-confirm] mark_spend_used failed:', syncErr)
+          }
+        }
+
         setStatus('success')
     } catch (err) {
       setStatus('error')

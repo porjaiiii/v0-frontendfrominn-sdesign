@@ -141,7 +141,7 @@ export function AdminLoginModal({ isOpen, onClose, onSuccess }: AdminLoginModalP
           <>
             <div className="flex justify-center mb-4">
               <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center">
-                <QrCode className="w-7 h-7 text-blue-600" />
+                <QrCode className="w-7 h-7 text-[#154212]" />
               </div>
             </div>
 
@@ -163,7 +163,7 @@ export function AdminLoginModal({ isOpen, onClose, onSuccess }: AdminLoginModalP
             {/* ปุ่มสำหรับเทสต์ (Mock) ว่าหัวหน้าสแกนอนุมัติแล้ว */}
             <button
               onClick={onSuccess}
-              className="mt-6 w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+              className="mt-6 w-full py-3 rounded-xl bg-[#154212] text-white text-sm font-semibold hover:bg-[#666b66] transition-colors"
             >
               (Mock) จำลองการสแกนอนุมัติสำเร็จ
             </button>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -134,6 +134,19 @@ export default function DonatePage() {
     }
   }
 
+  // Persist donate favourites separately from reward favourites — their ids
+  // overlap (both start at 1), so they must not share the same storage key.
+  useEffect(() => {
+    const saved = localStorage.getItem('donateFavorites')
+    if (saved) {
+      try {
+        setFavorites(new Set(JSON.parse(saved)))
+      } catch (e) {
+        console.error('Failed to load donate favorites:', e)
+      }
+    }
+  }, [])
+
   const toggleFavorite = (id: number) => {
     const newFavorites = new Set(favorites)
     if (newFavorites.has(id)) {
@@ -142,6 +155,7 @@ export default function DonatePage() {
       newFavorites.add(id)
     }
     setFavorites(newFavorites)
+    localStorage.setItem('donateFavorites', JSON.stringify(Array.from(newFavorites)))
   }
 
   return (

@@ -392,8 +392,8 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* LIFF Features Section */}
-        <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
+        {/* LIFF Features Section — hidden for now (not deleted) */}
+        <div className="hidden bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
           <p className="text-sm font-semibold text-[#154212] mb-3">LINE LIFF Features</p>
           <div className="grid grid-cols-2 gap-3">
             {/* Scan QR Code */}

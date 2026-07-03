@@ -22,7 +22,7 @@ export default function ProfileViewPage() {
   console.log('1. isAdmin:', isAdmin)
 
   useEffect(() => {
-    
+    if (!isAdmin) return
     const fetchProfile = async () => {
       try {
         setLoading(true)

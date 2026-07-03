@@ -287,7 +287,7 @@ export default function HistoryPage() {
           >
             <ChevronLeft className="w-6 h-6 text-[#666666]" />
           </button>
-          <h1 className="text-lg font-semibold text-[#154212]">การใช้งานย้อนหลัง</h1>
+          <h1 className="text-lg font-semibold text-[#154212]">ประวัติการใช้งาน</h1>
         </div>
 
         {/* Filter Tabs */}

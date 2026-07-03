@@ -27,9 +27,9 @@ const TYPE_COLOR: Record<string, string> = {
 // Filter tabs
 const FILTERS = [
   { id: 'all', label: 'ทั้งหมด', icon: null },
+  { id: 'points', label: 'คะแนน', icon: Coins, color: TYPE_COLOR.points },
   { id: 'recycle', label: 'รีไซเคิล', icon: Recycle, color: TYPE_COLOR.recycle },
   { id: 'reward', label: 'แลกรางวัล', icon: Gift, color: TYPE_COLOR.reward },
-  { id: 'points', label: 'คะแนน', icon: Coins, color: TYPE_COLOR.points },
 ]
 
 type HistoryItem = {
@@ -278,8 +278,10 @@ export default function HistoryPage() {
           ))}
         </div>
 
-        {/* Loading skeleton — while fetching from Google Sheet */}
-        {isLoading && (
+        {/* Loading skeleton — only while we still have nothing to show. As soon
+            as any source resolves, the real list below renders and the skeleton
+            drops, so a slow/hanging fetch can't keep it on screen. */}
+        {isLoading && filteredData.length === 0 && (
           <div className="space-y-6">
             {[...Array(2)].map((_, g) => (
               <div key={g}>

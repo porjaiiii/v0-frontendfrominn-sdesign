@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X, Lock, Loader2 } from 'lucide-react'
+import { X, Lock, Loader2, QrCode } from 'lucide-react'
 import { useAdmin } from '@/lib/admin-context'
 import { useLiffContext } from '@/lib/liff-context'
+// อย่าลืม import Component QR Code ของคุณให้ถูกต้องตาม path จริง
+import { BrandedQRCode } from '@/components/branded-qr-code' 
 
 interface AdminLoginModalProps {
   isOpen: boolean
@@ -19,6 +21,10 @@ const ERROR_MESSAGES: Record<string, string> = {
 }
 
 export function AdminLoginModal({ isOpen, onClose, onSuccess }: AdminLoginModalProps) {
+  // เพิ่ม State จัดการ Step (input = หน้ากรอกรหัส, qr = หน้าโชว์ QR รออนุมัติ)
+  const [step, setStep] = useState<'input' | 'qr'>('input')
+  const [refCode, setRefCode] = useState<string>('')
+
   const [key, setKey] = useState('')
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -28,6 +34,8 @@ export function AdminLoginModal({ isOpen, onClose, onSuccess }: AdminLoginModalP
 
   useEffect(() => {
     if (isOpen) {
+      setStep('input')
+      setRefCode('')
       setKey('')
       setErrorCode(null)
       setLoading(false)
@@ -43,12 +51,18 @@ export function AdminLoginModal({ isOpen, onClose, onSuccess }: AdminLoginModalP
     setErrorCode(null)
 
     const userId = profile?.userId ?? ''
+    
+    // หมายเหตุ: ในระบบจริง หากมีระบบรออนุมัติ อาจจะยังไม่เรียก adminLogin ทันที 
+    // หรือ API อาจจะต้องคืนค่าสถานะ 'WAITING_APPROVAL' กลับมาแทน
     const result = await adminLogin(key.trim(), userId)
 
     setLoading(false)
 
     if (result.success) {
-      onSuccess()
+      // เมื่อผ่านการตรวจ Key เบื้องต้น ให้เปลี่ยนหน้าเป็น QR Mock
+      const generateMockRef = `REQ-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+      setRefCode(generateMockRef)
+      setStep('qr')
     } else {
       setErrorCode(result.reason)
       setKey('')
@@ -74,51 +88,87 @@ export function AdminLoginModal({ isOpen, onClose, onSuccess }: AdminLoginModalP
           <X className="w-5 h-5" />
         </button>
 
-        {/* Icon */}
-        <div className="flex justify-center mb-4">
-          <div className="w-14 h-14 rounded-full bg-[#154212]/10 flex items-center justify-center">
-            <Lock className="w-7 h-7 text-[#154212]" />
-          </div>
-        </div>
+        {step === 'input' ? (
+          // ================= STEP 1: กรอก Admin Key =================
+          <>
+            <div className="flex justify-center mb-4">
+              <div className="w-14 h-14 rounded-full bg-[#154212]/10 flex items-center justify-center">
+                <Lock className="w-7 h-7 text-[#154212]" />
+              </div>
+            </div>
 
-        <h2 className="text-lg font-semibold text-[#154212] text-center mb-1">
-          เข้าสู่ระบบผู้ดูแล
-        </h2>
-        <p className="text-sm text-[#154212]/60 text-center mb-5">
-          กรอก Admin Key เพื่อเข้าถึงหน้าจัดการ
-        </p>
+            <h2 className="text-lg font-semibold text-[#154212] text-center mb-1">
+              เข้าสู่ระบบผู้ดูแล
+            </h2>
+            <p className="text-sm text-[#154212]/60 text-center mb-5">
+              กรอก Admin Key เพื่อเข้าถึงหน้าจัดการ
+            </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <input
-              ref={inputRef}
-              type="password"
-              value={key}
-              onChange={(e) => { setKey(e.target.value); setErrorCode(null) }}
-              placeholder="Admin Key"
-              disabled={loading}
-              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none transition-colors disabled:opacity-50 ${
-                errorCode
-                  ? 'border-red-400 bg-red-50 text-red-600 placeholder:text-red-300'
-                  : 'border-[#154212]/30 focus:border-[#154212] text-[#154212]'
-              }`}
-            />
-            {errorCode && (
-              <p className="text-xs text-red-500 mt-1.5 ml-1">
-                {ERROR_MESSAGES[errorCode] ?? ERROR_MESSAGES.UNKNOWN_ERROR}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <input
+                  ref={inputRef}
+                  type="password"
+                  value={key}
+                  onChange={(e) => { setKey(e.target.value); setErrorCode(null) }}
+                  placeholder="Admin Key"
+                  disabled={loading}
+                  className={`w-full border rounded-xl px-4 py-3 text-sm outline-none transition-colors disabled:opacity-50 ${
+                    errorCode
+                      ? 'border-red-400 bg-red-50 text-red-600 placeholder:text-red-300'
+                      : 'border-[#154212]/30 focus:border-[#154212] text-[#154212]'
+                  }`}
+                />
+                {errorCode && (
+                  <p className="text-xs text-red-500 mt-1.5 ml-1">
+                    {ERROR_MESSAGES[errorCode] ?? ERROR_MESSAGES.UNKNOWN_ERROR}
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={!key.trim() || loading}
+                className="w-full py-3 rounded-xl bg-[#154212] text-white text-sm font-semibold disabled:opacity-40 transition-opacity flex items-center justify-center gap-2"
+              >
+                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {loading ? 'กำลังตรวจสอบ...' : 'ถัดไป'}
+              </button>
+            </form>
+          </>
+        ) : (
+          // ================= STEP 2: รอการอนุมัติจากหัวหน้า (Mock QR) =================
+          <>
+            <div className="flex justify-center mb-4">
+              <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center">
+                <QrCode className="w-7 h-7 text-blue-600" />
+              </div>
+            </div>
+
+            <h2 className="text-lg font-semibold text-[#154212] text-center mb-1">
+              รอการอนุมัติ
+            </h2>
+            <p className="text-sm text-[#154212]/60 text-center mb-2">
+              โปรดให้หัวหน้าสแกน QR Code นี้
+            </p>
+
+            {/* QR Code */}
+            <div className="bg-white rounded-3xl p-4 mt-2 mx-auto shadow-sm border border-gray-100 flex flex-col items-center justify-center relative z-10 gap-2 w-fit">
+              <BrandedQRCode value={`admin-auth:${refCode}`} size={200} />
+              <p className="text-[12px] text-[#888888] tracking-widest font-mono select-all mt-1">
+                REF: {refCode}
               </p>
-            )}
-          </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={!key.trim() || loading}
-            className="w-full py-3 rounded-xl bg-[#154212] text-white text-sm font-semibold disabled:opacity-40 transition-opacity flex items-center justify-center gap-2"
-          >
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบ'}
-          </button>
-        </form>
+            {/* ปุ่มสำหรับเทสต์ (Mock) ว่าหัวหน้าสแกนอนุมัติแล้ว */}
+            <button
+              onClick={onSuccess}
+              className="mt-6 w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+            >
+              (Mock) จำลองการสแกนอนุมัติสำเร็จ
+            </button>
+          </>
+        )}
       </div>
     </>
   )

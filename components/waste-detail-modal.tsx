@@ -110,6 +110,7 @@ export function WasteDetailModal({
       }
       const parsed = parseFloat(raw)
       if (!isNaN(parsed)) {
+        if (parsed > 100) return
         updateField({ weight_kg: parsed })
       }
     }

@@ -14,7 +14,14 @@ import {
   wasteSubtypeName,
   type WasteRecord,
 } from '@/lib/waste-records'
+import { REWARDS } from '@/lib/waste-data'
 import type { Coupon } from '@/lib/coupon-context'
+
+// Reward product name -> its catalog image, so a spend row can show the item's
+// picture in its timeline avatar (matched by the item_name in spend_details).
+const REWARD_IMAGE_BY_NAME = new Map<string, string>(
+  REWARDS.map((r) => [r.name.trim(), r.image]),
+)
 
 // One color per type, shared by the filter chips and the timeline dots so they
 // always match. recycle = blue, points = green, reward = yellow.
@@ -27,8 +34,8 @@ const TYPE_COLOR: Record<string, string> = {
 // Filter tabs
 const FILTERS = [
   { id: 'all', label: 'ทั้งหมด', icon: null },
-  { id: 'points', label: 'คะแนน', icon: Coins, color: TYPE_COLOR.points },
   { id: 'recycle', label: 'รีไซเคิล', icon: Recycle, color: TYPE_COLOR.recycle },
+  { id: 'points', label: 'คะแนน', icon: Coins, color: TYPE_COLOR.points },
   { id: 'reward', label: 'แลกรางวัล', icon: Gift, color: TYPE_COLOR.reward },
 ]
 
@@ -136,6 +143,8 @@ function spendDetailToItem(d: SpendDetailRow): HistoryItem {
     type: 'reward',
     title: `${verb} ${d.item_name}`,
     color: TYPE_COLOR.reward,
+    // Show the redeemed product's catalog picture when we can match it by name.
+    image: isDonate ? undefined : REWARD_IMAGE_BY_NAME.get(String(d.item_name).trim()),
     quantity: Number(d.quantity) || 1,
     // Donations complete instantly — they don't have a delivery status.
     status: isDonate ? 'บริจาคสำเร็จ' : (d.status || 'เตรียมจัดส่งในรอบถัดไป'),
@@ -143,6 +152,32 @@ function spendDetailToItem(d: SpendDetailRow): HistoryItem {
     category: d.category,
     txId: d.tx_id,
   }
+}
+
+// The tab icon that represents each entry type, reused as the fallback avatar
+// glyph when an entry has no picture.
+const TYPE_ICON: Record<string, typeof Recycle> = {
+  recycle: Recycle,
+  points: Coins,
+  reward: Gift,
+}
+
+// Timeline avatar: the entry's own picture when present, otherwise a colored
+// circle carrying the type's tab icon so every row reads at a glance.
+function ItemAvatar({ item }: { item: HistoryItem }) {
+  if (item.image) {
+    return (
+      <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 relative bg-[#f0f0f0]">
+        <Image src={item.image} alt="" fill className="object-cover" />
+      </div>
+    )
+  }
+  const Icon = TYPE_ICON[item.type]
+  return (
+    <div className={cn('w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center', item.color)}>
+      {Icon && <Icon className="w-5 h-5 text-[#154212]" />}
+    </div>
+  )
 }
 
 // Group data by date
@@ -337,13 +372,7 @@ export default function HistoryPage() {
                     ) : item.type === 'recycle' ? (
                       /* Recycle card — photo thumbnail + short topic + detail menu */
                       <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#e5e5e5]">
-                        {item.image ? (
-                          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 relative bg-[#f0f0f0]">
-                            <Image src={item.image} alt="รูปขยะ" fill className="object-cover" />
-                          </div>
-                        ) : (
-                          <div className={cn('w-10 h-10 rounded-full flex-shrink-0', item.color)} />
-                        )}
+                        <ItemAvatar item={item} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-[#154212] font-medium mb-0.5">{formatTime(item.time)}</p>
                           <p className="text-sm text-[#444444] truncate">{item.title}</p>
@@ -377,7 +406,7 @@ export default function HistoryPage() {
                     ) : (
                       /* Points card — a point-gain entry */
                       <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#e5e5e5]">
-                        <div className={cn('w-10 h-10 rounded-full flex-shrink-0', item.color)} />
+                        <ItemAvatar item={item} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-[#154212] font-medium mb-0.5">{formatTime(item.time)}</p>
                           <p className="text-sm text-[#444444]">{item.title}</p>
@@ -426,7 +455,7 @@ function RewardCard({ item, coupon }: { item: HistoryItem; coupon?: Coupon }) {
         isActiveCoupon && 'hover:border-[#154212] transition-colors'
       )}
     >
-      <div className={cn('w-10 h-10 rounded-full flex-shrink-0', item.color)} />
+      <ItemAvatar item={item} />
       <div className="flex-1 min-w-0">
         <p className="text-xs text-[#154212] font-medium mb-0.5">{formatTime(item.time)}</p>
         <p className="text-sm font-medium text-[#444444] mb-1.5">

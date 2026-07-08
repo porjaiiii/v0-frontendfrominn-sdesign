@@ -68,6 +68,7 @@ export function WasteDetailModal({
   // --- weight input state (รองรับ "0" ต้นและทศนิยม) ---
   const [weightDisplay, setWeightDisplay] = useState<string>('')
   const [isFocused, setIsFocused] = useState(false)
+  const [weightError, setWeightError] = useState<string | null>(null)
 
   // --- image upload state ---
   const [isUploading, setIsUploading] = useState(false)
@@ -79,6 +80,7 @@ export function WasteDetailModal({
       setEditedRecord(record)
       setWeightDisplay(record.weight_kg > 0 ? String(record.weight_kg) : '')
       setUploadError(null)
+      setWeightError(null)
     }
   }, [record])
 
@@ -104,13 +106,17 @@ export function WasteDetailModal({
     // อนุญาตเฉพาะตัวเลขและทศนิยมจุดเดียว
     if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
       setWeightDisplay(raw)
+      setWeightError(null)
       if (raw === '' || raw === '.') {
         updateField({ weight_kg: 0 })
         return
       }
       const parsed = parseFloat(raw)
       if (!isNaN(parsed)) {
-        if (parsed > 100) return
+        if (parsed > 100) {
+          setWeightError('น้ำหนักต้องไม่เกิน 100 กก.')
+          return
+        }
         updateField({ weight_kg: parsed })
       }
     }
@@ -118,6 +124,7 @@ export function WasteDetailModal({
 
   const handleWeightBlur = () => {
     setIsFocused(false)
+    setWeightError(null)
     if (weightDisplay === '' || weightDisplay === '.') {
       setWeightDisplay('')
       updateField({ weight_kg: 0 })
@@ -360,10 +367,14 @@ const handleConfirmClick = async () => {
               disabled={!isEditing}
               placeholder="0.0"
               className={cn(
-                'w-full bg-white border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
+                'w-full bg-white border-2 rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg',
+                weightError ? 'border-red-500' : 'border-[#d4d4d4]',
                 isEditing ? 'cursor-text' : 'cursor-default bg-gray-100'
               )}
             />
+            {weightError && (
+              <p className="text-xs text-red-500 font-medium mt-2">{weightError}</p>
+            )}
           </div>
 
           {/* Timestamp - Read Only */}

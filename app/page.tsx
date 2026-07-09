@@ -11,6 +11,12 @@ export default function RootPage() {
   useEffect(() => {
     if (!isReady) return
 
+    // ถ้า LINE เปิด LIFF deep-link มา จะมี liff.state ที่เก็บ path ปลายทางไว้
+    // ปล่อยให้ LIFF พาไปหน้านั้นเอง แทนที่จะดึงกลับมา /home หรือ /register
+    // (แก้ปัญหาผู้ใช้ iPhone กดลิงก์ ranking/rewards แล้วเด้งกลับ home)
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('liff.state')) return
+
     // ตรวจสอบจาก localStorage ว่าเคยลงทะเบียนหรือยัง
     const isRegistered = localStorage.getItem('is_registered') === 'true'
 

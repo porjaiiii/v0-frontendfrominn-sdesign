@@ -36,6 +36,11 @@ const WASTE_ORDER = ['plastic', 'glass', 'paper', 'aluminum', 'oil']
 // One row of the co2_collection sheet (per user, per waste type)
 type Co2Row = { waste_type: string; weight: number; co2: number }
 
+// Grey pulsing bar used as a placeholder while profile data is loading
+function Skeleton({ className = '' }: { className?: string }) {
+  return <span className={`inline-block h-4 rounded bg-[#e5e5e5] animate-pulse align-middle ${className}`} />
+}
+
 // Shown inside a graph card when there's no data yet
 function EmptyGraph() {
   return (
@@ -153,6 +158,10 @@ export default function ProfilePage() {
     nickname: fetchedProfile?.nickname
   }
 
+  // True while we're still fetching the logged-in user's real profile.
+  // (In demo mode there's no userId, so we skip loading and show fallbacks.)
+  const isLoadingProfile = profileLoading || (!fetchedProfile && !!liffProfile?.userId)
+
   // CO2 and recycled weight come from the points database (total_co2 / total_weight).
   // Trees planted is derived from CO2: ~5 kgCO2 ≈ 1 tree (same formula as the
   // carbon result modal). Zero CO2 → zero trees.
@@ -256,12 +265,16 @@ export default function ProfilePage() {
           {/* Avatar - positioned to overlap top of card */}
           <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-10">
             <div className="relative w-[90px] h-[90px] rounded-full overflow-hidden border-4 border-white shadow-lg">
-              <Image
-                src={user.avatar}
-                alt={user.name}
-                fill
-                className="object-cover"
-              />
+              {isLoadingProfile ? (
+                <div className="w-full h-full bg-[#e5e5e5] animate-pulse" />
+              ) : (
+                <Image
+                  src={user.avatar}
+                  alt={user.name}
+                  fill
+                  className="object-cover"
+                />
+              )}
             </div>
           </div>
 
@@ -284,11 +297,15 @@ export default function ProfilePage() {
               <div className="flex">
                 <div className="flex-1">
                   <span className="text-[#666666]">ชื่อ-นามสกุล</span>
-                  <span className="ml-4 text-[#154212] font-medium">{user.name}</span>
+                  {isLoadingProfile
+                    ? <Skeleton className="ml-4 w-28" />
+                    : <span className="ml-4 text-[#154212] font-medium">{user.name}</span>}
                 </div>
                 <div>
                   <span className="text-[#666666]">เพศ</span>
-                  <span className="ml-2 text-[#154212] font-medium">{user.gender}</span>
+                  {isLoadingProfile
+                    ? <Skeleton className="ml-2 w-10" />
+                    : <span className="ml-2 text-[#154212] font-medium">{user.gender}</span>}
                 </div>
               </div>
 
@@ -296,7 +313,9 @@ export default function ProfilePage() {
               <div className="flex">
                 <div className="flex-1">
                   <span className="text-[#666666]">ชื่อเล่น</span>
-                  <span className="ml-4 text-[#154212] font-medium">{user.nickname}</span>
+                  {isLoadingProfile
+                    ? <Skeleton className="ml-4 w-24" />
+                    : <span className="ml-4 text-[#154212] font-medium">{user.nickname}</span>}
                 </div>
               </div>
 
@@ -304,11 +323,15 @@ export default function ProfilePage() {
               <div className="flex">
                 <div className="flex-1">
                   <span className="text-[#666666]">อายุ</span>
-                  <span className="ml-4 text-[#154212] font-medium">{user.age}</span>
+                  {isLoadingProfile
+                    ? <Skeleton className="ml-4 w-16" />
+                    : <span className="ml-4 text-[#154212] font-medium">{user.age}</span>}
                 </div>
                 <div>
                   <span className="text-[#666666]">ประเภท</span>
-                  <span className="ml-2 text-[#154212] font-medium">{user.type}</span>
+                  {isLoadingProfile
+                    ? <Skeleton className="ml-2 w-14" />
+                    : <span className="ml-2 text-[#154212] font-medium">{user.type}</span>}
                 </div>
               </div>
 
@@ -316,11 +339,15 @@ export default function ProfilePage() {
               <div className="flex">
                 <div className="flex-1">
                   <span className="text-[#666666]">ตำบล</span>
-                  <span className="ml-4 text-[#154212] font-medium">{user.subdistrict}</span>
+                  {isLoadingProfile
+                    ? <Skeleton className="ml-4 w-20" />
+                    : <span className="ml-4 text-[#154212] font-medium">{user.subdistrict}</span>}
                 </div>
                 <div>
                   <span className="text-[#666666]">อาชีพ</span>
-                  <span className="ml-2 text-[#154212] font-medium">{user.occupation}</span>
+                  {isLoadingProfile
+                    ? <Skeleton className="ml-2 w-16" />
+                    : <span className="ml-2 text-[#154212] font-medium">{user.occupation}</span>}
                 </div>
               </div>
 

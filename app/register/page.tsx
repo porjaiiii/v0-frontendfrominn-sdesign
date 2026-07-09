@@ -441,7 +441,9 @@ function RegisterPageContent() {
         throw new Error(data.error || (isEditMode ? 'Failed to update' : 'Failed to register'))
       }
 
-      if (formData.lineUserId) {
+      // Only greet on first-time registration — editing an existing profile
+      // must not trigger the "thanks for registering" LINE OA message.
+      if (!isEditMode && formData.lineUserId) {
         await notifyRegistrationComplete(formData.lineUserId, formData)
       }
 

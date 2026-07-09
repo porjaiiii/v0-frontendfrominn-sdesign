@@ -10,6 +10,7 @@ export function DevResetRegister() {
   if (!ENABLED) return null
 
   const handleReset = () => {
+    if (!window.confirm('ล้าง cache การสมัครและกลับไปหน้าลงทะเบียน?')) return
     try {
       localStorage.removeItem('is_registered')
     } catch {}

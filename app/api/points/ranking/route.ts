@@ -36,16 +36,23 @@ const SAMPLE_RANKING: Omit<RankingEntry, 'rank'>[] = [
 ]
 
 type UserInfo = { name: string; avatar: string; location: string; isTourist: boolean }
+// Just the caller's own ตำบล / tourist status, so the ranking page can group the
+// ตำบล tab correctly even when the caller has no points yet (and so isn't in the
+// leaderboard). Sourced from the already-built name map — no extra fetch.
+type CallerInfo = { location: string; isTourist: boolean }
 
 // Distinctive userType value written by the registration form. Matching on the
 // value (rather than a column position) is immune to header-name drift and to
 // tourists who mistakenly also have a ตำบล filled in.
 const TOURIST_USER_TYPE = 'นักท่องเที่ยว'
-type RankingResult = { ranking: RankingEntry[]; isSample: boolean }
+// nameMap is kept on the (server-side, viewer-independent) cached result so GET
+// can look up any caller's own ตำบล/tourist status without re-reading the sheet.
+type RankingResult = { ranking: RankingEntry[]; isSample: boolean; nameMap: Record<string, UserInfo> }
 
 const SAMPLE_RESULT: RankingResult = {
   ranking: SAMPLE_RANKING.map((e, i) => ({ ...e, rank: i + 1 })),
   isSample: true,
+  nameMap: {},
 }
 
 function toNumber(value: unknown): number {
@@ -168,7 +175,7 @@ async function buildRanking(): Promise<RankingResult> {
         }
       })
 
-    return { ranking, isSample: false }
+    return { ranking, isSample: false, nameMap }
   } catch (error) {
     console.error('[points-ranking] Error:', error)
     return SAMPLE_RESULT
@@ -197,5 +204,12 @@ export async function GET(request: Request) {
       )
     : result.ranking
 
-  return NextResponse.json({ ranking, isSample: result.isSample })
+  // Caller's own ตำบล/tourist status (from the registration name map), so the
+  // ตำบล tab groups correctly even before the caller has any points.
+  const info = callerUserId ? result.nameMap[callerUserId] : undefined
+  const caller: CallerInfo | null = info
+    ? { location: info.location, isTourist: info.isTourist }
+    : null
+
+  return NextResponse.json({ ranking, isSample: result.isSample, caller })
 }

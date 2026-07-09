@@ -112,6 +112,9 @@ export default function RankingPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSampleData, setIsSampleData] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  // Caller's own ตำบล/tourist status — used to group the ตำบล tab correctly even
+  // when the caller has no points yet (so isn't present in the leaderboard).
+  const [callerInfo, setCallerInfo] = useState<{ location: string; isTourist: boolean } | null>(null)
   const [isCurrentUserInView, setIsCurrentUserInView] = useState(false)
   const currentUserObserverRef = useRef<IntersectionObserver | null>(null)
 
@@ -157,6 +160,7 @@ export default function RankingPage() {
           }))
         )
         setIsSampleData(data.isSample)
+        setCallerInfo(data.caller ?? null)
       })
       .catch((err) => {
         if (err.name !== 'AbortError') setFetchError('ไม่สามารถโหลดข้อมูลได้')
@@ -185,8 +189,10 @@ export default function RankingPage() {
     name: liffProfile?.displayName ?? 'ผู้ใช้',
     carbon: currentUserEntry?.carbon ?? 0,
     avatar: liffProfile?.pictureUrl ?? '/placeholder-user.jpg',
-    location: currentUserEntry?.location ?? '',
-    isTourist: currentUserEntry?.isTourist ?? false,
+    // Prefer the leaderboard entry; fall back to the caller's registration info
+    // (covers users with no points yet, who aren't in the leaderboard).
+    location: currentUserEntry?.location ?? callerInfo?.location ?? '',
+    isTourist: currentUserEntry?.isTourist ?? callerInfo?.isTourist ?? false,
   }
 
   // The ตำบล tab is relative to the current user, and userType wins over ตำบล:

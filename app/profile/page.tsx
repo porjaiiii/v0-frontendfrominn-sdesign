@@ -57,7 +57,29 @@ export default function ProfilePage() {
   const [fetchedProfile, setFetchedProfile] = useState<any>(null)
   const [profileLoading, setProfileLoading] = useState(false)
   const [co2Collection, setCo2Collection] = useState<Co2Row[] | null>(null)
-  
+  // Show the back button only when the user reached this profile entry from
+  // another page. On a direct visit (deep link / typed URL) the tab starts
+  // with a single history entry, so we hide "back" to avoid leaving the app.
+  //
+  // The verdict is decided once and pinned onto THIS history entry's state, so
+  // navigating away (e.g. to edit) and returning via back() restores the same
+  // decision — history.length keeps growing and can't be trusted after a
+  // round-trip, and history.state.idx isn't reliably present in this setup.
+  const [canGoBack, setCanGoBack] = useState(false)
+  useEffect(() => {
+    const state = window.history.state || {}
+    let decided: boolean
+    if (typeof state.__profileCanGoBack === 'boolean') {
+      decided = state.__profileCanGoBack
+    } else {
+      decided = window.history.length > 1
+      try {
+        window.history.replaceState({ ...state, __profileCanGoBack: decided }, '')
+      } catch {}
+    }
+    setCanGoBack(decided)
+  }, [])
+
   const router = useRouter()
   const { isReady, isLoggedIn, profile: liffProfile, scanCode, openExternalBrowser, isInClient } = useLiffContext()
   const { userProfile } = useApp()
@@ -214,17 +236,19 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-white pb-24">
       <PageHeader />
 
-      {/* Back button */}
-      <div className="max-w-md mx-auto px-4 pt-3">
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-1 text-[#154212] hover:text-[#154212]/70 transition-colors"
-          aria-label="กลับ"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="text-sm font-medium">กลับ</span>
-        </button>
-      </div>
+      {/* Back button — only when navigated here from another page */}
+      {canGoBack && (
+        <div className="max-w-md mx-auto px-4 pt-3">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1 text-[#154212] hover:text-[#154212]/70 transition-colors"
+            aria-label="กลับ"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm font-medium">กลับ</span>
+          </button>
+        </div>
+      )}
 
       <main className="max-w-md mx-auto px-4 py-4">
         {/* Profile Card with overlapping avatar */}

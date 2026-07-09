@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react
 import { useRouter, useSearchParams } from 'next/navigation'
 import liff from '@line/liff'
 import Image from 'next/image'
-import { ChevronDown, ChevronUp, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, X, ArrowLeft } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { useLiffContext } from '@/lib/liff-context'
 import { generateUserIdFromLineId } from '@/lib/user-id-generator'
@@ -181,7 +181,12 @@ function RegisterPageContent() {
   // After registration/update: close the LIFF window or go back to profile.
   const handleFinish = () => {
     if (isEditMode) {
-      router.push('/profile')
+      // Return to the profile we came from, keeping its history/back state.
+      if (window.history.length > 1) {
+        router.back()
+      } else {
+        router.push('/profile')
+      }
       return
     }
     if (liff.isInClient()) {
@@ -587,6 +592,27 @@ function RegisterPageContent() {
 
       {/* Form */}
       <div className="max-w-md mx-auto px-4 py-6">
+        {/* Cancel edit — return to the profile we came from without saving.
+            Prefer history back so we land on the same profile entry (keeping
+            its state/back button); fall back to a push if edit was opened
+            directly with no history to return to. */}
+        {isEditMode && (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                router.back()
+              } else {
+                router.push('/profile')
+              }
+            }}
+            className="flex items-center gap-1 text-[#154212] hover:text-[#154212]/70 transition-colors mb-4"
+            aria-label="กลับไปหน้าโปรไฟล์"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm font-medium">กลับ</span>
+          </button>
+        )}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-[#154212] mb-1">
             {isEditMode ? 'แก้ไขข้อมูล' : 'ลงทะเบียน'}

@@ -35,7 +35,12 @@ const SAMPLE_RANKING: Omit<RankingEntry, 'rank'>[] = [
   { lineUserId: 'Usample007', name: 'ประยุทธ รุ่งเรือง', carbon: 74.0, points: 740, avatar: FALLBACK_AVATAR, location: 'ตำบลทรงคะนอง' },
 ]
 
-type UserInfo = { name: string; avatar: string; location: string }
+type UserInfo = { name: string; avatar: string; location: string; isTourist: boolean }
+
+// Distinctive userType value written by the registration form. Matching on the
+// value (rather than a column position) is immune to header-name drift and to
+// tourists who mistakenly also have a ตำบล filled in.
+const TOURIST_USER_TYPE = 'นักท่องเที่ยว'
 type RankingResult = { ranking: RankingEntry[]; isSample: boolean }
 
 const SAMPLE_RESULT: RankingResult = {
@@ -90,6 +95,7 @@ async function buildNameMap(): Promise<Record<string, UserInfo>> {
     const nickIdx = findCol(h, ['ชื่อเล่น', 'nickname'])
     const fullIdx = findCol(h, ['ชื่อ-นามสกุล', 'fullname', 'full name'])
     const locIdx  = findCol(h, ['ตำบล', 'subdistrict'])
+    const typeIdx = findCol(h, ['ประเภทผู้ใช้งาน', 'ประเภทผู้ใช้', 'usertype', 'user type', 'user_type'])
     if (idIdx < 0) return map
 
     for (const r of rows.slice(1)) {
@@ -97,10 +103,16 @@ async function buildNameMap(): Promise<Record<string, UserInfo>> {
       if (!lid) continue
       const nick = nickIdx >= 0 ? str(r[nickIdx]) : ''
       const full = fullIdx >= 0 ? str(r[fullIdx]) : ''
+      // Prefer the userType column; fall back to scanning the row for the
+      // distinctive tourist value if the column header isn't recognised.
+      const isTourist = typeIdx >= 0
+        ? str(r[typeIdx]) === TOURIST_USER_TYPE
+        : r.some((c) => str(c) === TOURIST_USER_TYPE)
       map[lid] = {
         name:     nick || full,
         avatar:   FALLBACK_AVATAR,
         location: locIdx >= 0 ? str(r[locIdx]) : '',
+        isTourist,
       }
     }
   } catch (error) {
@@ -152,6 +164,7 @@ async function buildRanking(): Promise<RankingResult> {
           points:     entry.points,
           avatar:     info?.avatar || FALLBACK_AVATAR,
           location:   info?.location || '',
+          isTourist:  info?.isTourist ?? false,
         }
       })
 

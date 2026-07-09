@@ -18,22 +18,14 @@ type LeaderboardEntry = {
   carbon: number
   location: string
   avatar: string
+  isTourist: boolean
 }
 
-// Sub-districts of บางกะเจ้า (คลองสาน, พระประแดง)
-const BANGKACHAO_SUBDISTRICTS = [
-  'บางกะเจ้า',
-  'บางน้ำผึ้ง',
-  'บางกอบัว',
-  'บางกระสอบ',
-  'บางยอ',
-  'ทรงคะนอง',
-  'ทรงคนอง', // alternate spelling found in profile sheet data
-]
-
-function isBangkachaoSubdistrict(location: string): boolean {
-  const normalized = location.replace(/^ตำบล|^ต\./, '').trim()
-  return BANGKACHAO_SUBDISTRICTS.some(s => normalized === s || normalized.includes(s))
+// Strip the ตำบล / ต. prefix so the same sub-district written different ways
+// ("ตำบลบางกะเจ้า", "ต.บางกะเจ้า", "บางกะเจ้า") compares equal. An empty result
+// means the user has no ตำบล — i.e. a นักท่องเที่ยว (tourist).
+function normalizeSubdistrict(location: string): string {
+  return (location || '').replace(/^ตำบล|^ต\./, '').trim()
 }
 
 const tabs = [
@@ -161,6 +153,7 @@ export default function RankingPage() {
             carbon: e.carbon,
             location: e.location,
             avatar: e.avatar,
+            isTourist: e.isTourist ?? false,
           }))
         )
         setIsSampleData(data.isSample)
@@ -193,20 +186,33 @@ export default function RankingPage() {
     carbon: currentUserEntry?.carbon ?? 0,
     avatar: liffProfile?.pictureUrl ?? '/placeholder-user.jpg',
     location: currentUserEntry?.location ?? '',
+    isTourist: currentUserEntry?.isTourist ?? false,
   }
 
-  // For district tab, filter to entries from the 6 บางกะเจ้า sub-districts and re-rank from 1
+  // The ตำบล tab is relative to the current user, and userType wins over ตำบล:
+  //  • นักท่องเที่ยว → show only fellow tourists, ignoring any ตำบล in the sheet
+  //  • otherwise    → show only non-tourists in the same ตำบล
+  // Either way, re-rank the filtered subset from 1.
+  const isTourist = currentUser.isTourist
+  const currentUserSubdistrict = normalizeSubdistrict(currentUser.location)
   const displayLeaderboard = activeTab === 'district'
     ? leaderboard
-        .filter(u => u.location && isBangkachaoSubdistrict(u.location))
+        .filter(u =>
+          isTourist
+            ? u.isTourist
+            : !u.isTourist && normalizeSubdistrict(u.location) === currentUserSubdistrict
+        )
         .map((u, i) => ({ ...u, rank: i + 1 }))
     : leaderboard
 
-  // Rank shown in the sticky — uses district rank when in ตำบล tab, overall rank otherwise
+  // Rank shown in the sticky always reflects the ACTIVE tab: the district/tourist
+  // rank in the ตำบล tab, the overall rank in the ทั้งหมด tab. It's read straight
+  // from displayLeaderboard (which is filtered per tab), so switching tabs keeps
+  // the sticky in sync. If the user isn't in the active list, hide it (rank 0).
   const currentUserDisplayEntry = displayLeaderboard.find(e =>
     liffProfile != null && e.lineUserId === liffProfile.userId
   )
-  const stickyRank = currentUserDisplayEntry?.rank ?? currentUser.rank
+  const stickyRank = currentUserDisplayEntry?.rank ?? 0
 
   const getRankBadge = (rank: number) => {
     if (rank === 1) return { bg: 'bg-[#ffc818]', icon: 'text-[#ffc818]' }
@@ -425,7 +431,7 @@ export default function RankingPage() {
                                 : 'text-[#154212]/90 bg-transparent hover:bg-white/60'
                             )}
                           >
-                            {tab.label}
+                            {tab.id === 'district' && isTourist ? 'นักท่องเที่ยว' : tab.label}
                           </button>
                         ))}
                       </div>

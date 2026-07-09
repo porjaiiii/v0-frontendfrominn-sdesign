@@ -8,6 +8,9 @@ export type RankingEntry = {
   points: number
   avatar: string
   location: string
+  // นักท่องเที่ยว (tourist). Tourists are grouped together regardless of any
+  // (possibly stale) ตำบล value in the sheet.
+  isTourist?: boolean
 }
 
 const SAMPLE_RANKING: Omit<RankingEntry, 'rank'>[] = [

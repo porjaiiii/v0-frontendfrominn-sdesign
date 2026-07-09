@@ -85,18 +85,20 @@ export default function HowToUsePage() {
         {/* Page Title */}
         <h1 className="text-2xl font-bold text-[#154212] mb-4">วิธีใช้งาน</h1>
 
-        {/* Tutorial video — skeleton placeholder (no video yet) */}
-        <div className="border-2 border-[#cdeccb] rounded-2xl p-3 bg-[#f3faf1] mb-6">
-          <div className="relative aspect-video rounded-xl overflow-hidden bg-[#e5e7eb] shimmer">
-            {/* Centered play button */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-              <div className="w-14 h-14 rounded-full bg-white/80 shadow-md flex items-center justify-center">
-                <Play className="w-6 h-6 text-[#154212] fill-[#154212] ml-0.5" />
+        {/* Tutorial video — hidden until a video is available */}
+        {false && (
+          <div className="border-2 border-[#cdeccb] rounded-2xl p-3 bg-[#f3faf1] mb-6">
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-[#e5e7eb] shimmer">
+              {/* Centered play button */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <div className="w-14 h-14 rounded-full bg-white/80 shadow-md flex items-center justify-center">
+                  <Play className="w-6 h-6 text-[#154212] fill-[#154212] ml-0.5" />
+                </div>
+                <span className="text-xs font-medium text-[#5a7a5a]">วิดีโอเร็ว ๆ นี้</span>
               </div>
-              <span className="text-xs font-medium text-[#5a7a5a]">วิดีโอเร็ว ๆ นี้</span>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Steps Section */}
         <div className="mb-6">

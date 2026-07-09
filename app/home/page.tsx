@@ -36,11 +36,11 @@ const POINTS_PER_KG: Record<WasteType, number> = {
 
 // Waste type images
 const WASTE_IMAGES: Record<WasteType, string> = {
-  plastic: '/images/waste/plastic.jpg',
-  paper: '/images/waste/paper.jpg',
-  glass: '/images/waste/glass.jpg',
-  aluminum: '/images/waste/aluminum.jpg',
-  oil: '/images/waste/plastic.jpg',
+  plastic: '/waste/plastic/plastic.png',
+  paper: '/waste/paper/paper.png',
+  glass: '/waste/glass/glass.png',
+  aluminum: '/waste/aluminium/aluminum.png',
+  oil: '/waste/plastic/plastic.png',
 }
 
 export default function HomePage() {
@@ -197,22 +197,27 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
   // Get subtype images based on type
   const getSubTypeImage = (type: WasteType, subTypeId: string) => {
     const imageMap: Record<string, string> = {
-      'pet': '/images/waste/pet.jpg',
-      'hdpe': '/images/waste/hdpe.jpg',
-      'ldpe': '/images/waste/ldpe.jpg',
-      'pp': '/images/waste/pp.jpg',
-      'cardboard': '/images/waste/cardboard.jpg',
-      'mixed': '/images/waste/newspaper.jpg',
-      'a4': '/images/waste/mixed-paper.jpg',
-      'clear': '/images/waste/clear-glass.jpg',
-      'colored': '/images/waste/colored-glass.jpg',
-      'can': '/images/waste/aluminum-can.jpg',
-      'plate': '/images/waste/aluminum-plate.jpg',
-      'scrap': '/images/waste/aluminum-scrap.jpg',
-      'cooking': '/images/waste/plastic.jpg',
-      'motor': '/images/waste/plastic.jpg',
+      // plastic subtypes
+      'pet': '/waste/plastic/pet.png',
+      'hdpe': '/waste/plastic/hdpe.png',
+      'ldpe': '/waste/plastic/ldpe.png',
+      'pp': '/waste/plastic/plastic.png',
+      // paper subtypes
+      'cardboard': '/waste/paper/cardboard.png',
+      'a4': '/waste/paper/a4.png',
+      'mixed': '/waste/paper/mixed.png',
+      // glass subtypes
+      'clear': '/waste/glass/clear.png',
+      'colored': '/waste/glass/colored.png',
+      // aluminum subtypes
+      'can': '/waste/aluminium/can.png',
+      'plate': '/waste/aluminium/plate.png',
+      'scrap': '/waste/aluminium/scrap.png',
+      // oil subtypes (no dedicated image yet)
+      'cooking': '/waste/plastic/plastic.png',
+      'motor': '/waste/plastic/plastic.png',
     }
-    return imageMap[subTypeId] || '/images/waste/plastic.jpg'
+    return imageMap[subTypeId] || '/waste/plastic/plastic.png'
   }
 
   return (

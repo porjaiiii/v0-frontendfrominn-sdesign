@@ -54,14 +54,7 @@ export default function FavoritesPage() {
             <ArrowLeft size={20} />
             <span>รายการที่ถูกใจ</span>
           </Link>
-          <Link
-            href="/cart"
-            className="relative p-2 bg-[#f5f5f5] hover:bg-[#e5e5e5] rounded-lg text-[#154212] transition-colors flex items-center justify-center"
-            title="ดูตะกร้า"
-          >
-            
-            
-          </Link>
+          
         </div>
 
         {/* Empty State */}

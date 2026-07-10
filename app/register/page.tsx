@@ -252,17 +252,15 @@ function RegisterPageContent() {
       .catch(() => {/* silently ignore */})
   }, [isEditMode, profile?.userId])
 
-  // นักท่องเที่ยว don't have the ที่อยู่ / ตำบล fields, so the guided tour must
-  // skip those steps — otherwise น้องรัก points at fields that aren't rendered.
-  const visibleTourSteps = useMemo(
-    () =>
-      TOUR_STEPS.filter(step =>
-        formData.userType === 'นักท่องเที่ยว'
-          ? step.fieldId !== 'field-address' && step.fieldId !== 'field-subdistrict'
-          : true
-      ),
-    [formData.userType]
-  )
+  // The ที่อยู่ / ตำบล fields render only for คนในชุมชนคุ้งบางกะเจ้า. For anyone
+  // else — a นักท่องเที่ยว, or before a type is even chosen — they aren't shown,
+  // so the tour skips them (7 steps) and never points at a missing field.
+  const visibleTourSteps = useMemo(() => {
+    const isLocal = formData.userType === 'คนในชุมชนคุ้งบางกะเจ้า'
+    return TOUR_STEPS.filter(step =>
+      isLocal ? true : step.fieldId !== 'field-address' && step.fieldId !== 'field-subdistrict'
+    )
+  }, [formData.userType])
 
   // Keep the step index in range if the visible steps shrink (e.g. user switches
   // to นักท่องเที่ยว partway through the tour).

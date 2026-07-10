@@ -39,16 +39,7 @@ export default function FavoritesPage() {
     localStorage.setItem('favorites', JSON.stringify(Array.from(newFavorites)))
   }
 
-  const handleCartClick = (reward: any) => {
-    addToCart({
-      id: reward.id,
-      name: reward.name,
-      points: reward.points,
-      image: reward.image
-    })
-    setClickedButton(reward.id)
-    setTimeout(() => setClickedButton(null), 200)
-  }
+ 
 
   const favoriteRewards = REWARDS.filter(reward => favorites.has(reward.id))
 
@@ -149,20 +140,7 @@ export default function FavoritesPage() {
                       >
                         แลกเลย
                       </button>
-                      <motion.button
-                        onClick={() => handleCartClick(reward)}
-                        disabled={!canRedeem}
-                        animate={clickedButton === reward.id ? { scale: 0.85 } : { scale: 1 }}
-                        transition={{ duration: 0.2 }}
-                        className={cn(
-                          'flex-[3] py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center',
-                          canRedeem
-                            ? 'bg-white border border-[#154212] text-[#154212] hover:bg-[#f5f5f5]'
-                            : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
-                        )}
-                      >
-                        <ShoppingCart size={16} />
-                      </motion.button>
+                      
                     </div>
                   </div>
                 </div>

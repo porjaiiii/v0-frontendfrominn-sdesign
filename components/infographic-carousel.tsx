@@ -6,25 +6,43 @@ import { cn } from '@/lib/utils'
 
 export type InfographicSlide = { src: string; alt: string }
 
+const MAX_ZOOM = 4
+
 // Swipeable infographic catalog, tuned for mobile + elder-friendliness:
 //  • ALL images stay mounted, so switching is an instant crossfade (no reload/
 //    decode delay), and looping 10→1 looks the same as any other step
 //  • each slide sizes to its OWN aspect ratio and is never stretched
-//  • tap a slide to open a fullscreen viewer with tap-to-zoom (the app disables
-//    native pinch-zoom, so small text is otherwise hard to read)
+//  • tap a slide to open a fullscreen viewer; there, PINCH with two fingers to
+//    zoom (the app disables native pinch-zoom) and drag with one finger to pan
 //  • large tap targets, position counter, tappable dots, and a hint
 //  • arrows fade out after a moment of no interaction, and reappear on any touch
 export function InfographicCarousel({ slides }: { slides: InfographicSlide[] }) {
   const [index, setIndex] = useState(0)
   const [showArrows, setShowArrows] = useState(true)
   const [lightboxOpen, setLightboxOpen] = useState(false)
-  const [zoomed, setZoomed] = useState(false)
+
+  // Fullscreen viewer pinch/pan transform.
+  const [scale, setScale] = useState(1)
+  const [tx, setTx] = useState(0)
+  const [ty, setTy] = useState(0)
+  const [gesturing, setGesturing] = useState(false)
 
   const count = slides.length
   const touchStartX = useRef<number | null>(null)
   const touchDeltaX = useRef(0)
   const justSwiped = useRef(false)
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Active pinch/pan gesture state (kept in a ref so moves don't re-render it).
+  const gesture = useRef({
+    mode: 'none' as 'none' | 'pinch' | 'pan',
+    startDist: 0,
+    startScale: 1,
+    startX: 0,
+    startY: 0,
+    startTx: 0,
+    startTy: 0,
+  })
 
   // Reveal the arrows, then fade them again after a spell of inactivity.
   const wakeArrows = useCallback(() => {
@@ -50,6 +68,18 @@ export function InfographicCarousel({ slides }: { slides: InfographicSlide[] }) 
     }
   }, [lightboxOpen])
 
+  const resetZoom = useCallback(() => {
+    setScale(1)
+    setTx(0)
+    setTy(0)
+    gesture.current.mode = 'none'
+  }, [])
+
+  // Reset zoom whenever the viewed slide changes.
+  useEffect(() => {
+    resetZoom()
+  }, [index, lightboxOpen, resetZoom])
+
   const go = useCallback(
     (dir: number) => {
       wakeArrows()
@@ -69,10 +99,11 @@ export function InfographicCarousel({ slides }: { slides: InfographicSlide[] }) 
   const openLightbox = () => {
     // Ignore the click the browser fires right after a swipe.
     if (justSwiped.current) return
-    setZoomed(false)
+    resetZoom()
     setLightboxOpen(true)
   }
 
+  // ---- Carousel swipe (single finger, horizontal) ----
   const onTouchStart = (e: React.TouchEvent) => {
     wakeArrows()
     touchStartX.current = e.touches[0].clientX
@@ -87,7 +118,6 @@ export function InfographicCarousel({ slides }: { slides: InfographicSlide[] }) 
     const SWIPE_THRESHOLD = 40 // px — forgiving for less precise swipes
     if (touchDeltaX.current > SWIPE_THRESHOLD) go(-1)
     else if (touchDeltaX.current < -SWIPE_THRESHOLD) go(1)
-    // Flag a real swipe so the trailing click doesn't also open the viewer.
     if (Math.abs(touchDeltaX.current) > SWIPE_THRESHOLD) {
       justSwiped.current = true
       setTimeout(() => {
@@ -96,6 +126,56 @@ export function InfographicCarousel({ slides }: { slides: InfographicSlide[] }) 
     }
     touchStartX.current = null
     touchDeltaX.current = 0
+  }
+
+  // ---- Fullscreen viewer pinch-to-zoom + one-finger pan ----
+  const twoFingerDist = (touches: React.TouchList) =>
+    Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY)
+
+  const onViewerTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      gesture.current.mode = 'pinch'
+      gesture.current.startDist = twoFingerDist(e.touches)
+      gesture.current.startScale = scale
+      setGesturing(true)
+    } else if (e.touches.length === 1 && scale > 1) {
+      gesture.current.mode = 'pan'
+      gesture.current.startX = e.touches[0].clientX
+      gesture.current.startY = e.touches[0].clientY
+      gesture.current.startTx = tx
+      gesture.current.startTy = ty
+      setGesturing(true)
+    } else {
+      gesture.current.mode = 'none'
+    }
+  }
+
+  const onViewerTouchMove = (e: React.TouchEvent) => {
+    if (gesture.current.mode === 'pinch' && e.touches.length === 2) {
+      const next = Math.min(
+        MAX_ZOOM,
+        Math.max(1, gesture.current.startScale * (twoFingerDist(e.touches) / gesture.current.startDist))
+      )
+      setScale(next)
+      if (next === 1) {
+        setTx(0)
+        setTy(0)
+      }
+    } else if (gesture.current.mode === 'pan' && e.touches.length === 1) {
+      setTx(gesture.current.startTx + (e.touches[0].clientX - gesture.current.startX))
+      setTy(gesture.current.startTy + (e.touches[0].clientY - gesture.current.startY))
+    }
+  }
+
+  const onViewerTouchEnd = (e: React.TouchEvent) => {
+    if (scale <= 1) {
+      setTx(0)
+      setTy(0)
+    }
+    if (e.touches.length === 0) {
+      gesture.current.mode = 'none'
+      setGesturing(false)
+    }
   }
 
   const arrowBase =
@@ -130,7 +210,7 @@ export function InfographicCarousel({ slides }: { slides: InfographicSlide[] }) 
           />
         ))}
 
-        {/* Tap-to-zoom hint badge */}
+        {/* Tap-to-open hint badge */}
         <div className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-[#154212]/80 px-2.5 py-1 text-xs font-medium text-white pointer-events-none">
           <ZoomIn className="w-3.5 h-3.5" />
           แตะเพื่อขยาย
@@ -182,7 +262,7 @@ export function InfographicCarousel({ slides }: { slides: InfographicSlide[] }) 
         แตะรูปเพื่อขยายดูใกล้ ๆ · ปัดซ้าย–ขวาเพื่อดูรูปถัดไป
       </p>
 
-      {/* Fullscreen viewer with tap-to-zoom */}
+      {/* Fullscreen viewer with two-finger pinch-to-zoom */}
       {lightboxOpen && (
         <div className="fixed inset-0 z-[100] flex flex-col bg-black/90">
           {/* Top bar with a big, obvious close button */}
@@ -201,33 +281,33 @@ export function InfographicCarousel({ slides }: { slides: InfographicSlide[] }) 
             </button>
           </div>
 
-          {/* Scrollable image area — tap toggles fit ↔ zoomed, then scroll to pan.
-              Tapping the dark area around the image also closes the viewer. */}
+          {/* Pinch/pan area. touch-action:none lets us fully own the gesture
+              (the browser's own pinch-zoom is disabled app-wide anyway).
+              Tapping the dark area closes the viewer. */}
           <div
-            className="flex-1 overflow-auto"
+            className="flex-1 overflow-hidden flex items-center justify-center"
             onClick={() => setLightboxOpen(false)}
           >
-            <div className="p-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={encodeURI(slides[index].src)}
-                alt={slides[index].alt}
-                draggable={false}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setZoomed((z) => !z)
-                }}
-                style={{ width: zoomed ? '250%' : '100%', maxWidth: 'none' }}
-                className={cn(
-                  'block h-auto mx-auto rounded-lg',
-                  zoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'
-                )}
-              />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={encodeURI(slides[index].src)}
+              alt={slides[index].alt}
+              draggable={false}
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={onViewerTouchStart}
+              onTouchMove={onViewerTouchMove}
+              onTouchEnd={onViewerTouchEnd}
+              style={{
+                transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
+                transition: gesturing ? 'none' : 'transform 150ms ease-out',
+                touchAction: 'none',
+              }}
+              className="max-w-full max-h-full object-contain select-none"
+            />
           </div>
 
           <p className="text-center text-sm text-white/80 py-3">
-            แตะรูปเพื่อ{zoomed ? 'ย่อ' : 'ขยาย'} · กด “ปิด” เพื่อกลับ
+            ใช้สองนิ้วเพื่อซูมเข้า–ออก · กด “ปิด” เพื่อกลับ
           </p>
         </div>
       )}

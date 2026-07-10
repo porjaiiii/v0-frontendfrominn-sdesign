@@ -46,7 +46,7 @@ export default function RootLayout({
           {children}
         </Providers>
         {/* ⚠️ TEMPORARY testing helper — remove when done */}
-        <DevResetRegister />
+        
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

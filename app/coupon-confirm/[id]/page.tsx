@@ -250,12 +250,7 @@ export default function CouponConfirmPage({
             <CheckCircle2 size={52} className="text-[#2e7d32]" />
             <p className="font-bold text-[#2e7d32] text-base">ยืนยันสำเร็จ!</p>
             <p className="text-sm text-[#666666] text-center">คูปองถูกใช้งานแล้วเรียบร้อย</p>
-            <Button
-              onClick={handleScanAgain}
-              className="mt-2 bg-[#154212] hover:bg-[#0d3308] text-white rounded-xl px-8"
-            >
-              สแกนคูปองถัดไป
-            </Button>
+          
           </div>
         </main>
       </div>

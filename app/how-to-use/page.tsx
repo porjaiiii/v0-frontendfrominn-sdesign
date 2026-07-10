@@ -21,7 +21,9 @@ const INFOGRAPHICS: InfographicSlide[] = [
   { src: '/guide-2-ตารางรับขยะ.png', alt: 'ตารางรับขยะ' },
   { src: '/guide-1-คู่มือแยกขยะ.png', alt: 'คู่มือแยกขยะ' },
   { src: '/record-waste-guide.png', alt: 'วิธีบันทึกขยะ' },
+  { src: '/guide-12.png', alt: 'ดูคะแนน' },
   { src: '/redeem-rewards-guide.png', alt: 'วิธีแลกของรางวัล' },
+  { src: '/guide-11.png', alt: 'วิธีบริจาคคะแนน' },
   { src: '/user-profile-qr-guide.png', alt: 'โปรไฟล์และ QR Code' },
   { src: '/guide-10-คำนวณ.png', alt: 'วิธีคำนวณคะแนน' },
 ]

@@ -43,8 +43,8 @@ const TOUR_STEPS = [
   },
   {
     fieldId: 'field-firstName',
-    title: 'ชื่อจริง',
-    message: 'กรอกชื่อจริงของท่านครับ',
+    title: 'ชื่อ',
+    message: 'กรอกชื่อของท่านครับ',
   },
   {
     fieldId: 'field-nickname',
@@ -328,21 +328,21 @@ function RegisterPageContent() {
   // whether each is filled. Drives the grey submit button and the scroll-to-first
   // -missing behaviour. ตำบล/อาชีพ are required only for non-tourists; the phone
   // number must be a full 10 digits.
-  const getRequiredFields = (): { id: string; ok: boolean }[] => {
+  const getRequiredFields = (): { id: string; ok: boolean; label: string }[] => {
     const isTourist = formData.userType === 'นักท่องเที่ยว'
     const isLocal = formData.userType === 'คนในชุมชนคุ้งบางกะเจ้า'
-    const fields: { id: string; ok: boolean }[] = [
-      { id: 'field-userType', ok: Boolean(formData.userType) },
-      { id: 'field-firstName', ok: Boolean(formData.firstName.trim()) },
-      { id: 'field-lastName', ok: Boolean(formData.lastName.trim()) },
-      { id: 'field-phoneNumber', ok: formData.phoneNumber.length === 10 },
+    const fields: { id: string; ok: boolean; label: string }[] = [
+      { id: 'field-userType', ok: Boolean(formData.userType), label: 'ประเภทผู้ใช้งาน' },
+      { id: 'field-firstName', ok: Boolean(formData.firstName.trim()), label: 'ชื่อ' },
+      { id: 'field-lastName', ok: Boolean(formData.lastName.trim()), label: 'นามสกุล' },
+      { id: 'field-phoneNumber', ok: formData.phoneNumber.length === 10, label: 'เบอร์โทรศัพท์' },
     ]
-    if (isLocal) fields.push({ id: 'field-address', ok: Boolean(formData.address.trim()) })
-    fields.push({ id: 'field-gender', ok: Boolean(formData.gender) })
-    fields.push({ id: 'field-ageRange', ok: Boolean(formData.ageRange) })
-    if (isLocal) fields.push({ id: 'field-subdistrict', ok: Boolean(formData.subdistrict) })
-    if (!isTourist) fields.push({ id: 'field-occupation', ok: Boolean(formData.occupation) })
-    fields.push({ id: 'field-pdpa', ok: formData.pdpaConsent })
+    if (isLocal) fields.push({ id: 'field-address', ok: Boolean(formData.address.trim()), label: 'ที่อยู่' })
+    fields.push({ id: 'field-gender', ok: Boolean(formData.gender), label: 'เพศ' })
+    fields.push({ id: 'field-ageRange', ok: Boolean(formData.ageRange), label: 'ช่วงอายุ' })
+    if (isLocal) fields.push({ id: 'field-subdistrict', ok: Boolean(formData.subdistrict), label: 'พื้นที่ 6 ตำบลหลัก' })
+    if (!isTourist) fields.push({ id: 'field-occupation', ok: Boolean(formData.occupation), label: 'อาชีพปัจจุบัน / อดีต' })
+    fields.push({ id: 'field-pdpa', ok: formData.pdpaConsent, label: 'ยอมรับนโยบาย PDPA' })
     return fields
   }
 
@@ -398,15 +398,17 @@ function RegisterPageContent() {
     }
 
     // Grey-button flow: if anything required is missing, jump to the first one
-    // instead of submitting.
-    const missing = getRequiredFields().find(f => !f.ok)
-    if (missing) {
-      scrollToField(missing.id)
-      setError(
-        missing.id === 'field-phoneNumber' && formData.phoneNumber.length > 0
-          ? 'เบอร์โทรศัพท์ต้องมี 10 หลัก'
-          : 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน'
+    // and tell the user exactly which fields still need filling.
+    const missingFields = getRequiredFields().filter(f => !f.ok)
+    if (missingFields.length > 0) {
+      scrollToField(missingFields[0].id)
+      const labels = missingFields.map(f =>
+        // Phone that's started but under 10 digits gets a clearer note.
+        f.id === 'field-phoneNumber' && formData.phoneNumber.length > 0
+          ? 'เบอร์โทรศัพท์ (ต้องมี 10 หลัก)'
+          : f.label
       )
+      setError(`กรุณากรอกข้อมูลต่อไปนี้ให้ครบถ้วน: ${labels.join(', ')}`)
       return
     }
 
@@ -638,10 +640,10 @@ function RegisterPageContent() {
             />
           </div>
 
-          {/* ── 2. ชื่อจริง + นามสกุล (แยกสองบล็อก) ── */}
+          {/* ── 2. ชื่อ + นามสกุล (แยกสองบล็อก) ── */}
           <div className="grid grid-cols-2 gap-3">
             <div id="field-firstName" className={fieldWrapClass('field-firstName')}>
-              <label className="block text-gray-700 font-medium mb-2 text-sm">ชื่อจริง *</label>
+              <label className="block text-gray-700 font-medium mb-2 text-sm">ชื่อ *</label>
               <input
                 type="text"
                 name="firstName"

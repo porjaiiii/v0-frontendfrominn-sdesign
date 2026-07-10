@@ -68,16 +68,8 @@ export default function FavoritesPage() {
             className="relative p-2 bg-[#f5f5f5] hover:bg-[#e5e5e5] rounded-lg text-[#154212] transition-colors flex items-center justify-center"
             title="ดูตะกร้า"
           >
-            <ShoppingCart size={20} />
-            {cartCount > 0 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
-              >
-                {cartCount}
-              </motion.div>
-            )}
+            
+            
           </Link>
         </div>
 

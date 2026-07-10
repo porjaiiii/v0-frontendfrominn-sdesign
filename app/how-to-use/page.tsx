@@ -10,6 +10,21 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Recycle, Scale, Camera, QrCode, Play, HelpCircle } from 'lucide-react'
+import { InfographicCarousel, type InfographicSlide } from '@/components/infographic-carousel'
+
+// Infographic catalog, shown in the order requested: 9→3→7→2→1→4→5→6→10.
+// (4 = record-waste-guide, 5 = redeem-rewards-guide, 6 = user-profile-qr-guide.)
+const INFOGRAPHICS: InfographicSlide[] = [
+  { src: '/guide-9-เชิญชวน.png', alt: 'เชิญชวนร่วมโครงการ' },
+  { src: '/guide-3-การเดินทางของน้องรักษ์.png', alt: 'การเดินทางของน้องรักษ์' },
+  { src: '/guide-7-checklist.png', alt: 'เช็กลิสต์การใช้งาน' },
+  { src: '/guide-2-ตารางรับขยะ.png', alt: 'ตารางรับขยะ' },
+  { src: '/guide-1-คู่มือแยกขยะ.png', alt: 'คู่มือแยกขยะ' },
+  { src: '/record-waste-guide.png', alt: 'วิธีบันทึกขยะ' },
+  { src: '/redeem-rewards-guide.png', alt: 'วิธีแลกของรางวัล' },
+  { src: '/user-profile-qr-guide.png', alt: 'โปรไฟล์และ QR Code' },
+  { src: '/guide-10-คำนวณ.png', alt: 'วิธีคำนวณคะแนน' },
+]
 
 // Steps data — matches the Figma design (circular pastel icons + wording)
 const STEPS = [
@@ -99,6 +114,12 @@ export default function HowToUsePage() {
             </div>
           </div>
         )}
+
+        {/* Infographic catalog — swipeable, looping */}
+        <section className="mb-6">
+          <h3 className="text-lg font-bold text-[#154212] mb-4">อินโฟกราฟิกวิธีใช้งาน</h3>
+          <InfographicCarousel slides={INFOGRAPHICS} />
+        </section>
 
         {/* Steps Section */}
         <div className="mb-6">

@@ -77,56 +77,7 @@ export default function ProfileViewPage() {
         {/* Page Title */}
         <h1 className="text-3xl font-extrabold text-[#154212] text-balance">ข้อมูลการสแกน</h1>
 
-        {/* Profile Card */}
-        <div className="bg-white rounded-xl border border-[#154212] p-4 shadow-sm">
-          {/* Top row: avatar + name/gender */}
-          <div className="flex items-start gap-3 mb-4">
-            <div className="flex-shrink-0 w-16 h-16 rounded-full overflow-hidden border-2 border-[#154212] bg-[#e8f5e4]">
-              {profile.avatar ? (
-                <Image src={profile.avatar} alt={profile.name} width={64} height={64} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <svg className="w-9 h-9 text-[#154212]" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                  </svg>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <p className="text-xs 154212-[#666666] mb-0.5">ชื่อ-นามสกุล</p>
-              <p className="font-bold text-[#222222] text-sm">{profile.name || '-'}</p>
-              <p className="text-xs 154212-[#666666] mt-1">เพศ <span className="font-semibold text-[#222222]">{profile.gender || '-'}</span></p>
-              <p className="text-xs 154212-[#666666] mt-1">เบอร์ <span className="font-semibold text-[#222222]">{profile.phoneNumber || '-'}</span></p>
-            </div>
-          </div>
-
-          {/* Info grid */}
-          <div className="grid grid-cols-2 gap-0">
-            {/* อายุ */}
-            <div className="border-t border-[#cccccc] pt-3 pb-3 pr-3">
-              <p className="text-xs text-[#154212] mb-1">อายุ</p>
-              <p className="text-sm font-bold text-[#222222]">{profile.age ? `${profile.age} ปี` : '-'}</p>
-            </div>
-            {/* ประเภท */}
-            <div className="border-t border-[#cccccc] pt-3 pb-3 pl-3 border-l border-l-[#cccccc]">
-              <p className="text-xs text-[#154212] mb-1">ประเภท</p>
-              <p className="text-sm font-bold text-[#222222]">{profile.type || '-'}</p>
-            </div>
-            {/* ตำบล */}
-            <div className="border-t border-[#cccccc] pt-3 pr-3">
-              <p className="text-xs text-[#154212] mb-1">ตำบล</p>
-              <p className="text-sm font-bold text-[#222222]">{profile.subdistrict || '-'}</p>
-            </div>
-            {/* อาชีพ */}
-            <div className="border-t border-[#cccccc] pt-3 pl-3 border-l border-l-[#cccccc]">
-              <p className="text-xs text-[#154212] mb-1">อาชีพ</p>
-              <p className="text-sm font-bold text-[#222222]">{profile.occupation || '-'}</p>
-            </div>
-            
-          
-          </div>
-        </div>
+       
 
         {/* Waste section banner */}
         <div className="bg-[#154212] rounded-lg px-4 py-3 flex items-center justify-between">

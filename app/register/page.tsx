@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import liff from '@line/liff'
 import Image from 'next/image'
@@ -252,9 +252,29 @@ function RegisterPageContent() {
       .catch(() => {/* silently ignore */})
   }, [isEditMode, profile?.userId])
 
+  // นักท่องเที่ยว don't have the ที่อยู่ / ตำบล fields, so the guided tour must
+  // skip those steps — otherwise น้องรัก points at fields that aren't rendered.
+  const visibleTourSteps = useMemo(
+    () =>
+      TOUR_STEPS.filter(step =>
+        formData.userType === 'นักท่องเที่ยว'
+          ? step.fieldId !== 'field-address' && step.fieldId !== 'field-subdistrict'
+          : true
+      ),
+    [formData.userType]
+  )
+
+  // Keep the step index in range if the visible steps shrink (e.g. user switches
+  // to นักท่องเที่ยว partway through the tour).
+  useEffect(() => {
+    if (tourStep > visibleTourSteps.length - 1) {
+      setTourStep(Math.max(0, visibleTourSteps.length - 1))
+    }
+  }, [visibleTourSteps.length, tourStep])
+
   const measureBubble = useCallback(() => {
     if (!showTour) return
-    const step = TOUR_STEPS[tourStep]
+    const step = visibleTourSteps[tourStep]
     if (!step) return
     const el = document.getElementById(step.fieldId)
     if (!el) return
@@ -268,11 +288,11 @@ function RegisterPageContent() {
     } else {
       setBubblePos({ top: rect.bottom + GAP, bottom: 0, useBottom: false })
     }
-  }, [showTour, tourStep])
+  }, [showTour, tourStep, visibleTourSteps])
 
   useEffect(() => {
     if (!showTour) return
-    const step = TOUR_STEPS[tourStep]
+    const step = visibleTourSteps[tourStep]
     if (!step) return
     const el = document.getElementById(step.fieldId)
     if (!el) return
@@ -282,7 +302,7 @@ function RegisterPageContent() {
     const t1 = setTimeout(measureBubble, 400)
     const t2 = setTimeout(measureBubble, 700)
     return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [tourStep, showTour, measureBubble])
+  }, [tourStep, showTour, measureBubble, visibleTourSteps])
 
   useEffect(() => {
     if (!showTour) return
@@ -301,7 +321,7 @@ function RegisterPageContent() {
   }
 
   const nextTourStep = () => {
-    if (tourStep < TOUR_STEPS.length - 1) {
+    if (tourStep < visibleTourSteps.length - 1) {
       setTourStep(prev => prev + 1)
     } else {
       setShowTour(false)
@@ -321,7 +341,17 @@ function RegisterPageContent() {
 
   // For choice-button fields
   const handleChoiceChange = (field: string) => (val: string) => {
-    setFormData(prev => ({ ...prev, [field]: prev[field as keyof typeof prev] === val ? '' : val }))
+    setFormData(prev => {
+      const nextVal = prev[field as keyof typeof prev] === val ? '' : val
+      const updated = { ...prev, [field]: nextVal }
+      // Switching to นักท่องเที่ยว hides the ที่อยู่ / ตำบล fields — clear them
+      // so we never submit stale resident-only data.
+      if (field === 'userType' && nextVal === 'นักท่องเที่ยว') {
+        updated.address = ''
+        updated.subdistrict = ''
+      }
+      return updated
+    })
   }
 
   // Ordered list of required fields (top→bottom, matching the form layout) with
@@ -397,23 +427,28 @@ function RegisterPageContent() {
       return
     }
 
-    // Grey-button flow: if anything required is missing, jump to the first one
-    // and tell the user exactly which fields still need filling.
-    const missingFields = getRequiredFields().filter(f => !f.ok)
-    if (missingFields.length > 0) {
-      scrollToField(missingFields[0].id)
-      const labels = missingFields.map(f =>
+    // Grey-button flow: guide the user through one field at a time, top-down —
+    // jump to the first missing field and mention only that one, so it isn't
+    // overwhelming (especially for elderly users).
+    const firstMissing = getRequiredFields().find(f => !f.ok)
+    if (firstMissing) {
+      scrollToField(firstMissing.id)
+      const label =
         // Phone that's started but under 10 digits gets a clearer note.
-        f.id === 'field-phoneNumber' && formData.phoneNumber.length > 0
+        firstMissing.id === 'field-phoneNumber' && formData.phoneNumber.length > 0
           ? 'เบอร์โทรศัพท์ (ต้องมี 10 หลัก)'
-          : f.label
-      )
-      setError(`กรุณากรอกข้อมูลต่อไปนี้ให้ครบถ้วน: ${labels.join(', ')}`)
+          : firstMissing.label
+      setError(`กรุณากรอก "${label}" ครับ`)
       return
     }
 
     setLoading(true)
     const fullName = `${formData.firstName} ${formData.lastName}`.trim()
+
+    // นักท่องเที่ยว have no ที่อยู่ / ตำบล. Force these empty in the payload so the
+    // database is overwritten with blanks — even in edit mode where a former
+    // resident's old values could still be sitting in formData.
+    const isTouristUser = formData.userType === 'นักท่องเที่ยว'
 
     try {
       const requestBody = {
@@ -423,11 +458,11 @@ function RegisterPageContent() {
         fullName,
         nickname: formData.nickname,
         phoneNumber: formData.phoneNumber,
-        address: formData.address,
+        address: isTouristUser ? '' : formData.address,
         gender: formData.gender,
         ageRange: formData.ageRange,
         userType: formData.userType,
-        subdistrict: formData.subdistrict,
+        subdistrict: isTouristUser ? '' : formData.subdistrict,
         occupation: formData.occupation,
         registrationDate: new Date().toLocaleDateString('th-TH'),
       }
@@ -466,13 +501,13 @@ function RegisterPageContent() {
 
   const inputClass = (fieldId: string) =>
     `w-full px-4 py-3 rounded-lg border bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all ${
-      showTour && TOUR_STEPS[tourStep]?.fieldId === fieldId
+      showTour && visibleTourSteps[tourStep]?.fieldId === fieldId
         ? 'border-[#154212]'
         : 'border-[#e5e5e5]'
     }`
 
   const fieldWrapClass = (fieldId: string) =>
-    showTour && TOUR_STEPS[tourStep]?.fieldId === fieldId
+    showTour && visibleTourSteps[tourStep]?.fieldId === fieldId
       ? 'relative z-[60] rounded-xl ring-4 ring-[#154212]/40 bg-white p-1'
       : ''
 
@@ -552,10 +587,10 @@ function RegisterPageContent() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-[#154212] mb-1">
-                  {TOUR_STEPS[tourStep].title}
+                  {visibleTourSteps[tourStep]?.title}
                 </p>
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  {TOUR_STEPS[tourStep].message}
+                  {visibleTourSteps[tourStep]?.message}
                 </p>
               </div>
               <button onClick={closeTour} className="shrink-0 text-gray-400 hover:text-gray-600">
@@ -564,13 +599,13 @@ function RegisterPageContent() {
             </div>
             <div className="flex items-center justify-between mt-3">
               <span className="text-[10px] text-gray-400">
-                {tourStep + 1} / {TOUR_STEPS.length}
+                {tourStep + 1} / {visibleTourSteps.length}
               </span>
               <button
                 onClick={nextTourStep}
                 className="px-4 py-1.5 bg-[#154212] text-white text-xs font-semibold rounded-full hover:bg-[#0d3308] transition-colors"
               >
-                {tourStep < TOUR_STEPS.length - 1 ? 'ถัดไป' : 'เสร็จแล้ว!'}
+                {tourStep < visibleTourSteps.length - 1 ? 'ถัดไป' : 'เสร็จแล้ว!'}
               </button>
             </div>
           </div>
@@ -636,7 +671,7 @@ function RegisterPageContent() {
               options={USER_TYPES}
               value={formData.userType}
               onChange={handleChoiceChange('userType')}
-              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-userType'}
+              highlighted={showTour && visibleTourSteps[tourStep]?.fieldId === 'field-userType'}
             />
           </div>
 
@@ -718,7 +753,7 @@ function RegisterPageContent() {
                 placeholder="เช่น 99/1 ม.5 ถนนสุขุมวิท ตำบลแสนสุข"
                 rows={3}
                 className={`w-full px-4 py-3 rounded-lg border bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#154212] focus:border-transparent outline-none transition-all resize-none ${
-                  showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-address'
+                  showTour && visibleTourSteps[tourStep]?.fieldId === 'field-address'
                     ? 'border-[#154212]'
                     : 'border-[#e5e5e5]'
                 }`}
@@ -733,7 +768,7 @@ function RegisterPageContent() {
               options={GENDERS}
               value={formData.gender}
               onChange={handleChoiceChange('gender')}
-              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-gender'}
+              highlighted={showTour && visibleTourSteps[tourStep]?.fieldId === 'field-gender'}
             />
           </div>
 
@@ -744,7 +779,7 @@ function RegisterPageContent() {
               options={AGE_RANGES}
               value={formData.ageRange}
               onChange={handleChoiceChange('ageRange')}
-              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-ageRange'}
+              highlighted={showTour && visibleTourSteps[tourStep]?.fieldId === 'field-ageRange'}
             />
           </div>
 
@@ -757,7 +792,7 @@ function RegisterPageContent() {
                 value={formData.subdistrict}
                 onChange={val => setFormData(prev => ({ ...prev, subdistrict: val }))}
                 placeholder=" เลือกตำบล "
-                highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-subdistrict'}
+                highlighted={showTour && visibleTourSteps[tourStep]?.fieldId === 'field-subdistrict'}
               />
             </div>
           )}
@@ -772,7 +807,7 @@ function RegisterPageContent() {
               value={formData.occupation}
               onChange={val => setFormData(prev => ({ ...prev, occupation: val }))}
               placeholder=" เลือกอาชีพ "
-              highlighted={showTour && TOUR_STEPS[tourStep]?.fieldId === 'field-occupation'}
+              highlighted={showTour && visibleTourSteps[tourStep]?.fieldId === 'field-occupation'}
             />
           </div>
 

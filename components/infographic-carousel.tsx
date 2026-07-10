@@ -210,8 +210,13 @@ export function InfographicCarousel({ slides }: { slides: InfographicSlide[] }) 
           />
         ))}
 
-        {/* Tap-to-open hint badge */}
-        <div className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-[#154212]/80 px-2.5 py-1 text-xs font-medium text-white pointer-events-none">
+        {/* Tap-to-open hint badge — fades with the arrows when idle */}
+        <div
+          className={cn(
+            'absolute top-2 left-2 flex items-center gap-1 rounded-full bg-[#154212]/80 px-2.5 py-1 text-xs font-medium text-white pointer-events-none transition-all duration-500',
+            showArrows ? 'opacity-100' : 'opacity-0'
+          )}
+        >
           <ZoomIn className="w-3.5 h-3.5" />
           แตะเพื่อขยาย
         </div>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { POINTS_SCRIPT_URL } from '@/lib/points-config'
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzti99z__Gstc8IZZIbe8_hdjG9x4IHRh8UPaqc9nUx2j2-7WWCd-WqGy29zpkRGjTF/exec'
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJnOKocFO6Tyqsy7NUn060BtFr4oAtE4jaHbcrsMcEozzJLl0JcXvY4VAxg-XvkGu2/exec'
 const CARBON_FACTORS = {
   plastic: 1.0310,
   paper: 3.5460,

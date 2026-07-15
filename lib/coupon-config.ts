@@ -9,7 +9,7 @@
  * ทุก route import จากไฟล์นี้
  */
 export const COUPON_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbyAc9-9Jmz_Voml1LNTpbk0pWqyaj7PQFxq6Z4vqyade57xQ8lVflooPrdNxnJCe6yMBQ/exec'
+  'https://script.google.com/macros/s/AKfycbzJnOKocFO6Tyqsy7NUn060BtFr4oAtE4jaHbcrsMcEozzJLl0JcXvY4VAxg-XvkGu2/exec'
 
 // ─── Field reference ───────────────────────────────────────────────────────
 //

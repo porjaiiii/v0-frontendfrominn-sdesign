@@ -7,7 +7,7 @@
  * ถ้า redeploy Apps Script ให้เปลี่ยน URL ที่นี่ที่เดียว
  */
 export const ADMIN_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbylQVdO4lntA8T-PfW2V7d__ifekhqKLOTgs1MeDKbFQP_CTMZuyp3NSuBzJs7ruiGxxA/exec'
+  'https://script.google.com/macros/s/AKfycbzJnOKocFO6Tyqsy7NUn060BtFr4oAtE4jaHbcrsMcEozzJLl0JcXvY4VAxg-XvkGu2/exec'
 
 // ─── Field reference ───────────────────────────────────────────────────────
 //

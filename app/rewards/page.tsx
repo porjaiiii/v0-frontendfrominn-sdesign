@@ -185,7 +185,7 @@ export default function RewardsPage() {
             </Link>
           </div>
 
-          <p className="text-sm text-white/80 mb-2">คะแนนแสะสมของคุณ</p>
+          <p className="text-sm text-white/80 mb-2">คะแนนสะสมของคุณ</p>
           <div className="flex items-baseline gap-2 mb-4">
             <span className="text-5xl font-bold text-white">
               {pointsLoading ? '…' : userPoints.toLocaleString()}

@@ -5,7 +5,7 @@ import type { RankingEntry } from '@/app/api/ranking/route'
 // Leaderboard built by reading Google Sheets DIRECTLY (Sheets API v4) — no Apps
 // Script hop at all, mirroring the fast balance read on the rewards page:
 //
-//   carbon / points  ← points_account tab of the POINTS spreadsheet (POINTS_SHEETS_ID)
+//   carbon / points  ← points_account tab of the POINTS spreadsheet (POINTS_SPREADSHEET_ID)
 //   nickname / ตำบล   ← Registration tab of the REGISTRATION spreadsheet, keyed by
 //                       LINE user id (the same sheet the registration Apps Script
 //                       writes to — so names/nicknames match the profile page).
@@ -15,12 +15,12 @@ import type { RankingEntry } from '@/app/api/ranking/route'
 
 export const maxDuration = 30
 
-const POINTS_SHEETS_ID = process.env.POINTS_SHEETS_ID
+const POINTS_SPREADSHEET_ID = process.env.POINTS_SPREADSHEET_ID
 const SHEETS_API_KEY   = process.env.GOOGLE_SHEETS_API_KEY
 
 // Registration spreadsheet (bound to the registration Apps Script). Hardcoded to
 // match the existing pattern for the script URLs; override via env if it moves.
-const REG_SHEETS_ID = process.env.REGISTRATION_SHEETS_ID || '1PGowioVb4R961vkWB0nN2EhmTv6bEMJ9eQNtMQD7t8Y'
+const REG_SHEETS_ID = process.env.REGISTRATION_SHEETS_ID || '1vvBe_ZySfSq4oP8tfwHDUg-Jo3gBr9QanQWqLATAkNE'
 const REG_TAB = 'Registration'
 
 const FALLBACK_AVATAR = '/placeholder.svg?height=40&width=40'
@@ -132,8 +132,8 @@ async function buildNameMap(): Promise<Record<string, UserInfo>> {
 type AccountEntry = { lineUserId: string; carbon: number; points: number }
 
 async function readAccounts(): Promise<AccountEntry[]> {
-  if (!POINTS_SHEETS_ID || !SHEETS_API_KEY) return []
-  const rows = await readTab(POINTS_SHEETS_ID, 'points_account')
+  if (!POINTS_SPREADSHEET_ID || !SHEETS_API_KEY) return []
+  const rows = await readTab(POINTS_SPREADSHEET_ID, 'points_account')
   if (rows.length <= 1) return []
 
   const h = rows[0]

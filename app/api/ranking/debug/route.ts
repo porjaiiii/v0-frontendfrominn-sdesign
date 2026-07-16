@@ -3,11 +3,11 @@ import { NextResponse } from 'next/server'
 // Debug endpoint — visit /api/ranking/debug to inspect the raw data from the 'point' sheet.
 // Remove this file before going to production.
 export async function GET() {
-  const sheetId = process.env.GOOGLE_SHEETS_ID
+  const sheetId = process.env.POINTS_SPREADSHEET_ID
   const apiKey  = process.env.GOOGLE_SHEETS_API_KEY
 
   if (!sheetId || !apiKey) {
-    return NextResponse.json({ error: 'GOOGLE_SHEETS_ID or GOOGLE_SHEETS_API_KEY not set' }, { status: 500 })
+    return NextResponse.json({ error: 'POINTS_SPREADSHEET_ID or GOOGLE_SHEETS_API_KEY not set' }, { status: 500 })
   }
 
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/point?key=${apiKey}`

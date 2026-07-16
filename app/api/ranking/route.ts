@@ -50,7 +50,7 @@ export async function GET(request: Request) {
   const callerUserId = searchParams.get('userId')?.trim() || ''
   const callerName   = searchParams.get('name')?.trim() || ''
 
-  const sheetId = process.env.GOOGLE_SHEETS_ID
+  const sheetId = process.env.POINTS_SPREADSHEET_ID
   const apiKey = process.env.GOOGLE_SHEETS_API_KEY
 
   if (!sheetId || !apiKey) {

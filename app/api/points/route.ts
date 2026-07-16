@@ -5,7 +5,7 @@ import { POINTS_SCRIPT_URL } from '@/lib/points-config'
 // Reads the public points spreadsheet directly via the Sheets API. The balance
 // shown on the rewards page comes from points_monthly (the spendable amount, =
 // resync_balance), while weight/CO2/tier come from points_account.
-const POINTS_SHEETS_ID = process.env.POINTS_SHEETS_ID
+const POINTS_SPREADSHEET_ID = process.env.POINTS_SPREADSHEET_ID
 const SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY
 
 function colIndex(headers: string[], name: string): number {
@@ -19,7 +19,7 @@ function num(v: unknown): number {
 }
 
 async function readTab(tab: string): Promise<string[][]> {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${POINTS_SHEETS_ID}/values/${encodeURIComponent(
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${POINTS_SPREADSHEET_ID}/values/${encodeURIComponent(
     tab
   )}?key=${SHEETS_API_KEY}`
   const res = await fetch(url, { cache: 'no-store' })
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
 
     // Fast path: read the balance straight from the public points sheet.
     if (action === 'get_account_fast') {
-      if (!POINTS_SHEETS_ID || !SHEETS_API_KEY) {
+      if (!POINTS_SPREADSHEET_ID || !SHEETS_API_KEY) {
         return NextResponse.json({ success: false, error: 'Points sheet not configured' })
       }
       try {

@@ -231,22 +231,22 @@ export default function RewardsPage() {
                 <div
                   key={reward.id}
                   className={cn(
-                    'bg-white rounded-xl border overflow-hidden transition-all relative',
-                    canRedeem 
-                      ? 'border-[#e5e5e5] hover:shadow-md' 
+                    'bg-white rounded-xl border overflow-hidden transition-all relative flex flex-col',
+                    canRedeem
+                      ? 'border-[#e5e5e5] hover:shadow-md'
                       : 'border-[#e5e5e5]'
                   )}
                 >
                   {/* Favorite Heart */}
                   <button
                     onClick={() => toggleFavorite(reward.id)}
-                    className="absolute top-2 right-2 z-10 transition-transform hover:scale-110"
+                    className="absolute top-2 right-2 z-10 flex items-center justify-center p-1.5 rounded-full bg-white/70 backdrop-blur-sm shadow-sm transition-transform hover:scale-110"
                     title="เพิ่มสินค้าไปยังรายการโปรด"
                   >
                     <Heart
-                      size={20}
+                      size={18}
                       className={cn(
-                        isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-300'
+                        isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-400'
                       )}
                     />
                   </button>
@@ -262,14 +262,14 @@ export default function RewardsPage() {
                   </div>
 
                   {/* Product Info */}
-                  <div className="p-3">
-                    <h3 className="text-sm font-medium text-[#444444] mb-1">
+                  <div className="p-3 flex flex-col flex-1">
+                    <h3 className="text-sm font-medium text-[#444444] mb-1 line-clamp-2">
                       {reward.name}
                     </h3>
                     {reward.description && (
-                      <p className="text-xs text-[#666666] mb-2">{reward.description}</p>
+                      <p className="text-xs text-[#666666] mb-2 line-clamp-2">{reward.description}</p>
                     )}
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3 mt-auto">
                       <span className={cn(
                         'text-sm font-semibold',
                         canRedeem ? 'text-[#157b03]' : 'text-[#999999]'

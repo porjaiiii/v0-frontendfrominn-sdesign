@@ -5,4 +5,4 @@
 // If you redeploy the Apps Script (Deploy → Manage deployments → New version),
 // update this URL only — every route imports it from here.
 export const POINTS_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbwrTugtTi7xchC91m1A6X00r6sy6YXh4LM_jBzO-OC2fg4shU3RD_MW1gGU125fw0g3/exec'
+  'https://script.google.com/macros/s/AKfycbweM8YOGX4d9GQt0jyJ51N9uCZOTHh1k072D-EEAABdBESSEa_OBDWklQH9ADCEEx8x8Q/exec'

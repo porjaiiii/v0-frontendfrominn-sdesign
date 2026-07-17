@@ -351,28 +351,87 @@ function RegisterPageContent() {
       return updated
     })
   }
-
-  // Ordered list of required fields (top→bottom, matching the form layout) with
+// Ordered list of required fields (top→bottom, matching the form layout) with
   // whether each is filled. Drives the grey submit button and the scroll-to-first
   // -missing behaviour. ตำบล/อาชีพ are required only for non-tourists; the phone
   // number must be a full 10 digits.
   const getRequiredFields = (): { id: string; ok: boolean; label: string }[] => {
     const isTourist = formData.userType === 'นักท่องเที่ยว'
     const isLocal = formData.userType === 'คนในชุมชนคุ้งบางกะเจ้า'
+    
     const fields: { id: string; ok: boolean; label: string }[] = [
-      { id: 'field-userType', ok: Boolean(formData.userType), label: 'ประเภทผู้ใช้งาน' },
-      { id: 'field-firstName', ok: Boolean(formData.firstName.trim()), label: 'ชื่อ' },
-      { id: 'field-lastName', ok: Boolean(formData.lastName.trim()), label: 'นามสกุล' },
-      { id: 'field-phoneNumber', ok: formData.phoneNumber.length === 10, label: 'เบอร์โทรศัพท์' },
+      { 
+        id: 'field-userType', 
+        ok: isEditMode ? true : Boolean(formData.userType), 
+        label: 'ประเภทผู้ใช้งาน' 
+      },
+      { 
+        id: 'field-firstName', 
+        ok: Boolean(formData.firstName.trim()), // ชื่อห้ามว่างเสมอในทุกโหมด
+        label: 'ชื่อ' 
+      },
+      { 
+        id: 'field-lastName', 
+        ok: Boolean(formData.lastName.trim()), // นามสกุลห้ามว่างเสมอในทุกโหมด
+        label: 'นามสกุล' 
+      },
+      { 
+        id: 'field-phoneNumber', 
+        // โหมดปกติ: ต้องครบ 10 หลัก | โหมดแก้ไข: ปล่อยผ่านได้ ไม่บล็อกการเซฟ
+        ok: isEditMode ? true : formData.phoneNumber.length === 10, 
+        label: 'เบอร์โทรศัพท์' 
+      },
     ]
-    if (isLocal) fields.push({ id: 'field-address', ok: Boolean(formData.address.trim()), label: 'ที่อยู่' })
-    fields.push({ id: 'field-gender', ok: Boolean(formData.gender), label: 'เพศ' })
-    fields.push({ id: 'field-ageRange', ok: Boolean(formData.ageRange), label: 'ช่วงอายุ' })
-    if (isLocal) fields.push({ id: 'field-subdistrict', ok: Boolean(formData.subdistrict), label: 'พื้นที่ 6 ตำบลหลัก' })
-    if (!isTourist) fields.push({ id: 'field-occupation', ok: Boolean(formData.occupation), label: 'อาชีพปัจจุบัน / อดีต' })
-    fields.push({ id: 'field-pdpa', ok: formData.pdpaConsent, label: 'ยอมรับนโยบาย PDPA' })
+
+    if (isLocal) {
+      fields.push({ 
+        id: 'field-address', 
+        ok: isEditMode ? true : Boolean(formData.address.trim()), 
+        label: 'ที่อยู่' 
+      })
+    }
+
+    fields.push({ 
+      id: 'field-gender', 
+      ok: isEditMode ? true : Boolean(formData.gender), 
+      label: 'เพศ' 
+    })
+
+    fields.push({ 
+      id: 'field-ageRange', 
+      ok: isEditMode ? true : Boolean(formData.ageRange), 
+      label: 'ช่วงอายุ' 
+    })
+
+    if (isLocal) {
+      fields.push({ 
+        id: 'field-subdistrict', 
+        ok: isEditMode ? true : Boolean(formData.subdistrict), 
+        label: 'พื้นที่ 6 ตำบลหลัก' 
+      })
+    }
+
+    if (!isTourist) {
+      fields.push({ 
+        id: 'field-occupation', 
+        ok: isEditMode ? true : Boolean(formData.occupation), 
+        label: 'อาชีพปัจจุบัน / อดีต' 
+      })
+    }
+
+    fields.push({ 
+      id: 'field-pdpa', 
+      ok: isEditMode ? true : formData.pdpaConsent, 
+      label: 'ยอมรับนโยบาย PDPA' 
+    })
+
     return fields
   }
+  // Ordered list of required fields (top→bottom, matching the form layout) with
+  // whether each is filled. Drives the grey submit button and the scroll-to-first
+  // -missing behaviour. ตำบล/อาชีพ are required only for non-tourists; the phone
+  // number must be a full 10 digits.
+
 
   // Scroll the given field into view and focus its first control (if any).
   const scrollToField = (id: string) => {

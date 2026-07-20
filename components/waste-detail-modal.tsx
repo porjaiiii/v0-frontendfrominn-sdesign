@@ -413,7 +413,7 @@ const handleConfirmClick = async () => {
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">หมายเหตุ</p>
             <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold cursor-default">
-              {(editedRecord.carbon_reduction ?? 0)} kg CO2
+              {(editedRecord.carbon_reduction ?? 0).toFixed(4)} kg CO2
             </div>
           </div>
 

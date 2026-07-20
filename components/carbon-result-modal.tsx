@@ -81,7 +81,7 @@ export function CarbonResultModal({
               {/* Big number */}
               <div className="text-center py-4">
                 <span className="text-7xl font-bold text-[#154212] leading-none">
-                  {carbonAmount.toFixed(0)}
+                  {carbonAmount}
                 </span>
               </div>
 

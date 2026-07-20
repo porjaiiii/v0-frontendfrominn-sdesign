@@ -23,7 +23,7 @@ export function WeightInput({ value, onChange, noWeight = false, onNoWeightChang
   const [displayValue, setDisplayValue] = useState<string>(value > 0 ? String(value) : '')
   const [isFocused, setIsFocused] = useState(false)
 
-  const clamp = (v: number) => Math.min(MAX_WEIGHT, Math.max(0, Math.round(v * 10) / 10))
+  const clamp = (v: number) => Math.min(MAX_WEIGHT, Math.max(0, Math.round(v * 1000) / 1000))
 
   const adjustWeight = (amount: number) => {
     const newValue = clamp(value + amount)

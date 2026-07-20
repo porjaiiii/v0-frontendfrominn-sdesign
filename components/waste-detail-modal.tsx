@@ -10,7 +10,7 @@ import { compressImage } from '@/lib/compress-image'
 // Carbon reduction factors per kg (CO2 kg saved)
 const CARBON_FACTORS: Record<string, number> = {
   plastic: 1.0310,
-  paper: 3.5460,
+  paper: 5.6735,
   glass: 0.2760,
   aluminum: 9.1270,
   oil: 3.0,
@@ -18,10 +18,10 @@ const CARBON_FACTORS: Record<string, number> = {
 
 // Points per kg (คำนวณแยกจาก carbon)
 const POINTS_PER_KG: Record<string, number> = {
-  plastic: 6,
-  paper: 4,
+  plastic: 5,
+  paper: 2,
   glass: 4,
-  aluminum: 25,
+  aluminum: 15,
   oil: 3,
 }
 
@@ -413,7 +413,7 @@ const handleConfirmClick = async () => {
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">หมายเหตุ</p>
             <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold cursor-default">
-              {(editedRecord.carbon_reduction ?? 0).toFixed(2)} kg CO2
+              {(editedRecord.carbon_reduction ?? 0)} kg CO2
             </div>
           </div>
 

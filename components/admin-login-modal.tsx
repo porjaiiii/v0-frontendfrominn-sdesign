@@ -146,10 +146,10 @@ export function AdminLoginModal({ isOpen, onClose, onSuccess }: AdminLoginModalP
             </div>
 
             <h2 className="text-lg font-semibold text-[#154212] text-center mb-1">
-              รอการอนุมัติ
+              อนุมัติสำเร็จ
             </h2>
             <p className="text-sm text-[#154212]/60 text-center mb-2">
-              โปรดให้หัวหน้าสแกน QR Code นี้
+              สามารถกดดำเนินการต่อด้านล่างได้เลย
             </p>
 
             {/* QR Code */}
@@ -165,7 +165,7 @@ export function AdminLoginModal({ isOpen, onClose, onSuccess }: AdminLoginModalP
               onClick={onSuccess}
               className="mt-6 w-full py-3 rounded-xl bg-[#154212] text-white text-sm font-semibold hover:bg-[#666b66] transition-colors"
             >
-              (Mock) จำลองการสแกนอนุมัติสำเร็จ
+              ดำเนินการต่อ
             </button>
           </>
         )}

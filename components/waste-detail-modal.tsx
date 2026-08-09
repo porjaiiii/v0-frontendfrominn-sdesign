@@ -18,10 +18,10 @@ const CARBON_FACTORS: Record<string, number> = {
 
 // Points per kg (คำนวณแยกจาก carbon)
 const POINTS_PER_KG: Record<string, number> = {
-  plastic: 5,
-  paper: 2,
+  plastic: 6,
+  paper: 4,
   glass: 4,
-  aluminum: 15,
+  aluminum: 25,
   oil: 3,
 }
 

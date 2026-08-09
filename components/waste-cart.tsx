@@ -146,6 +146,7 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
   }
 
   const handleSaveRecord = async (record: WasteRecord) => {
+    console.log('ข้อมูลที่ส่งไป API:', record)
     try {
       const recordId = `${record.timestamp}-${record.user_id}`
       setSavingRecordId(recordId)
@@ -157,6 +158,8 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
         },
         body: JSON.stringify(record),
       })
+      const resData = await response.json()
+    console.log('ผลลัพธ์จาก API:', resData)
 
       if (!response.ok) {
         const error = await response.json()
@@ -184,6 +187,7 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
     } finally {
       setSavingRecordId(null)
     }
+    
   }
 
   const handleOpenDetails = (record: WasteRecord) => {

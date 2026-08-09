@@ -416,7 +416,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-2 gap-3 mb-4">
           {/* CO2 Reduced Card - Green background */}
           <div className="bg-[#154212] rounded-xl p-4">
-            <p className="text-xs text-white/80 mb-1">คุณช่วยลดการปล่อย CO</p>
+            <p className="text-xs text-white/80 mb-1">คุณช่วยลดการปล่อย CO2</p>
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-bold text-white">{stats.co2Reduced}</span>
               <span className="text-sm text-white/80">kgCO2</span>

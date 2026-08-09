@@ -20,7 +20,7 @@ interface WasteCardProps {
   onEdit: (record: WasteRecord, isEditing: boolean) => void
   onSave: (record: WasteRecord) => void
   isSaving?: boolean
-  isAnySaving?: boolean // 🌟 เพิ่ม Prop เพื่อรับสถานะว่ามีรายการอื่นกำลังบันทึกอยู่หรือไม่
+  isAnySaving?: boolean
 }
 
 const WASTE_TYPE_THAI: Record<string, string> = {
@@ -36,7 +36,7 @@ export function WasteCard({
   onEdit, 
   onSave, 
   isSaving = false,
-  isAnySaving = false // 🌟 ค่าเริ่มต้นเป็น false
+  isAnySaving = false
 }: WasteCardProps) {
   const wasteTypeThai = WASTE_TYPE_THAI[record.waste_type] || record.waste_type
 
@@ -46,8 +46,18 @@ export function WasteCard({
     record.image_urls.length > 0 && 
     record.image_urls.some(url => url && url.trim() !== '')
 
-  // 🌟 ปุ่มยืนยันจะกดไม่ได้ ถ้า: ไม่มีรูปภาพ OR กำลังบันทึกการทำงานอยู่ (ไม่ว่าจะรายการนี้หรือรายการอื่น)
+  // ปุ่มยืนยันจะกดไม่ได้ ถ้า: ไม่มีรูปภาพ OR กำลังบันทึกการทำงานอยู่
   const isSubmitDisabled = !hasValidImages || isSaving || isAnySaving
+
+ 
+  const handleSaveWithBonus = () => {
+    const updatedRecord: WasteRecord = {
+      ...record,
+     
+      points_earned: Math.round((record.points_earned || 0) * 1.1),
+    }
+    onSave(updatedRecord)
+  }
 
   return (
     <div className="bg-white border border-[#cccccc] rounded-lg overflow-hidden">
@@ -98,17 +108,17 @@ export function WasteCard({
       <div className="flex gap-2 px-3 pb-3">
         <button
           onClick={() => onEdit(record, true)}
-          disabled={isAnySaving} // 🌟 ถ้ากำลังบันทึกอยู่ ห้ามกดแก้ไขด้วย
+          disabled={isAnySaving}
           className="flex-1 py-2 border border-[#aaaaaa] text-[#444444] text-sm font-semibold rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           แก้ไข
         </button>
         <button
-          onClick={() => onSave(record)}
-          disabled={isSubmitDisabled} // 🌟 ใช้เงื่อนไขใหม่ที่รวมการเช็กทุกอย่าง
+          onClick={handleSaveWithBonus} // 🌟 เปลี่ยนมาเรียกใช้ฟังก์ชันใหม่
+          disabled={isSubmitDisabled}
           className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${
             isSubmitDisabled
-              ? 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed' // 🌟 สีเทาเมื่อกดไม่ได้
+              ? 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
               : 'bg-[#154212] text-white hover:bg-[#0f300c]'
           }`}
         >

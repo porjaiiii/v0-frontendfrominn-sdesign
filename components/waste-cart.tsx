@@ -245,6 +245,7 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
             onEdit={handleEditRecord}
             onSave={handleSaveRecord}
             isSaving={savingRecordId === `${record.timestamp}-${record.user_id}`}
+            isAnySaving={savingRecordId !== null}
           />
         ))
       )}

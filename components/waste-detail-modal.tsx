@@ -425,27 +425,44 @@ const handleConfirmClick = async () => {
             >
               ย้อนกลับ
             </button>
-            {isEditing ? (
-              <button
-                onClick={handleConfirmClick}
-                disabled={isSavingApi || isConfirming || isUploading}
-                className="flex-1 px-4 py-3 bg-[#154212] text-white font-semibold rounded-full hover:bg-[#0f300c] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 size={20} />
-                {isSavingApi || isConfirming ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
-              </button>
-            ) : (
-              record.status === 'pending' && (
-                <button
-                  onClick={handleConfirmClick}
-                  disabled={isSavingApi || isConfirming}
-                  className="flex-1 px-4 py-3 bg-[#154212] text-white font-semibold rounded-full hover:bg-[#0f300c] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 size={20} />
-                  {isSavingApi || isConfirming ? 'กำลังบันทึก...' : 'บันทึก'}
-                </button>
-              )
-            )}
+        {isEditing ? (
+  <button
+    onClick={handleConfirmClick}
+    disabled={
+      isSavingApi || 
+      isConfirming || 
+      isUploading || 
+      !editedRecord?.image_urls?.length
+    }
+    className={`flex-1 px-4 py-3 font-semibold rounded-full transition-colors flex items-center justify-center gap-2 ${
+      isSavingApi || isConfirming || isUploading || !editedRecord?.image_urls?.length
+        ? 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+        : 'bg-[#154212] text-white hover:bg-[#0f300c]'
+    }`}
+  >
+    <CheckCircle2 size={20} />
+    {isSavingApi || isConfirming ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
+  </button>
+) : (
+  record?.status === 'pending' && (
+    <button
+      onClick={handleConfirmClick}
+      disabled={
+        isSavingApi || 
+        isConfirming || 
+        !record?.image_urls?.length
+      }
+      className={`flex-1 px-4 py-3 font-semibold rounded-full transition-colors flex items-center justify-center gap-2 ${
+        isSavingApi || isConfirming || !record?.image_urls?.length
+          ? 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+          : 'bg-[#154212] text-white hover:bg-[#0f300c]'
+      }`}
+    >
+      <CheckCircle2 size={20} />
+      {isSavingApi || isConfirming ? 'กำลังบันทึก...' : 'บันทึก'}
+    </button>
+  )
+)}
           </div>
         </div>
       </div>

@@ -29,6 +29,7 @@ export async function PUT(request: NextRequest) {
       weight_kg,
       image_url,
       notes,
+      points_earned: pointsEarnedFromClient,
     } = body
 
     console.log('[v0] Received waste update:', { timestamp, user_id, waste_type, weight_kg })
@@ -45,7 +46,9 @@ export async function PUT(request: NextRequest) {
     const carbonFactor = CARBON_FACTORS[waste_type as keyof typeof CARBON_FACTORS] || 1.0
     const carbonReduction = weight_kg * carbonFactor
     const pointsRate = POINTS_PER_KG[waste_type as keyof typeof POINTS_PER_KG] || 3
-    const pointsEarned = Math.round(weight_kg * pointsRate)
+    const pointsEarned = typeof pointsEarnedFromClient === 'number' 
+      ? pointsEarnedFromClient 
+      : Math.round(weight_kg * pointsRate)
 
     // ส่งข้อมูลไปยัง Google Apps Script Webhook
     const payload = {

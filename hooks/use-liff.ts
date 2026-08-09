@@ -81,9 +81,16 @@ export function useLiff(liffId?: string): UseLiffReturn {
         // Using window.location.href as redirectUri ensures the user lands back
         // on whatever page they were on (e.g. /home, /profile-view/xxx, etc.)
         // on both desktop and mobile browsers.
+        //
+        // Do NOT hardcode a path here (this was '/register' and caused a bug).
+        // The LIFF session token lives in localStorage, so clearing site data —
+        // or opening the app on a new device — logs the user out and sends them
+        // through here. Landing them on /register skips '/', which is what
+        // decides register-vs-home (cache first, then the profile API), so
+        // already-registered users were shown the registration form again.
         if (!liff.isLoggedIn()) {
           setLoadingStep('requesting_permission')
-          liff.login({ redirectUri: window.location.origin + '/register' })
+          liff.login({ redirectUri: window.location.href })
           return
         }
 

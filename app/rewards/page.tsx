@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Heart, CheckCircle2, Ticket } from 'lucide-react'
+import { Heart, CheckCircle2, Ticket, ArrowUpDown } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
@@ -22,6 +22,16 @@ export default function RewardsPage() {
   const [clickedButton, setClickedButton] = useState<number | null>(null)
   const buttonRefs = useRef<{ [key: number]: HTMLButtonElement | null }>({})
   const [showBadge, setShowBadge] = useState(false)
+
+  // Sort State: default 'asc' (น้อยไปมาก)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  // Sorted REWARDS based on sortOrder
+  const sortedRewards = useMemo(() => {
+    return [...REWARDS].sort((a, b) => {
+      return sortOrder === 'asc' ? a.points - b.points : b.points - a.points
+    })
+  }, [sortOrder])
 
   // Direct "แลกเลย" redeem (single item, no cart)
   const [redeemTarget, setRedeemTarget] = useState<typeof REWARDS[number] | null>(null)
@@ -153,28 +163,6 @@ export default function RewardsPage() {
         <div className="bg-gradient-to-b from-[#154212] to-[#1a5a16] rounded-2xl p-5 mb-6 relative">
           {/* Icon Buttons - Top Right */}
           <div className="absolute top-4 right-4 flex gap-2">
-            {/* Cart Button hidden for now — cart functionality disabled */}
-            {/* <div className="relative">
-              <Link
-                href="/cart"
-                className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors flex items-center justify-center"
-                title="ดูตะกร้า"
-              >
-                <div className="relative w-5 h-5">
-                  <Image src="/icons/tabler-icon-add-cart.png" alt="ตะกร้า" fill className="object-contain brightness-0 invert" />
-                </div>
-              </Link>
-              {cartCount > 0 && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
-                >
-                  {cartCount}
-                </motion.div>
-              )}
-            </div> */}
-
             {/* Favorites Button */}
             <Link 
               href="/favorites"
@@ -217,12 +205,25 @@ export default function RewardsPage() {
           </div>
         </div>
 
-        {/* Rewards Section */}
+        {/* Rewards Section Header & Sort Control */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-[#154212]">รางวัลที่สามารถแลกได้</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-[#154212]">รางวัลที่สามารถแลกได้</h2>
+            <div className="relative flex items-center gap-1 bg-[#f5f5f5] border border-[#e5e5e5] rounded-lg px-2.5 py-1 text-xs text-[#444444]">
+              <ArrowUpDown size={13} className="text-[#666666]" />
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                className="bg-transparent font-medium text-[#444444] outline-none cursor-pointer pr-1"
+              >
+                <option value="asc">แต้ม: น้อยไปมาก</option>
+                <option value="desc">แต้ม: มากไปน้อย</option>
+              </select>
+            </div>
+          </div>
           
           <div className="grid grid-cols-2 gap-4">
-            {REWARDS.map((reward) => {
+            {sortedRewards.map((reward) => {
               const canRedeem = userPoints >= reward.points
               const isFavorited = favorites.has(reward.id)
               const isClicked = clickedButton === reward.id
@@ -292,26 +293,6 @@ export default function RewardsPage() {
                       >
                         แลกเลย
                       </button>
-                      {/* Add-to-cart button hidden for now — cart functionality disabled */}
-                      {/* <motion.button
-                        ref={(el) => {
-                          if (el) buttonRefs.current[reward.id] = el
-                        }}
-                        onClick={() => handleCartClick(reward)}
-                        disabled={!canRedeem}
-                        animate={isClicked ? { scale: 0.85 } : { scale: 1 }}
-                        transition={{ duration: 0.2 }}
-                        className={cn(
-                          'flex-[3] py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center',
-                          canRedeem
-                            ? 'bg-white border border-[#154212] text-[#154212] hover:bg-[#f5f5f5]'
-                            : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
-                        )}
-                      >
-                        <div className="relative w-4 h-4">
-                          <Image src="/icons/tabler-icon-add-cart.png" alt="ตะกร้า" fill className="object-contain" />
-                        </div>
-                      </motion.button> */}
                     </div>
                   </div>
                 </div>

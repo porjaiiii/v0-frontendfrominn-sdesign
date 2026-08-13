@@ -279,7 +279,13 @@ export function ImageEvidence({ imageUrls = [], onImagesChange, referenceImage, 
             <>
               <Camera className="w-9 h-9 mb-2 text-[#888888]" />
               <span className="text-xs font-semibold text-center">ถ่ายรูปเพิ่ม</span>
-              <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} disabled={isUploading} className="hidden" />
+              <input 
+  type="file" 
+  accept="image/*" 
+  onChange={handleFileChange} 
+  disabled={isUploading} 
+  className="hidden" 
+/>
             </>
           )}
         </label>

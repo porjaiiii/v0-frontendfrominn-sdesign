@@ -103,8 +103,10 @@ export default function HowToUsePage() {
         <h1 className="text-2xl font-bold text-[#154212] mb-4">วิธีใช้งาน</h1>
 
 {/* Tutorial video */}
-<div className="border-2 border-[#cdeccb] rounded-2xl p-3 bg-[#f3faf1] mb-6">
-  <div className="relative aspect-video rounded-xl overflow-hidden bg-black shadow-inner">
+<div className="mb-4"> {/* ลด margin-bottom ลงจาก mb-6 เป็น mb-4 เพื่อให้อยู่สูงขึ้น */}
+  {/* เพิ่ม md:aspect-video และ mx-auto เพื่อให้ย่อขนาดบนหน้าจอเล็กแต่ยังคงสัดส่วนเดิมบนหน้าจอใหญ่ */}
+  {/* เพิ่ม max-w-sm เพื่อจำกัดความกว้างสูงสุด ทำให้วิดีโอมีขนาดเล็กลง */}
+  <div className="relative aspect-video rounded-xl overflow-hidden bg-black shadow-inner max-w-sm mx-auto md:aspect-video">
     <iframe
       src="https://drive.google.com/file/d/123zq6BbVMplsLRfasnZt2bfw6DzWg_SC/preview"
       className="absolute top-0 left-0 w-full h-full border-0 scale-[1.03] origin-center rounded-xl"
@@ -114,7 +116,6 @@ export default function HowToUsePage() {
     />
   </div>
 </div>
-
         {/* Infographic catalog — swipeable, looping */}
         <section className="mb-6">
           <h3 className="text-lg font-bold text-[#154212] mb-4">อินโฟกราฟิกวิธีใช้งาน</h3>

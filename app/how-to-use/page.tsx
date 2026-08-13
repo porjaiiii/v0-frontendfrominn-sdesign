@@ -106,7 +106,7 @@ export default function HowToUsePage() {
 <div className="border-2 border-[#cdeccb] rounded-2xl p-3 bg-[#f3faf1] mb-6">
   <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black shadow-inner">
     <iframe
-      src="https://www.youtube.com/embed/ucMl969u5ks?rel=0"
+      src="https://www.youtube.com/embed/JHOFkXdANn4?rel=0"
       className="absolute inset-0 w-full h-full border-0"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
       allowFullScreen

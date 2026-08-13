@@ -103,13 +103,11 @@ export default function HowToUsePage() {
         <h1 className="text-2xl font-bold text-[#154212] mb-4">วิธีใช้งาน</h1>
 
 {/* Tutorial video */}
-<div className="mb-4"> {/* ลด margin-bottom ลงจาก mb-6 เป็น mb-4 เพื่อให้อยู่สูงขึ้น */}
-  {/* เพิ่ม md:aspect-video และ mx-auto เพื่อให้ย่อขนาดบนหน้าจอเล็กแต่ยังคงสัดส่วนเดิมบนหน้าจอใหญ่ */}
-  {/* เพิ่ม max-w-sm เพื่อจำกัดความกว้างสูงสุด ทำให้วิดีโอมีขนาดเล็กลง */}
-  <div className="relative aspect-video rounded-xl overflow-hidden bg-black shadow-inner max-w-sm mx-auto md:aspect-video">
+<div className="mb-6">
+  <div className="relative aspect-video w-full max-w-xs mx-auto rounded-2xl overflow-hidden bg-black shadow-md">
     <iframe
       src="https://drive.google.com/file/d/123zq6BbVMplsLRfasnZt2bfw6DzWg_SC/preview"
-      className="absolute top-0 left-0 w-full h-full border-0 scale-[1.03] origin-center rounded-xl"
+      className="absolute inset-0 w-full h-full border-0 scale-[1.12] origin-center rounded-2xl"
       allow="autoplay; encrypted-media"
       allowFullScreen
       title="วิดีโอแนะนำการใช้งาน"

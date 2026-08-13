@@ -32,6 +32,7 @@ export const COUPON_SCRIPT_URL =
 // ─────────────────────────────────────────────────────────────────────────
 
 export type CouponStatus = 'active' | 'used' | 'expired'
+export type RedeemType = 'pickup' | 'delivery'
 
 /** Shape ของ coupon record ที่รับ/ส่งระหว่าง Next.js ↔ GAS */
 export interface CouponRecord {
@@ -48,4 +49,5 @@ export interface CouponRecord {
   used_at?: string      // ISO datetime | undefined
   expires_at?: string   // ISO datetime | undefined
   scanned_by?: string
+  redeem_type?: RedeemType
 }

@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { ChevronLeft, Ticket, RefreshCw } from 'lucide-react'
+import { ChevronLeft, Ticket, RefreshCw, Store, Truck } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { useCoupons, type Coupon } from '@/lib/coupon-context'
 import { cn } from '@/lib/utils'
@@ -42,23 +42,40 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
             {/* Divider notch circle (sits on the seam between left and right panels) */}
             <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-[26px] h-[26px] bg-white rounded-full z-10" />
 
-            {/* Center: name badge + description */}
-            <div className="flex-1 flex flex-col gap-1.5 pl-1">
-              <div className="bg-[#154212] rounded-lg px-3 py-1 self-start">
-                <span className="text-white text-[14px] font-semibold leading-tight">
+            {/* Center: name badge + description + redeem_type */}
+            <div className="flex-1 flex flex-col gap-1 pl-1 overflow-hidden">
+              <div className="bg-[#154212] rounded-lg px-2.5 py-0.5 self-start max-w-full">
+                <span className="text-white text-[13px] font-semibold leading-tight truncate block">
                   {coupon.reward_name}
                 </span>
               </div>
-              <span className="text-[#154212] text-xs font-medium pl-0.5">
+              <span className="text-[#154212] text-xs font-medium pl-0.5 truncate block">
                 {coupon.reward_description}
               </span>
-              {isUsed && (
-                <span className="text-[10px] font-semibold text-[#cc4444]">ใช้งานแล้ว</span>
-              )}
+
+              {/* 🟢 แสดงประเภทการรับ (pickup / delivery) และสถานะคูปอง */}
+              <div className="flex items-center gap-1.5 pl-0.5 mt-0.5 flex-wrap">
+                <span className="text-[10px] font-medium text-[#154212] bg-white/70 border border-[#154212]/20 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                  {coupon.redeem_type === 'delivery' ? (
+                    <>
+                      <Truck size={11} />
+                      <span>รอรับที่บ้าน</span>
+                    </>
+                  ) : (
+                    <>
+                      <Store size={11} />
+                      <span>รับเอง</span>
+                    </>
+                  )}
+                </span>
+                {isUsed && (
+                  <span className="text-[10px] font-semibold text-[#cc4444]">ใช้งานแล้ว</span>
+                )}
+              </div>
             </div>
 
             {/* Product image */}
-            <div className="relative w-[90px] h-[90px] flex-shrink-0">
+            <div className="relative w-[80px] h-[80px] flex-shrink-0">
               <Image
                 src={coupon.reward_image}
                 alt={coupon.reward_name}

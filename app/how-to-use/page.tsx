@@ -15,17 +15,17 @@ import { InfographicCarousel, type InfographicSlide } from '@/components/infogra
 // Infographic catalog, shown in the order requested: 9→3→7→2→1→4→5→6→10.
 // (4 = record-waste-guide, 5 = redeem-rewards-guide, 6 = user-profile-qr-guide.)
 const INFOGRAPHICS: InfographicSlide[] = [
-  { src: '/guide-9-เชิญชวน.png', alt: 'เชิญชวนร่วมโครงการ' },
-  { src: '/guide-3-การเดินทางของน้องรักษ์.png', alt: 'การเดินทางของน้องรักษ์' },
-  { src: '/guide-7-checklist.png', alt: 'เช็กลิสต์การใช้งาน' },
-  { src: '/guide-2-ตารางรับขยะ.png', alt: 'ตารางรับขยะ' },
-  { src: '/guide-1-คู่มือแยกขยะ.png', alt: 'คู่มือแยกขยะ' },
-  { src: '/record-waste-guide.png', alt: 'วิธีบันทึกขยะ' },
-  { src: '/guide-12.png', alt: 'ดูคะแนน' },
-  { src: '/redeem-rewards-guide.png', alt: 'วิธีแลกของรางวัล' },
-  { src: '/guide-11.png', alt: 'วิธีบริจาคคะแนน' },
-  { src: '/user-profile-qr-guide.png', alt: 'โปรไฟล์และ QR Code' },
-  { src: '/guide-10-คำนวณ.png', alt: 'วิธีคำนวณคะแนน' },
+  { src: '/infographic/guide-9-เชิญชวน.png', alt: 'เชิญชวนร่วมโครงการ' },
+  { src: '/infographic/guide-3-การเดินทางของน้องรักษ์.png', alt: 'การเดินทางของน้องรักษ์' },
+  { src: '/infographic/guide-7-checklist.png', alt: 'เช็กลิสต์การใช้งาน' },
+  { src: '/infographic/guide-2-ตารางรับขยะ.png', alt: 'ตารางรับขยะ' },
+  { src: '/infographic/guide-1-คู่มือแยกขยะ.png', alt: 'คู่มือแยกขยะ' },
+  { src: '/infographic/guide-4-วิธีบันทึกข้อมูลขยะ.png', alt: 'วิธีบันทึกขยะ' },
+  { src: '/infographic/guide-12-ดูคะแนนสะสม.png', alt: 'ดูคะแนน' },
+  { src: '/infographic/guide-5-วิธีแลกรางวัล.png', alt: 'วิธีแลกของรางวัล' },
+  { src: '/infographic/guide-11-บริจาคคะแนน.png', alt: 'วิธีบริจาคคะแนน' },
+  { src: '/infographic/guide-6-โปรไฟล์.png', alt: 'โปรไฟล์และ QR Code' },
+  { src: '/infographic/guide-10-คำนวณ.png', alt: 'วิธีคำนวณคะแนน' },
 ]
 
 // Steps data — matches the Figma design (circular pastel icons + wording)

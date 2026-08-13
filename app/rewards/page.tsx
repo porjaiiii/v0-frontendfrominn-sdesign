@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Heart, CheckCircle2, Ticket, ArrowUpDown, Store, Truck } from 'lucide-react'
+import { Heart, CheckCircle2, Ticket, ArrowUpDown, Store, Truck, ChevronLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
@@ -35,6 +35,8 @@ export default function RewardsPage() {
 
   // Direct "แลกเลย" redeem (single item, no cart)
   const [redeemTarget, setRedeemTarget] = useState<typeof REWARDS[number] | null>(null)
+  // State สำหรับขั้นตอนใน Modal: 1 = เลือกช่องทางรับ, 2 = ยืนยันการแลก
+  const [redeemStep, setRedeemStep] = useState<1 | 2>(1)
   // State สำหรับเลือกรูปแบบการรับของรางวัล: 'pickup' (เดินทางไปรับเอง) หรือ 'delivery' (รอรับที่บ้าน)
   const [redeemType, setRedeemType] = useState<'pickup' | 'delivery'>('pickup')
   const [processing, setProcessing] = useState(false)
@@ -46,6 +48,7 @@ export default function RewardsPage() {
 
   const openRedeem = (reward: typeof REWARDS[number]) => {
     setRedeemTarget(reward)
+    setRedeemStep(1) // รีเซ็ตกลับไปขั้นตอนที่ 1 เสมอ
     setRedeemType('pickup') // รีเซ็ตกลับเป็น 'รับเอง' เป็นค่าเริ่มต้น
     setRedeemError(null)
     setRedeemSuccess(false)
@@ -333,7 +336,8 @@ export default function RewardsPage() {
                   </Link>
                 </div>
               </div>
-            ) : (
+            ) : redeemStep === 1 ? (
+              /* ── STEP 1: เลือกรูปแบบการรับของรางวัล ── */
               <>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-14 h-14 relative bg-[#f5f5f5] rounded-lg overflow-hidden flex-shrink-0">
@@ -345,12 +349,11 @@ export default function RewardsPage() {
                   </div>
                 </div>
 
-                {/* สวิตช์เลือกรูปแบบการรับรางวัล */}
-                <div className="mb-4">
+                <div className="mb-5">
                   <label className="text-xs font-semibold text-[#444444] mb-2 block">
                     เลือกช่องทางการรับของรางวัล
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 mb-3">
                     <button
                       type="button"
                       onClick={() => setRedeemType('pickup')}
@@ -378,6 +381,75 @@ export default function RewardsPage() {
                       <span>รอรับที่บ้าน</span>
                     </button>
                   </div>
+
+                  {/* คำอธิบายรายละเอียดของแต่ละช่องทาง */}
+                  {redeemType === 'pickup' ? (
+                    <div className="bg-[#f0f7ef] border border-[#c3e2be] rounded-xl p-3.5 text-xs text-[#154212] space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5 text-sm">
+                        <Store size={15} className="text-[#157b03]" />
+                        คำแนะนำสำหรับการรับสินค้าที่สาขา
+                      </p>
+                      <p className="text-[#444444] leading-relaxed">
+                        • ต้องเดินทางมารับด้วยตนเอง ณ จุดบริการรับของรางวัล<br />
+                        • แสดงคูปองและให้เจ้าหน้าที่สแกน QR Code เพื่อรับสินค้า
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-[#f0f7ef] border border-[#c3e2be] rounded-xl p-3.5 text-xs text-[#154212] space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5 text-sm">
+                        <Truck size={15} className="text-[#157b03]" />
+                        ที่อยู่จัดส่งของคุณ
+                      </p>
+                      <div className="bg-white/80 p-2.5 rounded-lg border border-[#c3e2be]/60 text-[#444444] leading-relaxed">
+                        <p className="font-semibold text-[#154212]">ที่อยู่ที่ลงทะเบียนไว้ในระบบ</p>
+                        <p className="text-[11px] text-[#666666]">
+                          ระบบจะจัดส่งไปยังที่อยู่หลักตามข้อมูลโปรไฟล์ของคุณ (ระยะเวลาจัดส่ง 3-5 วันทำการ)
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setRedeemTarget(null)}
+                    className="flex-1 py-3 border-2 border-[#e5e5e5] text-[#154212] font-bold rounded-lg hover:bg-[#f5f5f5] transition-colors"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    onClick={() => setRedeemStep(2)}
+                    className="flex-1 py-3 bg-[#154212] text-white font-bold rounded-lg hover:bg-[#0d3308] transition-colors"
+                  >
+                    ถัดไป
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* ── STEP 2: หน้าต่างยืนยันการแลกคะแนน ── */
+              <>
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#f0f0f0]">
+                  <button
+                    onClick={() => setRedeemStep(1)}
+                    className="flex items-center gap-1 text-xs text-[#666666] hover:text-[#154212] font-medium"
+                  >
+                    <ChevronLeft size={16} />
+                    เปลี่ยนช่องทางการรับ
+                  </button>
+                  <span className="text-xs font-semibold text-[#157b03] bg-[#e8f5e2] px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    {redeemType === 'pickup' ? <Store size={12} /> : <Truck size={12} />}
+                    {redeemType === 'pickup' ? 'เดินทางไปรับเอง' : 'รอรับที่บ้าน'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-14 h-14 relative bg-[#f5f5f5] rounded-lg overflow-hidden flex-shrink-0">
+                    <Image src={redeemTarget.image} alt={redeemTarget.name} fill className="object-cover" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-[#154212]">{redeemTarget.name}</h2>
+                    <p className="text-sm text-[#157b03] font-semibold">{redeemTarget.points.toLocaleString()} คะแนน</p>
+                  </div>
                 </div>
 
                 <p className="text-sm text-[#666666] mb-1">ยืนยันการแลกของรางวัลนี้?</p>
@@ -393,11 +465,11 @@ export default function RewardsPage() {
 
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setRedeemTarget(null)}
+                    onClick={() => setRedeemStep(1)}
                     disabled={processing}
                     className="flex-1 py-3 border-2 border-[#e5e5e5] text-[#154212] font-bold rounded-lg hover:bg-[#f5f5f5] transition-colors disabled:opacity-50"
                   >
-                    ยกเลิก
+                    ย้อนกลับ
                   </button>
                   <button
                     onClick={handleConfirmRedeem}

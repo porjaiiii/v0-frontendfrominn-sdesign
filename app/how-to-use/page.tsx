@@ -104,12 +104,11 @@ export default function HowToUsePage() {
 
 {/* Tutorial video */}
 <div className="border-2 border-[#cdeccb] rounded-2xl p-3 bg-[#f3faf1] mb-6">
-  {/* ใช้ aspect-video เพื่อรองรับสัดส่วน 1920x1080 (16:9) พอดีเป๊ะ */}
   <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black shadow-inner">
     <iframe
-      src="https://drive.google.com/file/d/123zq6BbVMplsLRfasnZt2bfw6DzWg_SC/preview"
-      className="absolute top-0 left-0 w-full h-full border-0"
-      allow="autoplay; encrypted-media"
+      src="https://www.youtube.com/embed/ucMl969u5ks?rel=0"
+      className="absolute inset-0 w-full h-full border-0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
       allowFullScreen
       title="วิดีโอแนะนำการใช้งาน"
     />

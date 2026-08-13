@@ -28,11 +28,14 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
 
             {/* Mascot — anchored to bottom-left, slightly overflowing upward */}
             <div className="absolute -bottom-1 left-0 w-full h-[105px]">
-              <Image
-                src="/mascot.png"
-                alt="mascot"
-                fill
-                className="object-contain object-bottom"
+              <img
+                src={
+                  coupon.redeem_type === 'delivery'
+                    ? 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/delivery-oJ9fQsXYSopkssOOsSEOr1pZf0ySEx.png'
+                    : 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Group%2048095913-YRRUU5H1kyUINTHxldIoLRPzcNNpES.png'
+                }
+                alt={coupon.redeem_type === 'delivery' ? 'มาสคอทจัดส่ง' : 'มาสคอทรับเอง'}
+                className="absolute inset-0 h-full w-full object-contain object-bottom"
               />
             </div>
           </div>

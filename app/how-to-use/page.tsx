@@ -102,12 +102,12 @@ export default function HowToUsePage() {
         {/* Page Title */}
         <h1 className="text-2xl font-bold text-[#154212] mb-4">วิธีใช้งาน</h1>
 
-   {/* Tutorial video */}
+{/* Tutorial video */}
 <div className="border-2 border-[#cdeccb] rounded-2xl p-3 bg-[#f3faf1] mb-6">
   <div className="relative aspect-video rounded-xl overflow-hidden bg-black shadow-inner">
     <iframe
       src="https://drive.google.com/file/d/123zq6BbVMplsLRfasnZt2bfw6DzWg_SC/preview"
-      className="absolute inset-0 w-full h-full border-0"
+      className="absolute top-0 left-0 w-full h-full border-0 scale-[1.03] origin-center rounded-xl"
       allow="autoplay; encrypted-media"
       allowFullScreen
       title="วิดีโอแนะนำการใช้งาน"

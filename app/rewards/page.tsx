@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Heart, CheckCircle2, Ticket, ArrowUpDown } from 'lucide-react'
+import { Heart, CheckCircle2, Ticket, ArrowUpDown, Store, Truck } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
@@ -35,17 +35,18 @@ export default function RewardsPage() {
 
   // Direct "แลกเลย" redeem (single item, no cart)
   const [redeemTarget, setRedeemTarget] = useState<typeof REWARDS[number] | null>(null)
+  // State สำหรับเลือกรูปแบบการรับของรางวัล: 'pickup' (เดินทางไปรับเอง) หรือ 'delivery' (รอรับที่บ้าน)
+  const [redeemType, setRedeemType] = useState<'pickup' | 'delivery'>('pickup')
   const [processing, setProcessing] = useState(false)
   const [redeemError, setRedeemError] = useState<string | null>(null)
   const [redeemSuccess, setRedeemSuccess] = useState(false)
   const [newCouponId, setNewCouponId] = useState<string | null>(null)
-  // Synchronous re-entry guard: the `disabled` attr only updates on re-render,
-  // so a fast double-tap can fire the handler twice before React catches up.
-  // This ref flips immediately and blocks the second call.
+
   const redeemInFlight = useRef(false)
 
   const openRedeem = (reward: typeof REWARDS[number]) => {
     setRedeemTarget(reward)
+    setRedeemType('pickup') // รีเซ็ตกลับเป็น 'รับเอง' เป็นค่าเริ่มต้น
     setRedeemError(null)
     setRedeemSuccess(false)
     setNewCouponId(null)
@@ -53,14 +54,12 @@ export default function RewardsPage() {
 
   const handleConfirmRedeem = async () => {
     if (!redeemTarget) return
-    // Block re-entry synchronously — must run before any await so a second tap
-    // in the same frame (or during the addCoupon step below) can't start a
-    // second redeem and double-spend.
     if (redeemInFlight.current) return
     setRedeemError(null)
 
     console.log('[v0] handleConfirmRedeem — redeemTarget:', redeemTarget)
     console.log('[v0] handleConfirmRedeem — userPoints:', userPoints)
+    console.log('[v0] handleConfirmRedeem — redeemType:', redeemType)
 
     if (redeemTarget.points > userPoints) {
       console.log('[v0] handleConfirmRedeem — not enough points, required:', redeemTarget.points, 'have:', userPoints)
@@ -70,10 +69,6 @@ export default function RewardsPage() {
 
     redeemInFlight.current = true
     setProcessing(true)
-    console.log('[v0] spendPoints — calling with amount:', redeemTarget.points, 'detail:', {
-      category: 'reward',
-      items: [{ name: redeemTarget.name, quantity: 1, points: redeemTarget.points }],
-    })
 
     try {
       const result = await spendPoints(redeemTarget.points, {
@@ -93,6 +88,7 @@ export default function RewardsPage() {
             reward_image: redeemTarget.image,
             points_used: redeemTarget.points,
             tx_id: result.tx_id,
+            redeem_type: redeemType, // เพิ่มฟิลด์ redeem_type ตรงนี้
           }
           console.log('[v0] addCoupon — calling with payload:', payload)
 
@@ -110,9 +106,6 @@ export default function RewardsPage() {
         setRedeemError(result.message || 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่')
       }
     } finally {
-      // Keep the button disabled through the whole flow (spend + coupon), only
-      // re-enabling once it's fully settled. On success the modal has already
-      // switched to the success screen, so the confirm button is gone.
       redeemInFlight.current = false
       setProcessing(false)
     }
@@ -161,9 +154,7 @@ export default function RewardsPage() {
       <main className="max-w-md mx-auto px-4 py-4">
         {/* Points Display Card */}
         <div className="bg-gradient-to-b from-[#154212] to-[#1a5a16] rounded-2xl p-5 mb-6 relative">
-          {/* Icon Buttons - Top Right */}
           <div className="absolute top-4 right-4 flex gap-2">
-            {/* Favorites Button */}
             <Link 
               href="/favorites"
               className="p-2 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors flex items-center justify-center"
@@ -226,7 +217,6 @@ export default function RewardsPage() {
             {sortedRewards.map((reward) => {
               const canRedeem = userPoints >= reward.points
               const isFavorited = favorites.has(reward.id)
-              const isClicked = clickedButton === reward.id
 
               return (
                 <div
@@ -238,7 +228,6 @@ export default function RewardsPage() {
                       : 'border-[#e5e5e5]'
                   )}
                 >
-                  {/* Favorite Heart */}
                   <button
                     onClick={() => toggleFavorite(reward.id)}
                     className="absolute top-2 right-2 z-10 flex items-center justify-center p-1.5 rounded-full bg-white/70 backdrop-blur-sm shadow-sm transition-transform hover:scale-110"
@@ -252,7 +241,6 @@ export default function RewardsPage() {
                     />
                   </button>
 
-                  {/* Product Image */}
                   <div className="aspect-square relative bg-[#f5f5f5]">
                     <Image
                       src={reward.image}
@@ -262,7 +250,6 @@ export default function RewardsPage() {
                     />
                   </div>
 
-                  {/* Product Info */}
                   <div className="p-3 flex flex-col flex-1">
                     <h3 className="text-sm font-medium text-[#444444] mb-1 line-clamp-2">
                       {reward.name}
@@ -279,7 +266,6 @@ export default function RewardsPage() {
                       </span>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="flex gap-2">
                       <button
                         onClick={() => openRedeem(reward)}
@@ -302,7 +288,7 @@ export default function RewardsPage() {
         </div>
       </main>
 
-      {/* Direct redeem modal (แลกเลย — single item, no cart) */}
+      {/* Direct redeem modal */}
       {redeemTarget && (
         <div
           className="fixed inset-0 bg-black/50 flex items-end z-50"
@@ -324,10 +310,12 @@ export default function RewardsPage() {
                 <p className="text-sm text-[#666666] mb-1">
                   {redeemTarget.name} · ใช้ไป {redeemTarget.points.toLocaleString()} คะแนน
                 </p>
+                <p className="text-xs font-medium text-[#157b03] bg-[#e8f5e2] px-3 py-1 rounded-full mb-2">
+                  รูปแบบ: {redeemType === 'pickup' ? 'เดินทางไปรับเอง' : 'รอรับที่บ้าน'}
+                </p>
                 <p className="text-sm text-[#666666] mb-6">
                   คะแนนคงเหลือ {userPoints.toLocaleString()} คะแนน
                 </p>
-                {/* Two action buttons side by side */}
                 <div className="flex gap-3 w-full">
                   <button
                     onClick={() => setRedeemTarget(null)}
@@ -356,6 +344,42 @@ export default function RewardsPage() {
                     <p className="text-sm text-[#157b03] font-semibold">{redeemTarget.points.toLocaleString()} คะแนน</p>
                   </div>
                 </div>
+
+                {/* สวิตช์เลือกรูปแบบการรับรางวัล */}
+                <div className="mb-4">
+                  <label className="text-xs font-semibold text-[#444444] mb-2 block">
+                    เลือกช่องทางการรับของรางวัล
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRedeemType('pickup')}
+                      className={cn(
+                        'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-medium transition-all',
+                        redeemType === 'pickup'
+                          ? 'border-[#154212] bg-[#154212]/10 text-[#154212] font-bold shadow-sm'
+                          : 'border-[#e5e5e5] bg-white text-[#666666] hover:bg-[#f5f5f5]'
+                      )}
+                    >
+                      <Store size={16} />
+                      <span>เดินทางไปรับเอง</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRedeemType('delivery')}
+                      className={cn(
+                        'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-medium transition-all',
+                        redeemType === 'delivery'
+                          ? 'border-[#154212] bg-[#154212]/10 text-[#154212] font-bold shadow-sm'
+                          : 'border-[#e5e5e5] bg-white text-[#666666] hover:bg-[#f5f5f5]'
+                      )}
+                    >
+                      <Truck size={16} />
+                      <span>รอรับที่บ้าน</span>
+                    </button>
+                  </div>
+                </div>
+
                 <p className="text-sm text-[#666666] mb-1">ยืนยันการแลกของรางวัลนี้?</p>
                 <p className="text-sm font-semibold text-[#154212] mb-4">
                   คะแนนของคุณ: {pointsLoading ? '…' : userPoints.toLocaleString()} คะแนน

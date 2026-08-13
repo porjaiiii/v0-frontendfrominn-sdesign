@@ -107,7 +107,7 @@ export default function HowToUsePage() {
   <div className="relative aspect-video w-full max-w-xs mx-auto rounded-2xl overflow-hidden bg-black shadow-md">
     <iframe
       src="https://drive.google.com/file/d/123zq6BbVMplsLRfasnZt2bfw6DzWg_SC/preview"
-      className="absolute inset-0 w-full h-full border-0 scale-[1.12] origin-center rounded-2xl"
+      className="absolute inset-0 w-full h-full border-0 scale-[0.8] origin-center rounded-2xl"
       allow="autoplay; encrypted-media"
       allowFullScreen
       title="วิดีโอแนะนำการใช้งาน"

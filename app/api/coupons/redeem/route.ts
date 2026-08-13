@@ -12,6 +12,7 @@
  *   reward_image     : string   — URL รูปรางวัล (required)
  *   points_used      : number   — คะแนนที่ใช้แลก (required)
  *   tx_id            : string   — รหัส points transaction อ้างอิง (optional)
+ *   redeem_type      : string   — 'pickup' | 'delivery' (optional, default 'pickup')
  *   expires_at       : string   — ISO datetime หมดอายุ (optional)
  * }
  *
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
       reward_image,
       points_used,
       tx_id,
+      redeem_type, // 🟢 1. แกะค่า redeem_type ออกมาจาก request body
       expires_at,
     } = body
 
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Build coupon record ───────────────────────────────────────────────
-    const coupon: CouponRecord = {
+    const coupon: CouponRecord & { redeem_type?: string } = {
       coupon_id: generateCouponId(),
       user_id,
       reward_id: Number(reward_id),
@@ -83,6 +85,7 @@ export async function POST(request: NextRequest) {
       reward_image,
       points_used: Number(points_used),
       tx_id: tx_id ?? '',
+      redeem_type: redeem_type ?? 'pickup', // object coupon
       status: 'active',
       redeemed_at: new Date().toISOString(),
       used_at: '',
@@ -90,11 +93,11 @@ export async function POST(request: NextRequest) {
       scanned_by: '',
     }
 
-      // ── Send to Google Apps Script ────────────────────────────────────────
+    // ── Send to Google Apps Script ────────────────────────────────────────
     const payload = {
-    action: 'redeem',  // แก้ให้ตรงกับ if (action === 'redeem')
-    coupon: coupon     // ใส่ข้อมูล coupon ยัดเข้าไปใน object ชื่อ coupon ตามที่ GAS เรียกใช้ (data.coupon)
-   }
+      action: 'redeem',  // แก้ให้ตรงกับ if (action === 'redeem')
+      coupon: coupon     // ใส่ข้อมูล coupon ยัดเข้าไปใน object ชื่อ coupon ตามที่ GAS เรียกใช้ (data.coupon)
+    }
 
     console.log('[v0] POST /api/coupons/redeem — sending to GAS URL:', COUPON_SCRIPT_URL)
     console.log('[v0] POST /api/coupons/redeem — GAS payload:', JSON.stringify(payload))

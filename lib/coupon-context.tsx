@@ -15,19 +15,20 @@ import { useLiffContext } from './liff-context'
  *
  * TABLE: coupons
  * ─────────────────────────────────────────────────────
- * coupon_id          string   PK — also the QR code payload
- * user_id            string   LINE user ID of the coupon owner
- * reward_id          number   Reference to REWARDS list
- * reward_name        string   Snapshot of reward name at redemption time
+ * coupon_id         string   PK — also the QR code payload
+ * user_id           string   LINE user ID of the coupon owner
+ * reward_id         number   Reference to REWARDS list
+ * reward_name       string   Snapshot of reward name at redemption time
  * reward_description string   Snapshot of reward description
- * reward_image       string   Path to reward image
- * points_used        number   Points spent to redeem
- * tx_id              string   Reference to points transaction ID
- * status             enum     'active' | 'used' | 'expired'
- * redeemed_at        string   ISO — when the coupon was created
- * used_at            string   ISO — when the coupon was scanned/used (nullable)
- * expires_at         string   ISO — expiry date (nullable, optional)
- * scanned_by         string   staff ID that scanned (nullable)
+ * reward_image      string   Path to reward image
+ * points_used       number   Points spent to redeem
+ * tx_id             string   Reference to points transaction ID
+ * redeem_type       string   'pickup' | 'delivery' (เพิ่มคอลัมน์นี้)
+ * status            enum     'active' | 'used' | 'expired'
+ * redeemed_at       string   ISO — when the coupon was created
+ * used_at           string   ISO — when the coupon was scanned/used (nullable)
+ * expires_at        string   ISO — expiry date (nullable, optional)
+ * scanned_by        string   staff ID that scanned (nullable)
  */
 
 export interface Coupon {
@@ -39,6 +40,7 @@ export interface Coupon {
   reward_image: string
   points_used: number
   tx_id?: string
+  redeem_type?: 'pickup' | 'delivery' // 🟢 เพิ่มประเภทรูปแบบการรับ
   status: 'active' | 'used' | 'expired'
   redeemed_at: string
   used_at?: string
@@ -57,6 +59,7 @@ interface CouponContextType {
     reward_image: string
     points_used: number
     tx_id?: string
+    redeem_type?: 'pickup' | 'delivery' // 🟢 เพิ่มพารามิเตอร์รับค่า
   }) => Promise<Coupon>
   /** Fetch a single coupon by ID — GET /api/coupons/[id] */
   getCoupon: (coupon_id: string) => Promise<Coupon | undefined>
@@ -112,6 +115,7 @@ export function CouponProvider({ children }: { children: ReactNode }) {
       reward_image: string
       points_used: number
       tx_id?: string
+      redeem_type?: 'pickup' | 'delivery' // 🟢 รับพารามิเตอร์เพิ่ม
     }): Promise<Coupon> => {
       const body = {
         user_id: userId,
@@ -121,6 +125,7 @@ export function CouponProvider({ children }: { children: ReactNode }) {
         reward_image: params.reward_image,
         points_used: params.points_used,
         tx_id: params.tx_id ?? '',
+        redeem_type: params.redeem_type ?? 'pickup', // 🟢 ส่งไปยัง API (default เป็น 'pickup')
       }
       console.log('[v0] coupon-context addCoupon — POST /api/coupons/redeem body:', body)
 
@@ -199,7 +204,7 @@ export function CouponProvider({ children }: { children: ReactNode }) {
       // Update local state immediately
       setCoupons((prev) =>
         prev.map((c) => (c.coupon_id === coupon_id ? { ...c, ...updated } : c))
-      )
+      );
     },
     []
   )

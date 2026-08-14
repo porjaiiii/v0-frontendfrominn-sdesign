@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       })
       return NextResponse.json(
         { 
-          error: 'Failed to upload image to Google Drive',
+          error: 'เกิดข้ปิดพลาดในการอัพโหลดรูป',
           details: error.substring(0, 200),
         },
         { status: 500 }
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       console.error('[v0] Upload response error - no imageUrl found in result object')
       return NextResponse.json(
         { 
-          error: 'Google Drive uploaded successfully but failed to return image URL',
+          error: 'เกิดปัญหาในการอัพโหลดรูปภาพ โปรดลองอัพโหลดใหม่จนเห็นรูปแสดงขึ้นมา',
           details: JSON.stringify(result)
         },
         { status: 500 }

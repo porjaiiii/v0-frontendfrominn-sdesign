@@ -409,10 +409,7 @@ export default function RewardsPage() {
                     <ChevronLeft size={16} />
                     ย้อนกลับ
                   </button>
-                  <span className="text-xs font-semibold text-[#157b03] bg-[#e8f5e2] px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                    {redeemType === 'pickup' ? <Store size={12} /> : <Truck size={12} />}
-                    {redeemType === 'pickup' ? 'เดินทางไปรับเอง' : 'รอรับที่บ้าน'}
-                  </span>
+               
                 </div>
 
                 <div className="flex items-center gap-3 mb-4">

@@ -99,7 +99,19 @@ export default function CouponDetailPage({
           </Link>
           <h1 className="text-lg font-bold text-[#154212]">คูปองของฉัน</h1>
         </div>
-ฃ
+
+        {/* ── กล่องสรุปสถานะและช่องทางการรับ (ส่วนที่เพิ่มใหม่) ── */}
+        <div className="mx-3 mb-4 bg-white rounded-2xl p-4 shadow-sm border border-[#e5e5e5] space-y-3">
+  
+
+          {/* วิธีรับ */}
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-[#666666] font-medium">วิธีรับ : ให้แสดงหน้านี้ให้เจ้าหน้าที่แสกน คูปองจะถูกใช้งานเมื่อท่านได้รับของรางวัลเรียบร้อย</span>
+           
+          </div>
+
+         
+        </div>
 
         {/* Coupon card */}
         <div className={cn('relative mx-3', isUsed && 'opacity-60')}>

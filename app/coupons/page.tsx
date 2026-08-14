@@ -23,7 +23,7 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
           <div className="relative w-[38%] flex-shrink-0 bg-[#154212] flex flex-col overflow-hidden">
             {/* Label */}
             <span className="text-white text-[10px] font-semibold leading-snug p-2.5 z-10 relative">
-              คลิกเพื่อดูรายละเอียดคูปองแลกรางวัล 
+              คูปองแลกรางวัล 
             </span>
 
             {/* Mascot — anchored to bottom-left, slightly overflowing upward */}
@@ -62,12 +62,12 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
                   {coupon.redeem_type === 'delivery' ? (
                     <>
                       <Truck size={11} />
-                      <span>พร้อมใช้งาน</span>
+                      <span>ดูรายละเอียด</span>
                     </>
                   ) : (
                     <>
                       <Store size={11} />
-                      <span>พร้อมใช้งาน</span>
+                      <span>ดูรายละเอียด</span>
                     </>
                   )}
                 </span>

@@ -1,6 +1,5 @@
 'use client'
 
-import { Menu } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -67,13 +66,19 @@ export function PageHeader({ title, showBack = false, onBack }: PageHeaderProps)
             )}
           </Link>
 
-          {/* Menu Button — invisible but still clickable */}
+          {/* โลโก้สำหรับเปิดเมนู */}
           <button
             onClick={handleMenuClick}
             aria-label="เปิดเมนู"
-            className="p-1 rounded-full opacity-0"
+            className="relative flex size-10 items-center justify-center rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#157b03] focus-visible:ring-offset-2"
           >
-            <Menu className="w-5 h-5" strokeWidth={2.5} />
+            <Image
+              src="/group-48095914.png"
+              alt="เปิดเมนู"
+              width={36}
+              height={36}
+              className="size-9 object-contain"
+            />
           </button>
         </div>
       </header>

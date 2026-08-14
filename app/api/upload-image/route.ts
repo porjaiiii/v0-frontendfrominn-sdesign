@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(
       { 
-        error: 'Failed to upload image',
+        error: 'อัพโหลดรูปไม่สำเร็จกรูณาลองอีกครั้งจนกว่าจะเห็นรูปแสดงขึ้นมา',
         details: errorMsg,
       },
       { status: 500 }

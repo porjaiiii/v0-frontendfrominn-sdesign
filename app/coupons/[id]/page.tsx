@@ -99,59 +99,7 @@ export default function CouponDetailPage({
           </Link>
           <h1 className="text-lg font-bold text-[#154212]">คูปองของฉัน</h1>
         </div>
-
-        {/* ── กล่องสรุปสถานะและช่องทางการรับ (ส่วนที่เพิ่มใหม่) ── */}
-        <div className="mx-3 mb-4 bg-white rounded-2xl p-4 shadow-sm border border-[#e5e5e5] space-y-3">
-          {/* สถานะ */}
-          <div className="flex items-center justify-between border-b border-[#f0f0f0] pb-2.5">
-            <span className="text-xs text-[#666666] font-medium">สถานะ</span>
-            <span
-              className={cn(
-                'text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1',
-                coupon.status === 'used'
-                  ? 'bg-gray-100 text-gray-500'
-                  : redeemType === 'pickup'
-                  ? 'bg-[#e8f5e2] text-[#157b03]'
-                  : 'bg-amber-50 text-amber-700 border border-amber-200'
-              )}
-            >
-              {statusText}
-            </span>
-          </div>
-
-          {/* วิธีรับ */}
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[#666666] font-medium">วิธีรับ</span>
-            <span className="font-semibold text-[#154212] flex items-center gap-1.5">
-              {redeemType === 'pickup' ? (
-                <>
-                  <Store size={14} className="text-[#157b03]" />
-                  เดินทางไปรับเอง
-                </>
-              ) : (
-                <>
-                  <Truck size={14} className="text-[#157b03]" />
-                  รอรับที่บ้าน
-                </>
-              )}
-            </span>
-          </div>
-
-          {/* ที่อยู่จัดส่ง (แสดงเฉพาะกรณีรอรับที่บ้าน) */}
-          {redeemType === 'delivery' && (
-            <div className="pt-2 border-t border-[#f0f0f0]">
-              <div className="flex items-start gap-1.5 text-xs">
-                <MapPin size={14} className="text-[#157b03] mt-0.5 shrink-0" />
-                <div className="flex-1">
-                  <span className="text-[#666666] font-medium block mb-0.5">ที่อยู่จัดส่ง</span>
-                  <p className="font-normal text-[#444444] leading-relaxed bg-[#f9fdf9] p-2 rounded-lg border border-[#e2efe1]">
-                    เพิ่มตรงนี้ให้ดึงข้อมูลที่อยู่จาก user มาหน่อยดูวิธีการดึงจาก /profile
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+ฃ
 
         {/* Coupon card */}
         <div className={cn('relative mx-3', isUsed && 'opacity-60')}>

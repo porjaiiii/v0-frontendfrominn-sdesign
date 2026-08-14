@@ -68,7 +68,7 @@ export async function GET(
     if (!response.ok) {
       console.error('[v0] Failed to fetch from Google Apps Script:', response.statusText)
       return NextResponse.json(
-        { error: 'Failed to fetch from Google Apps Script' },
+        { error: 'เกิดข้อผิดพลาดในการสดงผลโปรดลองอีกครั้งภายหลัง' },
         { status: 500 }
       )
     }
@@ -82,7 +82,7 @@ export async function GET(
     } catch (e) {
       console.error('[v0] Failed to parse JSON response:', responseText)
       return NextResponse.json(
-        { error: 'Invalid response format' },
+        { error: 'เกิดข้อผิดพลาดในการสดงผลโปรดลองอีกครั้งภายหลัง' },
         { status: 500 }
       )
     }
@@ -114,19 +114,19 @@ export async function GET(
       // Ambiguous error — fail open
       console.warn('[v0] GAS returned error (ambiguous), failing open:', result.message)
       return NextResponse.json(
-        { error: result.message || 'GAS error' },
+        { error: result.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล' },
         { status: 503 }
       )
     } else {
       return NextResponse.json(
-        { error: 'Unexpected response format' },
+        { error: 'รูปแบบข้อมูลไม่ถูกต้อง' },
         { status: 500 }
       )
     }
   } catch (error) {
     console.error('[v0] API Error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch profile' },
+      { error: 'เกิดข้อผิดพลาดในการสดงผลโปรดลองอีกครั้งภายหลัง' },
       { status: 500 }
     )
   }

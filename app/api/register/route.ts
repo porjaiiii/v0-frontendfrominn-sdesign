@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
       const isLockTimeout = result.message?.toLowerCase().includes('lock timeout') || result.message?.includes('busy')
       return NextResponse.json(
         { 
-          error: isLockTimeout ? 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง' : (result.message || 'Failed to save registration'),
+          error: isLockTimeout ? 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง' : (result.message || 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง'),
           details: result.message 
         },
         { status: isLockTimeout ? 429 : 400 }

@@ -49,10 +49,34 @@ export async function PATCH(request: NextRequest) {
 
     const responseText = await response.text()
 
+    // 1. ดักจับ Error ระดับ Network / HTTP status จาก Google
     if (!response.ok) {
       return NextResponse.json(
         { error: 'Failed to update user in Google Sheet', details: responseText.substring(0, 200) },
         { status: 500 }
+      )
+    }
+
+    // 2. แปลง Response เป็น JSON
+    let result
+    try {
+      result = JSON.parse(responseText)
+    } catch (e) {
+      return NextResponse.json(
+        { error: 'Invalid response format from Google Sheet', details: responseText.substring(0, 100) },
+        { status: 500 }
+      )
+    }
+
+    // 🔴 3. ตรวจสอบ Error ที่ส่งมาจาก Google Apps Script (เช่น Lock Timeout หรือ ไม่พบ User)
+    if (result.status === 'error') {
+      const isLockTimeout = result.message?.toLowerCase().includes('lock timeout') || result.message?.includes('busy')
+      return NextResponse.json(
+        { 
+          error: isLockTimeout ? 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง' : (result.message || 'Failed to update user'),
+          details: result.message 
+        },
+        { status: isLockTimeout ? 429 : 400 }
       )
     }
 
@@ -124,6 +148,7 @@ export async function POST(request: NextRequest) {
 
     const responseText = await response.text()
 
+    // 1. ดักจับ Error ระดับ Network / HTTP status จาก Google
     if (!response.ok) {
       return NextResponse.json(
         { 
@@ -135,12 +160,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Try to parse JSON response, if it fails just return success anyway
+    // 2. แปลง Response เป็น JSON
     let result
     try {
       result = JSON.parse(responseText)
     } catch (e) {
-      result = { status: 'success', raw: responseText.substring(0, 100) }
+      return NextResponse.json(
+        { error: 'Invalid response format from Google Sheet', details: responseText.substring(0, 100) },
+        { status: 500 }
+      )
+    }
+
+    // 🔴 3. ตรวจสอบ Error ที่ส่งมาจาก Google Apps Script (เช่น Lock Timeout หรือ ลงทะเบียนซ้ำ)
+    if (result.status === 'error') {
+      const isLockTimeout = result.message?.toLowerCase().includes('lock timeout') || result.message?.includes('busy')
+      return NextResponse.json(
+        { 
+          error: isLockTimeout ? 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง' : (result.message || 'Failed to save registration'),
+          details: result.message 
+        },
+        { status: isLockTimeout ? 429 : 400 }
+      )
     }
 
     return NextResponse.json({
@@ -148,7 +188,7 @@ export async function POST(request: NextRequest) {
       data: {
         lineUserId,
         fullName,
-        registrationDate,
+        registrationDate: payload.registrationDate,
       },
     })
   } catch (error) {

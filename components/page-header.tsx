@@ -65,21 +65,24 @@ export function PageHeader({ title, showBack = false, onBack }: PageHeaderProps)
               </>
             )}
           </Link>
-
-          {/* โลโก้สำหรับเปิดเมนู */}
-          <button
-            onClick={handleMenuClick}
-            aria-label="เปิดเมนู"
-            className="relative flex size-10 items-center justify-center rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#157b03] focus-visible:ring-offset-2"
-          >
-            <Image
-              src="/group-48095914.png"
-              alt="เปิดเมนู"
-              width={36}
-              height={36}
-              className="size-9 object-contain"
-            />
-          </button>
+{/* โลโก้สำหรับเปิดเมนู */}
+<button
+  onClick={handleMenuClick}
+  aria-label="เปิดเมนู"
+  className="relative flex size-10 items-center justify-center rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#157b03] focus-visible:ring-offset-2"
+>
+  <Image
+    src={
+      process.env.NEXT_PUBLIC_ENV === 'development'
+        ? "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Group%2048095915-IPXFfMBRVWt6M6xkUhC8KcL0PknJGM.png" // ไอคอน DEV
+        : "/group-48095914.png" // ไอคอน MAIN
+    }
+    alt="เปิดเมนู"
+    width={36}
+    height={36}
+    className="size-9 object-contain"
+  />
+</button>
         </div>
       </header>
 

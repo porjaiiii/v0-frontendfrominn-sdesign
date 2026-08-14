@@ -315,7 +315,7 @@ export default function RewardsPage() {
                 </p>
                 <p className="text-xm font-medium text-[#d43a34] bg-[#e8f5e2] px-3 py-1 rounded-full mb-2">
                   รับคูปองเรียบร้อย หากเจ้าหน้าที่ให้แสดงคูปองเพื่อรับของรางวัล คลิก “คูปองของฉัน” เพื่อแสดงคูปองที่ท่านมีอยู่ จากนั้น
-คลิกที่รางวัลที่จะแลกให้เจ้าหน้าที่ดำเนินการ
+คลิกที่รางวัลที่จะแลกเพื่อให้เจ้าหน้าที่ดำเนินการ
                 </p>
                 <p className="text-sm text-[#666666] mb-6">
                   คะแนนคงเหลือ {userPoints.toLocaleString()} คะแนน

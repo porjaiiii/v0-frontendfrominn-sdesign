@@ -65,8 +65,7 @@ export function PageHeader({ title, showBack = false, onBack }: PageHeaderProps)
               </>
             )}
           </Link>
-
-      {/* โลโก้สำหรับเปิดเมนู */}
+{/* โลโก้สำหรับเปิดเมนู */}
 <button
   onClick={handleMenuClick}
   aria-label="เปิดเมนู"

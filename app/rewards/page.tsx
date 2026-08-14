@@ -313,7 +313,7 @@ export default function RewardsPage() {
                 <p className="text-sm text-[#666666] mb-1">
                   {redeemTarget.name} · ใช้ไป {redeemTarget.points.toLocaleString()} คะแนน
                 </p>
-                <p className="text-xs font-medium text-[#d43a34] bg-[#e8f5e2] px-3 py-1 rounded-full mb-2">
+                <p className="text-xm font-medium text-[#d43a34] bg-[#e8f5e2] px-3 py-1 rounded-full mb-2">
                   คลิก “คูปองของฉัน” เพื่อแสดงคูปองที่ใช้แลกของรางวัลกับเจ้าหน้าที่
 คลิกที่คูปองของรางวัลที่จะแลกเพื่อแสดงคิวอาร์โค้ดให้กับเจ้าหน้าท
                 </p>

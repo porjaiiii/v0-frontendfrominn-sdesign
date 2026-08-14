@@ -532,7 +532,7 @@ function RegisterPageContent() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || (isEditMode ? 'Failed to update' : 'Failed to register'))
+        throw new Error(data.error || (isEditMode ? 'อัพเดตไม่สำเร็จกรูณาลองใหม่อีกครั้งในภายหลัง' : 'บันทึกไม่สำเร็จกรุณาลองใหม่อีกครั้ง'))
       }
 
       // Only greet on first-time registration — editing an existing profile

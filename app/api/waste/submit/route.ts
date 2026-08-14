@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJnOKocFO6Tyqsy7NUn060BtFr4oAtE4jaHbcrsMcEozzJLl0JcXvY4VAxg-XvkGu2/exec'
+
 const CARBON_FACTORS = {
   plastic: 1.0310,
   paper: 3.5460,
@@ -76,24 +77,51 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] Google Apps Script response status:', response.status)
 
+    const responseText = await response.text()
+
+    // 1. ดักจับ Error ระดับ Network/Server ของ Google
     if (!response.ok) {
-      const error = await response.text()
-      console.error('[v0] Google Apps Script error:', {
+      console.error('[v0] Google Apps Script HTTP error:', {
         status: response.status,
         statusText: response.statusText,
-        error: error.substring(0, 500)
+        error: responseText.substring(0, 500)
       })
       return NextResponse.json(
         { 
-          error: 'Failed to save to Google Sheet',
-          details: error.substring(0, 200),
+          error: 'เกิดข้อผิดพลาดในการบันทึกขยะกรุณาลองใหม่',
+          details: responseText.substring(0, 200),
           status: response.status,
         },
         { status: 500 }
       )
     }
 
-    const result = await response.json()
+    // 2. แปลง Response Text เป็น JSON
+    let result
+    try {
+      result = JSON.parse(responseText)
+    } catch (e) {
+      console.error('[v0] Failed to parse JSON from Google Apps Script:', responseText)
+      return NextResponse.json(
+        { error: 'เกิดปัญหาที่ไม่ทราบสาเหตุกรุณาลองใหม่ภายหลัง', details: responseText.substring(0, 100) },
+        { status: 500 }
+      )
+    }
+
+    // 🔴 3. เพิ่มจุดนี้: ตรวจสอบ Error จากเนื้อหาภายในของ Google Apps Script (เช่น Lock Timeout หรือ Sheet พัง)
+    if (result.status === 'error') {
+      console.error('[v0] Google Apps Script logic error:', result.message)
+      const isLockTimeout = result.message?.toLowerCase().includes('lock timeout') || result.message?.includes('busy')
+      
+      return NextResponse.json(
+        { 
+          error: isLockTimeout ? 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง' : (result.message || 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง'),
+          details: result.message 
+        },
+        { status: isLockTimeout ? 429 : 400 }
+      )
+    }
+
     console.log('[v0] Data submitted successfully:', result)
 
     return NextResponse.json({
@@ -110,7 +138,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[v0] Error submitting waste record:', error)
     return NextResponse.json(
-      { error: 'Failed to submit waste record' },
+      { 
+        error: 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     )
   }

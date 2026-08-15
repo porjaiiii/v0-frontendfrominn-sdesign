@@ -9,8 +9,8 @@ import { compressImage } from '@/lib/compress-image'
 
 // Carbon reduction factors per kg (CO2 kg saved)
 const CARBON_FACTORS: Record<string, number> = {
-  plastic: 1.0310,
-  paper: 5.6735,
+ plastic: 1.0310,
+  paper: 3.5460,
   glass: 0.2760,
   aluminum: 9.1270,
   oil: 3.0,

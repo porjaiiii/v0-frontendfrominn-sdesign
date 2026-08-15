@@ -107,7 +107,7 @@ export default function RewardsPage() {
           const payload = {
             reward_id: redeemTarget.id,
             reward_name: redeemTarget.name,
-            reward_description: redeemTarget.description ?? '',
+            reward_description: `${redeemTarget.description ?? ''}${isCashRedeem ? ` ${cashAmount.toLocaleString()} บาท` : ''}`,
             reward_image: redeemTarget.image,
             points_used: pointsToSpend,
             tx_id: result.tx_id,

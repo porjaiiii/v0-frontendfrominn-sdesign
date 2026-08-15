@@ -8,8 +8,7 @@
  * ถ้า redeploy Apps Script ให้เปลี่ยน URL ที่นี่ที่เดียว
  * ทุก route import จากไฟล์นี้
  */
-export const COUPON_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbzJnOKocFO6Tyqsy7NUn060BtFr4oAtE4jaHbcrsMcEozzJLl0JcXvY4VAxg-XvkGu2/exec'
+export const COUPON_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
 
 // ─── Field reference ───────────────────────────────────────────────────────
 //

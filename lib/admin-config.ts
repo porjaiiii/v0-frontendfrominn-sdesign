@@ -6,8 +6,7 @@
  *
  * ถ้า redeploy Apps Script ให้เปลี่ยน URL ที่นี่ที่เดียว
  */
-export const ADMIN_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbwV_m8kSt9Fw0uFohu6jaQ-q9Qkyt6wza33dVPbJG8102z-KJ5_9SzvI4ZfSdLgdzFT/exec'
+export const ADMIN_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
 
 // ─── Field reference ───────────────────────────────────────────────────────
 //

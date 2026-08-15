@@ -9,8 +9,8 @@ import { compressImage } from '@/lib/compress-image'
 
 // Carbon reduction factors per kg (CO2 kg saved)
 const CARBON_FACTORS: Record<string, number> = {
-  plastic: 1.0310,
-  paper: 5.6735,
+ plastic: 1.0310,
+  paper: 3.5460,
   glass: 0.2760,
   aluminum: 9.1270,
   oil: 3.0,
@@ -18,10 +18,10 @@ const CARBON_FACTORS: Record<string, number> = {
 
 // Points per kg (คำนวณแยกจาก carbon)
 const POINTS_PER_KG: Record<string, number> = {
-  plastic: 5,
-  paper: 2,
+  plastic: 6,
+  paper: 4,
   glass: 4,
-  aluminum: 15,
+  aluminum: 25,
   oil: 3,
 }
 

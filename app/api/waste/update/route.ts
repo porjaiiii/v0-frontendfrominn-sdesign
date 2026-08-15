@@ -87,7 +87,7 @@ export async function PUT(request: NextRequest) {
       })
       return NextResponse.json(
         { 
-          error: 'Failed to update in Google Sheet',
+          error: 'เกิดข้อผิดพลาดในการบันทึกขยะกรุณาลองใหม่',
           details: error.substring(0, 200),
           status: response.status,
         },
@@ -147,7 +147,7 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error('[v0] Error updating waste record:', error)
     return NextResponse.json(
-      { error: 'Failed to update waste record' },
+      { error: 'เกิดข้อผิดพลาดในการบันทึกขยะกรุณาลองใหม่' },
       { status: 500 }
     )
   }

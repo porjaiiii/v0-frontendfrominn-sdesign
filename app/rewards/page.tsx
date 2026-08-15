@@ -351,7 +351,7 @@ export default function RewardsPage() {
                 <div className="w-16 h-16 rounded-full bg-[#e8f5e2] flex items-center justify-center mb-3">
                   <CheckCircle2 size={40} className="text-[#157b03]" />
                 </div>
-                <h2 className="text-xl font-bold text-[#154212] mb-1">แลกรางว���ลเสร็จสิ้น!</h2>
+                <h2 className="text-xl font-bold text-[#154212] mb-1">แลกรางวัลเสร็จสิ้น!</h2>
                 <p className="text-sm text-[#666666] mb-1">
                   {redeemTarget.name} · ใช้ไป {isCashRedeem ? cashAmount.toLocaleString() : redeemTarget.points.toLocaleString()} คะแนน{isCashRedeem ? ` รับคูปองเงินคืน ${cashAmount.toLocaleString()} บาท` : ''}
                 </p>

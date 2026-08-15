@@ -52,7 +52,7 @@ export async function PATCH(request: NextRequest) {
     // 1. ดักจับ Error ระดับ Network / HTTP status จาก Google
     if (!response.ok) {
       return NextResponse.json(
-        { error: 'Failed to update user in Google Sheet', details: responseText.substring(0, 200) },
+        { error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลโปรดลองใหม่อีกครั้ง', details: responseText.substring(0, 200) },
         { status: 500 }
       )
     }

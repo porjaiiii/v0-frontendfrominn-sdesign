@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL2 ?? ''
+const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
 
 const CARBON_FACTORS = {
   plastic: 1.0310,

@@ -13,6 +13,15 @@ import { cn } from '@/lib/utils'
 import { usePoints } from '@/lib/points-context'
 import { useCoupons } from '@/lib/coupon-context'
 
+const CASH_REWARD = {
+  id: 99,
+  name: 'แลกเงินคืน',
+  description: 'สร้างคูปองเพื่อแลกเป็นเงินสดกับเจ้าหน้าที่',
+  points: 20,
+  image: '/images/rewards/gold-one-salung.png',
+  isCash: true,
+} as const
+
 export default function RewardsPage() {
   const { points: userPoints, loading: pointsLoading, spendPoints } = usePoints()
   const { addToCart, cartCount } = useCart()
@@ -43,8 +52,12 @@ export default function RewardsPage() {
   const [redeemError, setRedeemError] = useState<string | null>(null)
   const [redeemSuccess, setRedeemSuccess] = useState(false)
   const [newCouponId, setNewCouponId] = useState<string | null>(null)
+  const [cashPoints, setCashPoints] = useState('20')
 
   const redeemInFlight = useRef(false)
+  const isCashRedeem = redeemTarget?.id === CASH_REWARD.id
+  const cashAmount = Number.parseInt(cashPoints, 10)
+  const cashAmountValid = Number.isInteger(cashAmount) && cashAmount >= 20 && cashAmount <= userPoints
 
   const openRedeem = (reward: typeof REWARDS[number]) => {
     setRedeemTarget(reward)
@@ -53,6 +66,7 @@ export default function RewardsPage() {
     setRedeemError(null)
     setRedeemSuccess(false)
     setNewCouponId(null)
+    setCashPoints('20')
   }
 
   const handleConfirmRedeem = async () => {
@@ -64,7 +78,13 @@ export default function RewardsPage() {
     console.log('[v0] handleConfirmRedeem — userPoints:', userPoints)
     console.log('[v0] handleConfirmRedeem — redeemType:', redeemType)
 
-    if (redeemTarget.points > userPoints) {
+    const pointsToSpend = isCashRedeem ? cashAmount : redeemTarget.points
+    if (isCashRedeem && !cashAmountValid) {
+      setRedeemError(cashAmount > userPoints ? 'คะแนนของคุณไม่เพียงพอ' : 'กรุณากรอกจำนวนเต็มอย่างน้อย 20 แต้ม')
+      return
+    }
+
+    if (pointsToSpend > userPoints) {
       console.log('[v0] handleConfirmRedeem — not enough points, required:', redeemTarget.points, 'have:', userPoints)
       setRedeemError('คะแนนของคุณไม่เพียงพอ')
       return
@@ -74,9 +94,9 @@ export default function RewardsPage() {
     setProcessing(true)
 
     try {
-      const result = await spendPoints(redeemTarget.points, {
+      const result = await spendPoints(pointsToSpend, {
         category: 'reward',
-        items: [{ name: redeemTarget.name, quantity: 1, points: redeemTarget.points }],
+        items: [{ name: redeemTarget.name, quantity: 1, points: pointsToSpend }],
       })
 
       console.log('[v0] spendPoints — result:', result)
@@ -89,9 +109,9 @@ export default function RewardsPage() {
             reward_name: redeemTarget.name,
             reward_description: redeemTarget.description ?? '',
             reward_image: redeemTarget.image,
-            points_used: redeemTarget.points,
+            points_used: pointsToSpend,
             tx_id: result.tx_id,
-            redeem_type: redeemType, // เพิ่มฟิลด์ redeem_type ตรงนี้
+            redeem_type: isCashRedeem ? 'pickup' : redeemType, // เงินคืนรับคูปองไปดำเนินการกับเจ้าหน้าที่
           }
           console.log('[v0] addCoupon — calling with payload:', payload)
 
@@ -217,6 +237,28 @@ export default function RewardsPage() {
           </div>
           
           <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-xl border border-[#c3e2be] overflow-hidden relative flex flex-col">
+              <div className="aspect-square relative bg-[#f0f7ef]">
+                <Image src={CASH_REWARD.image} alt="แลกเงินคืน" fill className="object-cover opacity-80" />
+                <div className="absolute inset-0 flex items-center justify-center bg-[#154212]/10">
+                  <span className="rounded-full bg-white/90 px-3 py-1 text-sm font-bold text-[#154212]">เงินคืน</span>
+                </div>
+              </div>
+              <div className="p-3 flex flex-col flex-1">
+                <h3 className="text-sm font-medium text-[#444444] mb-1">แลกเงินคืน</h3>
+                <p className="text-xs text-[#666666] mb-2 line-clamp-2">กรอกแต้มที่ต้องการแลก ขั้นต่ำ 20 แต้ม</p>
+                <div className="flex items-center justify-between mb-3 mt-auto">
+                  <span className={cn('text-sm font-semibold', userPoints >= 20 ? 'text-[#157b03]' : 'text-[#999999]')}>เริ่มต้น 20 แต้ม</span>
+                </div>
+                <button
+                  onClick={() => openRedeem(CASH_REWARD)}
+                  disabled={userPoints < 20}
+                  className={cn('w-full py-2 rounded-lg text-sm font-medium transition-colors', userPoints >= 20 ? 'bg-[#154212] text-white hover:bg-[#0d3308]' : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed')}
+                >
+                  แลกเงินคืน
+                </button>
+              </div>
+            </div>
             {sortedRewards.map((reward) => {
               const canRedeem = userPoints >= reward.points
               const isFavorited = favorites.has(reward.id)
@@ -311,7 +353,7 @@ export default function RewardsPage() {
                 </div>
                 <h2 className="text-xl font-bold text-[#154212] mb-1">แลกรางวัลเสร็จสิ้น!</h2>
                 <p className="text-sm text-[#666666] mb-1">
-                  {redeemTarget.name} · ใช้ไป {redeemTarget.points.toLocaleString()} คะแนน
+                  {redeemTarget.name} · ใช้ไป {isCashRedeem ? cashAmount.toLocaleString() : redeemTarget.points.toLocaleString()} คะแนน{isCashRedeem ? ` รับคูปองเงินคืน ${cashAmount.toLocaleString()} บาท` : ''}
                 </p>
                 <p className="text-xm font-medium text-[#d43a34] bg-[#e8f5e2] px-3 py-1 rounded-full mb-2">
                   รับคูปองเรียบร้อย หากเจ้าหน้าที่ให้แสดงคูปองเพื่อรับของรางวัล คลิก “คูปองของฉัน” เพื่อแสดงคูปองที่ท่านมีอยู่ จากนั้น
@@ -337,7 +379,7 @@ export default function RewardsPage() {
                   </Link>
                 </div>
               </div>
-            ) : redeemStep === 1 ? (
+            ) : redeemStep === 1 ?
               <>
   <div className="flex items-center gap-3 mb-4">
     <div className="w-14 h-14 relative bg-[#f5f5f5] rounded-lg overflow-hidden flex-shrink-0">
@@ -345,10 +387,19 @@ export default function RewardsPage() {
     </div>
     <div>
       <h2 className="text-lg font-bold text-[#154212]">{redeemTarget.name}</h2>
-      <p className="text-sm text-[#157b03] font-semibold">{redeemTarget.points.toLocaleString()} คะแนน</p>
+      <p className="text-sm text-[#157b03] font-semibold">{isCashRedeem ? `${cashAmount || 0} แต้ม = ${cashAmount || 0} บาท` : `${redeemTarget.points.toLocaleString()} คะแนน`}</p>
     </div>
   </div>
 
+  {isCashRedeem && (
+    <div className="mb-5 rounded-xl border border-[#c3e2be] bg-[#f0f7ef] p-4">
+      <label htmlFor="cash-points" className="block text-sm font-bold text-[#154212] mb-2">ต้องการแลกกี่แต้ม?</label>
+      <input id="cash-points" type="number" min={20} step={1} value={cashPoints} onChange={(e) => setCashPoints(e.target.value)} className="w-full rounded-lg border border-[#c3e2be] bg-white px-3 py-2 text-lg font-bold text-[#154212] outline-none focus:ring-2 focus:ring-[#157b03]" />
+      <p className="mt-2 text-xs leading-relaxed text-[#666666]">ขั้นต่ำ 20 แต้ม และ 1 แต้มมีมูลค่าเท่ากับ 1 บาท</p>
+      {cashPoints && !cashAmountValid && <p className="mt-1 text-xs text-[#cc0000]">กรุณากรอกจำนวนเต็มตั้งแต่ 20 แต้ม และไม่เกินคะแนนคงเหลือ</p>}
+      {cashAmountValid && <p className="mt-2 text-sm font-semibold text-[#157b03]">จะได้รับคูปองเงินคืน {cashAmount.toLocaleString()} บาท</p>}
+    </div>
+  )}
   <div className="mb-5 space-y-3">
     <div>
       <h3 className="text-xs font-bold text-[#154212] mb-0.5">ช่องทางการแลกของรางวัล</h3>
@@ -399,7 +450,7 @@ export default function RewardsPage() {
     </button>
   </div>
 </>
-            ) : (
+            : (
               /* ── STEP 2: หน้าต่างยืนยันการแลกคะแนน ── */
               <>
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#f0f0f0]">
@@ -419,7 +470,7 @@ export default function RewardsPage() {
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-[#154212]">{redeemTarget.name}</h2>
-                    <p className="text-sm text-[#157b03] font-semibold">{redeemTarget.points.toLocaleString()} คะแนน</p>
+                    <p className="text-sm text-[#157b03] font-semibold">{isCashRedeem ? `${cashAmount || 0} แต้ม = ${cashAmount || 0} บาท` : `${redeemTarget.points.toLocaleString()} คะแนน`}</p>
                   </div>
                 </div>
 

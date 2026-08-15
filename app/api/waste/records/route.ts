@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJnOKocFO6Tyqsy7NUn060BtFr4oAtE4jaHbcrsMcEozzJLl0JcXvY4VAxg-XvkGu2/exec'
+const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL2 ?? ''
 
 export async function GET(request: NextRequest) {
   try {

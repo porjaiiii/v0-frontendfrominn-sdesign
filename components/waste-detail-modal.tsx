@@ -21,7 +21,7 @@ const POINTS_PER_KG: Record<string, number> = {
   plastic: 5,
   paper: 2,
   glass: 4,
-  aluminum: 15,
+  aluminum: 25,
   oil: 3,
 }
 

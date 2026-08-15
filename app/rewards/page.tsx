@@ -15,8 +15,8 @@ import { useCoupons } from '@/lib/coupon-context'
 
 const CASH_REWARD = {
   id: 99,
-  name: 'แลกเงินคืน',
-  description: 'สร้างคูปองเพื่อแลกเป็นเงินสดกับเจ้าหน้าที่',
+  name: 'แลกแต้มเป็นเงินคืน',
+  description: 'คูปองแลกเงินสด',
   points: 20,
   image: '/images/rewards/gold-one-salung.png',
   isCash: true,

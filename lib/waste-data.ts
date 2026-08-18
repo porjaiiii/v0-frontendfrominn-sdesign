@@ -35,11 +35,11 @@ export const WASTE_SUBTYPES: Record<WasteType, WasteSubType[]> = {
 }
 
 export const REWARDS = [
-  { id: 1, name: 'น้ำยาล้างจาน ซันไลต์', description: '', points: 25, image: '/images/rewards/sunlight-dish-soap.jpg' /* TODO: replace with /images/rewards/sunlight-dish-soap.jpg */ },
-  { id: 2, name: 'น้ำส้มควันไม้ สูตรเข้มข้น', description: '1 ลิตร', points: 50, image: '/images/rewards/wood-vinegar.jpg' /* TODO: replace with /images/rewards/wood-vinegar.jpg */ },
-  { id: 3, name: 'ถ่านไบโอชาร์', description: '1 กิโลกรัม', points: 50, image: '/images/rewards/biochar.jpg' /* TODO: replace with /images/rewards/biochar.jpg */ },
+  { id: 1, name: 'น้ำยาล้างจาน ซันไลต์', description: 'ขนาดเล็ก', points: 25, image: '/images/rewards/sunlight-dish-soap.jpg'  },
+  { id: 2, name: 'น้ำส้มควันไม้ สูตรเข้มข้น', description: '1 ลิตร', points: 50, image: '/images/rewards/wood-vinegar.jpg' },
+  { id: 3, name: 'ถ่านไบโอชาร์', description: '1 กิโลกรัม', points: 50, image: '/images/rewards/biochar.jpg' },
   { id: 4, name: 'ข้าวหอมมะลิ', description: '1 กิโลกรัม', points: 55, image: '/images/rewards/one-kg-jasmine-rice.jpg' },
-  { id: 5, name: 'น้ำมันพืช', description: '1 ลิตร 1 ขวด', points: 70, image: '/images/rewards/vegetable-oil.jpg' /* TODO: replace with /images/rewards/vegetable-oil.jpg */ },
+  { id: 5, name: 'น้ำมันพืช', description: '1 ลิตร 1 ขวด', points: 70, image: '/images/rewards/vegetable-oil.jpg' },
   { id: 6, name: 'ข้าวหอมมะลิ', description: '5 กิโลกรัม', points: 150, image: '/images/rewards/five-kg-jasmine-rice.jpg' },
   { id: 7, name: 'ทองคำแท้หนึ่งสลึง', description: 'ทองคำแผ่นหรือทองรูปพรรณ (ราคาปัจจุบัน)', points: 17000, image: '/images/rewards/gold-one-salung.png' }
 ]

@@ -18,7 +18,7 @@ const CASH_REWARD = {
   name: 'แลกแต้มเป็นเงินคืน',
   description: 'คูปองแลกเงินสด',
   points: 20,
-  image: '/images/rewards/gold-one-salung.png',
+  image: '/images/rewards/THB-cash.jpg',
   isCash: true,
 } as const
 

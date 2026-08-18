@@ -444,7 +444,7 @@ function RegisterPageContent() {
 
   async function notifyRegistrationComplete(lineUserId: string, data: typeof formData) {
   // ✅ 1. URL ของ GAS web app + route=register
-  const GAS_WEBHOOK_URL = `${process.env.NEXT_PUBLIC_GAS_URL1 ?? ''}?route=register`
+  const GAS_WEBHOOK_URL = `${process.env.NEXT_PUBLIC_GAS_URL3 ?? ''}?route=register`
   const SECRET = 'dwa-secret-2024'
   const fullName = `${data.firstName} ${data.lastName}`.trim()
   try {

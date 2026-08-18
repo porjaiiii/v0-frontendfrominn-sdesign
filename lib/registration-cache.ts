@@ -23,7 +23,7 @@ const STORAGE_KEY = 'is_registered'
 //
 // Tune this per environment if needed — e.g. lower it during active testing
 // via NEXT_PUBLIC_REGISTERED_CACHE_TTL_MS if you add that env var later.
-const TTL_MS = 2 * 1000 // 24 hours
+const TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 type CacheShape = { v: true; ts: number }
 

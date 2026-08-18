@@ -443,6 +443,7 @@ function RegisterPageContent() {
   }
 
   async function notifyRegistrationComplete(lineUserId: string, data: typeof formData) {
+    console.log(process.env.NEXT_PUBLIC_GAS_URL3)
   // ✅ 1. URL ของ GAS web app + route=register
   const GAS_WEBHOOK_URL = `${process.env.NEXT_PUBLIC_GAS_URL3 ?? ''}?route=register`
   const SECRET = 'dwa-secret-2024'

@@ -111,7 +111,7 @@ export default function RewardsPage() {
             reward_image: redeemTarget.image,
             points_used: pointsToSpend,
             tx_id: result.tx_id,
-            redeem_type: isCashRedeem ? 'pickup' : redeemType, // เงินคืนรับคูปองไปดำเนินการกับเจ้าหน้าที่
+            redeem_type: isCashRedeem ? 'pickup' : (redeemType ?? 'pickup'), // เงินคืนรับคูปองไปดำเนินการกับเจ้าหน้าที่
           }
           console.log('[v0] addCoupon — calling with payload:', payload)
 

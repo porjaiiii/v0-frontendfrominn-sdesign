@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useLiffContext } from '@/lib/liff-context'
-import { getRegisteredCache, setRegisteredCache, clearRegisteredCache } from '@/lib/registration-cache'
 
 // How long (ms) to wait for the profile API before giving up and failing
 // open to /register. Matches the API route's own ~50s worst-case retry
@@ -63,18 +62,9 @@ export default function RootPage() {
     const params = new URLSearchParams(window.location.search)
     if (params.has('liff.state')) return
 
-    // Dev/QA escape hatch: open the LIFF URL with ?resetCache=1 to force a
-    // fresh DB check instead of trusting whatever is cached on the device.
-    // Useful for testing without uninstalling the LINE app.
-    if (params.get('resetCache') === '1') {
-      clearRegisteredCache()
-    }
-
-    // ตรวจสอบจาก localStorage ว่าเคยลงทะเบียนหรือยัง — fast path, no API call,
-    // but only while the cache is still fresh (see lib/registration-cache.ts
-    // for why this now expires instead of lasting forever).
-    const cache = getRegisteredCache()
-    if (cache.status === 'fresh') {
+    // ตรวจสอบจาก localStorage ว่าเคยลงทะเบียนหรือยัง — fast path, no API call.
+    const isRegisteredInCache = localStorage.getItem('is_registered') === 'true'
+    if (isRegisteredInCache) {
       router.replace('/home')
       return
     }
@@ -109,26 +99,15 @@ export default function RootPage() {
         clearTimeout(timeoutId)
 
         if (res.status === 404) {
-          // Definitive: user is not registered in the DB right now. Clear any
-          // stale cached flag (e.g. left over from before a reset/delete) so
-          // we don't keep trusting it once the TTL check above lets a stale
-          // cache through.
-          clearRegisteredCache()
+          // Definitive: user has never registered
           router.replace('/register')
           return
         }
 
         if (!res.ok) {
-          // 5xx / ambiguous error — can't confirm either way. Fail open:
-          // if we still have a (stale but not-yet-disproven) cached "registered"
-          // flag, trust it rather than bouncing a real user to /register just
-          // because the DB was briefly unreachable.
-          console.warn('[RootPage] non-404 error from profile API:', res.status, '— falling back')
-          if (cache.status === 'stale') {
-            router.replace('/home')
-          } else {
-            router.replace('/register')
-          }
+          // 5xx / ambiguous error — can't confirm either way, fail to /register
+          console.warn('[RootPage] non-404 error from profile API:', res.status, '— falling back to /register')
+          router.replace('/register')
           return
         }
 
@@ -137,12 +116,10 @@ export default function RootPage() {
           typeof data?.fullName === 'string' && data.fullName.trim() !== ''
 
         if (hasProfile) {
-          // Registered in the database — (re)write the cache with a fresh
-          // timestamp so the next TTL_MS window skips the API call again.
-          setRegisteredCache()
+          // Registered in the database (just not cached on this device yet).
+          localStorage.setItem('is_registered', 'true')
           router.replace('/home')
         } else {
-          clearRegisteredCache()
           router.replace('/register')
         }
       } catch (err: unknown) {
@@ -150,14 +127,11 @@ export default function RootPage() {
         const isAbort = err instanceof DOMException && err.name === 'AbortError'
         console.warn(
           isAbort
-            ? '[RootPage] profile fetch timed out — falling back'
-            : '[RootPage] profile fetch failed — falling back',
+            ? '[RootPage] profile fetch timed out — falling back to /register'
+            : '[RootPage] profile fetch failed — falling back to /register',
           err
         )
-        // Same fail-open reasoning as the 5xx branch above: don't punish a
-        // real registered user with a redirect just because the network
-        // request itself failed or timed out.
-        router.replace(cache.status === 'stale' ? '/home' : '/register')
+        router.replace('/register')
       }
     }
 

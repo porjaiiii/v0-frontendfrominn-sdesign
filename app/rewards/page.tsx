@@ -235,7 +235,8 @@ export default function RewardsPage() {
               </select>
             </div>
           </div>
-          
+          <p className="text-xs text-red-600 leading-relaxed">* หมายเหตุ รูปใช้เพื่อการโฆษณาเท่านั้น แบรนด์ของสินค้าสามารถปรับเปลี่ยนได้ตามความเหมาะสม</p>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white rounded-xl border border-[#c3e2be] overflow-hidden relative flex flex-col">
               <div className="aspect-square relative bg-[#f0f7ef]">
@@ -310,7 +311,6 @@ export default function RewardsPage() {
                         {reward.points} แต้ม
                       </span>
                     </div>
-
                     <div className="flex gap-2">
                       <button
                         onClick={() => openRedeem(reward)}

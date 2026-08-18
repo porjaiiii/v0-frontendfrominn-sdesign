@@ -35,7 +35,7 @@ export const WASTE_SUBTYPES: Record<WasteType, WasteSubType[]> = {
 }
 
 export const REWARDS = [
-  { id: 1, name: 'น้ำยาล้างจาน ซันไลต์', description: 'ขนาดเล็ก', points: 25, image: '/images/rewards/sunlight-dish-soap.jpg'  },
+  { id: 1, name: 'น้ำยาล้างจาน ซันไลต์', description: 'ยำำ้ยาล้างจาน ชนิดเติม 500 ml', points: 25, image: '/images/rewards/sunlight-dish-soap.jpg'  },
   { id: 2, name: 'น้ำส้มควันไม้ สูตรเข้มข้น', description: '1 ลิตร', points: 50, image: '/images/rewards/wood-vinegar.jpg' },
   { id: 3, name: 'ถ่านไบโอชาร์', description: '1 กิโลกรัม', points: 50, image: '/images/rewards/biochar.jpg' },
   { id: 4, name: 'ข้าวหอมมะลิ', description: '1 กิโลกรัม', points: 55, image: '/images/rewards/one-kg-jasmine-rice.jpg' },

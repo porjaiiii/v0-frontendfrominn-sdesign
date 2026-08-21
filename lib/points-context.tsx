@@ -62,7 +62,7 @@ interface PointsContextType {
 
 const PointsContext = createContext<PointsContextType | undefined>(undefined)
 
-function toNumber(value: unknown): number {
+export function toNumber(value: unknown): number {
   const n = typeof value === 'number' ? value : parseFloat(String(value ?? ''))
   return Number.isFinite(n) ? n : 0
 }
@@ -70,10 +70,10 @@ function toNumber(value: unknown): number {
 // Points are always whole numbers; weight/CO2 are shown to 2 decimals. Rounding
 // here strips floating-point artifacts (e.g. 829.9999999999 / 2.30000000004)
 // that can sneak in from the sheet sums or Apps Script before they hit the UI.
-function toPoints(value: unknown): number {
+export function toPoints(value: unknown): number {
   return Math.round(toNumber(value))
 }
-function toMetric(value: unknown): number {
+export function toMetric(value: unknown): number {
   return Math.round(toNumber(value) * 100) / 100
 }
 

@@ -8,58 +8,61 @@ export async function compressImage(
   maxDimension = 1280               // ลด resolution ลงจาก 1920 → 1280 เพื่อช่วยให้ไฟล์เล็กลงไวขึ้น
 ): Promise<{ blob: Blob; dataUrl: string }> {
   return new Promise((resolve, reject) => {
-    const img = new window.Image()
-    const objectUrl = URL.createObjectURL(file)
+    const fileReader = new FileReader()
 
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl)
+    fileReader.onload = () => {
+      const img = new window.Image()
 
-      // คำนวณ dimension ใหม่ถ้าใหญ่เกิน
-      let { width, height } = img
-      if (width > maxDimension || height > maxDimension) {
-        const ratio = Math.min(maxDimension / width, maxDimension / height)
-        width = Math.round(width * ratio)
-        height = Math.round(height * ratio)
+      img.onload = () => {
+        // คำนวณ dimension ใหม่ถ้าใหญ่เกิน
+        let { width, height } = img
+        if (width > maxDimension || height > maxDimension) {
+          const ratio = Math.min(maxDimension / width, maxDimension / height)
+          width = Math.round(width * ratio)
+          height = Math.round(height * ratio)
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, width, height)
+
+        // เริ่มที่ quality 0.85 และลดทีละ 0.15 เพื่อให้ถึงเป้าเร็วขึ้น
+        let quality = 0.85
+        const tryCompress = () => {
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) { reject(new Error('Canvas toBlob failed')); return }
+
+              if (blob.size <= maxSizeBytes || quality <= 0.1) {
+                // แปลงเป็น dataUrl ด้วย
+                const reader = new FileReader()
+                reader.onload = () => resolve({ blob, dataUrl: reader.result as string })
+                reader.onerror = reject
+                reader.readAsDataURL(blob)
+              } else {
+                // ลด quality ทีละ 0.15 (เร็วกว่าเดิมที่ลดทีละ 0.1)
+                quality = Math.max(0.1, quality - 0.15)
+                tryCompress()
+              }
+            },
+            'image/jpeg',
+            quality
+          )
+        }
+
+        tryCompress()
       }
 
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0, width, height)
-
-      // เริ่มที่ quality 0.85 และลดทีละ 0.15 เพื่อให้ถึงเป้าเร็วขึ้น
-      let quality = 0.85
-      const tryCompress = () => {
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) { reject(new Error('Canvas toBlob failed')); return }
-
-            if (blob.size <= maxSizeBytes || quality <= 0.1) {
-              // แปลงเป็น dataUrl ด้วย
-              const reader = new FileReader()
-              reader.onload = () => resolve({ blob, dataUrl: reader.result as string })
-              reader.onerror = reject
-              reader.readAsDataURL(blob)
-            } else {
-              // ลด quality ทีละ 0.15 (เร็วกว่าเดิมที่ลดทีละ 0.1)
-              quality = Math.max(0.1, quality - 0.15)
-              tryCompress()
-            }
-          },
-          'image/jpeg',
-          quality
-        )
+      img.onerror = () => {
+        reject(new Error('Failed to load image'))
       }
 
-      tryCompress()
+      img.src = fileReader.result as string
     }
 
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      reject(new Error('Failed to load image'))
-    }
-
-    img.src = objectUrl
+    fileReader.onerror = () => reject(new Error('Failed to read image file'))
+    fileReader.readAsDataURL(file)
   })
 }

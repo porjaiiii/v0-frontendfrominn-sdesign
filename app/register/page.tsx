@@ -8,6 +8,7 @@ import { ChevronDown, ChevronUp, X, ArrowLeft } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { useLiffContext } from '@/lib/liff-context'
 import { generateUserIdFromLineId } from '@/lib/user-id-generator'
+import { setCachedRegisteredLineId } from '@/lib/registration-cookie'
 
 const OCCUPATIONS = [
   'ผู้ประกอบการ (ร้านค้า/โฮมสเตย์)',
@@ -542,7 +543,9 @@ function RegisterPageContent() {
       }
 
       setSuccess(true)
-      localStorage.setItem('is_registered', 'true');
+      if (formData.lineUserId) {
+        setCachedRegisteredLineId(formData.lineUserId)
+      }
 
       setFormData({
         lineUserId: '', userId: '', pdpaConsent: false, firstName: '', lastName: '',

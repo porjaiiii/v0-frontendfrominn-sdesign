@@ -8,7 +8,6 @@ import { useRouter, useParams } from 'next/navigation'
 import { useLiffContext } from '@/lib/liff-context'
 import { usePoints } from '@/lib/points-context'
 import {
-  mapWasteRecords,
   wasteTypeName,
   wasteSubtypeName,
   type WasteRecord,
@@ -47,7 +46,7 @@ export default function HistoryDetailPage() {
     fetch(`/api/waste/records?user_id=${encodeURIComponent(userId)}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
-        const records = mapWasteRecords(data?.records ?? [], userId)
+        const records = (data?.records ?? []) as WasteRecord[]
         // Prefer an exact string match; fall back to comparing the parsed date
         // value so differences in timestamp formatting can't break the lookup.
         const idTime = new Date(String(id).replace(' ', 'T')).getTime()

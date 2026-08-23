@@ -63,14 +63,6 @@ export default function RootPage() {
     const params = new URLSearchParams(window.location.search)
     if (params.has('liff.state')) return
 
-    // Demo mode — no LIFF_ID configured, so there's no LINE user to check
-    // against the database. Fall back to cache-only behavior.
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID
-    if (!liffId) {
-      router.replace('/register')
-      return
-    }
-
     if (!isLoggedIn) return
     if (!profile?.userId) return
 

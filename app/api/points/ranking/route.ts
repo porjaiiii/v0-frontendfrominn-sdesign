@@ -1,50 +1,42 @@
 import { NextResponse } from 'next/server'
 import { unstable_cache } from 'next/cache'
-import type { RankingEntry } from '@/app/api/ranking/route'
 
-// Leaderboard built by reading Google Sheets DIRECTLY (Sheets API v4) — no Apps
-// Script hop at all, mirroring the fast balance read on the rewards page:
+import { backendFor } from '@/lib/backend-flags'
+import {
+  FALLBACK_AVATAR,
+  SAMPLE_RANKING,
+  TOURIST_USER_TYPE,
+  type CallerInfo,
+  type RankingEntry,
+} from '@/lib/ranking'
+import { getLeaderboard } from '@/lib/supabase/reads'
+
+// The leaderboard.
 //
-//   carbon / points  ← points_account tab of the POINTS spreadsheet (POINTS_SPREADSHEET_ID)
-//   nickname / ตำบล   ← Registration tab of the REGISTRATION spreadsheet, keyed by
-//                       LINE user id (the same sheet the registration Apps Script
-//                       writes to — so names/nicknames match the profile page).
+// supabase path: one query against app.v_leaderboard, which already joins the
+//   balances, the account aggregates and the user's ตำบล / tourist flag.
+// gas path:      two parallel Sheets reads (points_account + Registration)
+//   cross-referenced by LINE user id.
 //
-// Both are single Sheets reads run in parallel, so the whole build is well under
-// a second (the previous GAS getUser fallback took ~30 s on cold starts).
+// Both order by carbon descending; `points` is the spendable balance and is
+// displayed rather than ranked on, so redeeming never moves a user's rank.
+//
+// app/api/ranking (a third, unused leaderboard over the legacy `point` tab) and
+// app/api/ranking/debug (an unauthenticated raw-sheet dump) are deleted; the
+// RankingEntry type they exported now lives in lib/ranking.ts.
 
 export const maxDuration = 30
 
 const POINTS_SPREADSHEET_ID = process.env.POINTS_SPREADSHEET_ID
-const SHEETS_API_KEY   = process.env.GOOGLE_SHEETS_API_KEY
+const SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY
 
 // Registration spreadsheet (bound to the registration Apps Script). Hardcoded to
 // match the existing pattern for the script URLs; override via env if it moves.
 const REG_SHEETS_ID = process.env.REGISTRATION_SHEETS_ID || '1vvBe_ZySfSq4oP8tfwHDUg-Jo3gBr9QanQWqLATAkNE'
 const REG_TAB = 'Registration'
 
-const FALLBACK_AVATAR = '/placeholder.svg?height=40&width=40'
-
-const SAMPLE_RANKING: Omit<RankingEntry, 'rank'>[] = [
-  { lineUserId: 'Usample001', name: 'สมชาย ใจดี', carbon: 256.5, points: 2565, avatar: FALLBACK_AVATAR, location: 'ตำบลบางกะเจ้า' },
-  { lineUserId: 'Usample002', name: 'สมหญิง รักษ์โลก', carbon: 234.3, points: 2343, avatar: FALLBACK_AVATAR, location: 'ตำบลบางน้ำผึ้ง' },
-  { lineUserId: 'Usample003', name: 'มนัส เกื้อกูล', carbon: 112.4, points: 1124, avatar: FALLBACK_AVATAR, location: 'ตำบลบางกอบัว' },
-  { lineUserId: 'Usample004', name: 'กมลา ตาวุดีมี', carbon: 89.0, points: 890, avatar: FALLBACK_AVATAR, location: '' },
-  { lineUserId: 'Usample005', name: 'ณัฐพล สิริมงคล', carbon: 78.0, points: 780, avatar: FALLBACK_AVATAR, location: 'ตำบลบางกระสอบ' },
-  { lineUserId: 'Usample006', name: 'วรรณา เจริญสุข', carbon: 76.0, points: 760, avatar: FALLBACK_AVATAR, location: 'ตำบลบางยอ' },
-  { lineUserId: 'Usample007', name: 'ประยุทธ รุ่งเรือง', carbon: 74.0, points: 740, avatar: FALLBACK_AVATAR, location: 'ตำบลทรงคะนอง' },
-]
-
 type UserInfo = { name: string; avatar: string; location: string; isTourist: boolean }
-// Just the caller's own ตำบล / tourist status, so the ranking page can group the
-// ตำบล tab correctly even when the caller has no points yet (and so isn't in the
-// leaderboard). Sourced from the already-built name map — no extra fetch.
-type CallerInfo = { location: string; isTourist: boolean }
 
-// Distinctive userType value written by the registration form. Matching on the
-// value (rather than a column position) is immune to header-name drift and to
-// tourists who mistakenly also have a ตำบล filled in.
-const TOURIST_USER_TYPE = 'นักท่องเที่ยว'
 // nameMap is kept on the (server-side, viewer-independent) cached result so GET
 // can look up any caller's own ตำบล/tourist status without re-reading the sheet.
 type RankingResult = { ranking: RankingEntry[]; isSample: boolean; nameMap: Record<string, UserInfo> }
@@ -153,7 +145,7 @@ async function readAccounts(): Promise<AccountEntry[]> {
     .filter((e) => e.lineUserId)
 }
 
-async function buildRanking(): Promise<RankingResult> {
+async function buildRankingFromSheets(): Promise<RankingResult> {
   try {
     // Both reads are independent — run them in parallel.
     const [entries, nameMap] = await Promise.all([readAccounts(), buildNameMap()])
@@ -180,6 +172,34 @@ async function buildRanking(): Promise<RankingResult> {
     console.error('[points-ranking] Error:', error)
     return SAMPLE_RESULT
   }
+}
+
+async function buildRankingFromSupabase(): Promise<RankingResult> {
+  try {
+    const { ranking, byUser } = await getLeaderboard()
+    if (ranking.length === 0) return SAMPLE_RESULT
+
+    const nameMap: Record<string, UserInfo> = {}
+    for (const entry of ranking) {
+      nameMap[entry.lineUserId] = {
+        name: entry.name,
+        avatar: entry.avatar,
+        location: byUser[entry.lineUserId]?.location ?? '',
+        isTourist: byUser[entry.lineUserId]?.isTourist ?? false,
+      }
+    }
+
+    return { ranking, isSample: false, nameMap }
+  } catch (error) {
+    console.error('[points-ranking] supabase error:', error)
+    return SAMPLE_RESULT
+  }
+}
+
+async function buildRanking(): Promise<RankingResult> {
+  return backendFor('points') === 'supabase'
+    ? buildRankingFromSupabase()
+    : buildRankingFromSheets()
 }
 
 // Shared, viewer-independent cache. 60 s keeps the leaderboard fresh (carbon

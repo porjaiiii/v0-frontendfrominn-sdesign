@@ -1,24 +1,16 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { MOCK_USER } from '@/lib/mock-user'
+import { WASTE_RATES, type WasteRate, type WasteType } from '@/lib/rates'
 
-export type WasteType = 'plastic' | 'paper' | 'glass' | 'aluminum' | 'oil'
+export type { WasteType }
 
 export interface WasteSubType {
   id: string
   name: string
   description?: string
   image: string
-}
-
-export interface WasteSubmission {
-  wasteType: WasteType
-  subType: WasteSubType
-  weight: number
-  imageEvidence?: string
-  carbonReduction: number
-  createdAt: Date
 }
 
 export interface UserProfile {
@@ -28,130 +20,79 @@ export interface UserProfile {
   totalCarbon: number
   totalPoints: number
   rank: number
-  submissions: WasteSubmission[]
 }
 
 interface AppContextType {
-  // Current submission flow
-  selectedWasteType: WasteType | null
-  setSelectedWasteType: (type: WasteType | null) => void
-  selectedSubType: WasteSubType | null
-  setSelectedSubType: (subType: WasteSubType | null) => void
-  weight: number
-  setWeight: (weight: number) => void
-  imageEvidence: string | null
-  setImageEvidence: (image: string | null) => void
-  
-  // User data
+  // User data — kept in sync with the real LIFF profile by lib/liff-context.tsx.
   userProfile: UserProfile | null
   setUserProfile: (profile: UserProfile | null) => void
-  
-  // Calculated carbon
-  calculatedCarbon: number
-  
-  // Navigation
-  currentStep: number
-  setCurrentStep: (step: number) => void
-  
-  // Reset submission
-  resetSubmission: () => void
-  
-  // Submit
-  submitWaste: () => void
+
+  // Live waste rates (Phase 7), replacing the CARBON_FACTORS/POINTS_PER_KG
+  // table that used to be copy-pasted into app/home/page.tsx,
+  // components/waste-detail-modal.tsx and both waste API routes.
+  //
+  // Fetched once per session from GET /api/catalog/waste-types. Starts as
+  // lib/rates.ts's offline fallback, which stays in place if the fetch never
+  // resolves — a slow or failed catalog fetch must never block the submission
+  // flow, since these numbers are only an estimate (the real price is set
+  // server-side, inside submit_waste/confirm_waste).
+  wasteRates: Record<WasteType, WasteRate>
+  wasteRatesLoading: boolean
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
-// Carbon reduction factors per kg (CO2 kg saved)
-const CARBON_FACTORS: Record<WasteType, number> = {
-  plastic: 1.0310,
-  paper: 3.5460,
-  glass: 0.2760,
-  aluminum: 9.1270,
-  oil: 3.0,
-}
-
-// Points per kg for each waste type (คำนวณแยกจาก carbon)
-const POINTS_PER_KG: Record<WasteType, number> = {
-  plastic: 6,
-  paper: 4,
-  glass: 4,
-  aluminum: 25,
-  oil: 3,
-}
-
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [selectedWasteType, setSelectedWasteType] = useState<WasteType | null>(null)
-  const [selectedSubType, setSelectedSubType] = useState<WasteSubType | null>(null)
-  const [weight, setWeight] = useState(0)
-  const [imageEvidence, setImageEvidence] = useState<string | null>(null)
-  const [currentStep, setCurrentStep] = useState(1)
   const [userProfile, setUserProfile] = useState<UserProfile | null>({
     userId: MOCK_USER.lineUserId,
     displayName: MOCK_USER.displayName,
     totalCarbon: MOCK_USER.carbon,
     totalPoints: MOCK_USER.points,
     rank: 0,
-    submissions: []
   })
 
-  const calculatedCarbon = selectedWasteType
-    ? weight * CARBON_FACTORS[selectedWasteType]
-    : 0
+  const [wasteRates, setWasteRates] = useState<Record<WasteType, WasteRate>>(WASTE_RATES)
+  const [wasteRatesLoading, setWasteRatesLoading] = useState(true)
 
-  const calculatedPoints = selectedWasteType
-    ? Math.round(weight * POINTS_PER_KG[selectedWasteType])
-    : 0
+  useEffect(() => {
+    let cancelled = false
 
-  const resetSubmission = useCallback(() => {
-    setSelectedWasteType(null)
-    setSelectedSubType(null)
-    setWeight(0)
-    setImageEvidence(null)
-    setCurrentStep(1)
+    fetch('/api/catalog/waste-types')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.success || !Array.isArray(data.wasteTypes)) return
+
+        const next: Record<string, WasteRate> = {}
+        for (const entry of data.wasteTypes) {
+          if (typeof entry?.id !== 'string') continue
+          next[entry.id] = {
+            carbonFactor: Number(entry.carbonFactor) || WASTE_RATES.plastic.carbonFactor,
+            pointsPerKg: Number(entry.pointsPerKg) || WASTE_RATES.plastic.pointsPerKg,
+          }
+        }
+        // Merge over the fallback rather than replacing it outright, so a
+        // partial or unexpected response can't blank out a rate this session
+        // already had a value for.
+        if (Object.keys(next).length > 0) {
+          setWasteRates((prev) => ({ ...prev, ...next } as Record<WasteType, WasteRate>))
+        }
+      })
+      .catch((err) => {
+        // Network failure — the fallback set at useState init is already on
+        // screen, so there's nothing more to do here.
+        console.error('[app-context] waste-types catalog fetch failed:', err)
+      })
+      .finally(() => {
+        if (!cancelled) setWasteRatesLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const submitWaste = useCallback(() => {
-    if (!selectedWasteType || !selectedSubType || weight <= 0) return
-
-    const newSubmission: WasteSubmission = {
-      wasteType: selectedWasteType,
-      subType: selectedSubType,
-      weight,
-      imageEvidence: imageEvidence || undefined,
-      carbonReduction: calculatedCarbon,
-      createdAt: new Date()
-    }
-
-    setUserProfile(prev => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        totalCarbon: prev.totalCarbon + calculatedCarbon,
-        totalPoints: prev.totalPoints + calculatedPoints,
-        submissions: [...prev.submissions, newSubmission]
-      }
-    })
-  }, [selectedWasteType, selectedSubType, weight, imageEvidence, calculatedCarbon])
-
   return (
-    <AppContext.Provider value={{
-      selectedWasteType,
-      setSelectedWasteType,
-      selectedSubType,
-      setSelectedSubType,
-      weight,
-      setWeight,
-      imageEvidence,
-      setImageEvidence,
-      userProfile,
-      setUserProfile,
-      calculatedCarbon,
-      currentStep,
-      setCurrentStep,
-      resetSubmission,
-      submitWaste
-    }}>
+    <AppContext.Provider value={{ userProfile, setUserProfile, wasteRates, wasteRatesLoading }}>
       {children}
     </AppContext.Provider>
   )

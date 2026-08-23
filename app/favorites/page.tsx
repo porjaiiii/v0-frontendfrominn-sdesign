@@ -13,8 +13,8 @@ import { usePoints } from '@/lib/points-context'
 import { useCoupons } from '@/lib/coupon-context'
 
 export default function FavoritesPage() {
-  const { points: userPoints, loading: pointsLoading, spendPoints } = usePoints()
-  const { addCoupon } = useCoupons()
+  const { points: userPoints, loading: pointsLoading, refresh: refreshPoints } = usePoints()
+  const { redeemRewards } = useCoupons()
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
 
   // Direct "แลกเลย" redeem states & refs
@@ -71,32 +71,17 @@ export default function FavoritesPage() {
     setProcessing(true)
 
     try {
-      const result = await spendPoints(redeemTarget.points, {
-        category: 'reward',
-        items: [{ name: redeemTarget.name, quantity: 1, points: redeemTarget.points }],
+      // One call: the server prices from the catalog, spends and mints. The
+      // spend-then-mint pair this replaced needed an apology branch for when
+      // the second half failed — that state no longer exists.
+      const { coupons } = await redeemRewards({
+        items: [{ reward_id: redeemTarget.id, quantity: 1 }],
       })
-
-      if (result.success) {
-        try {
-          const payload = {
-            reward_id: redeemTarget.id,
-            reward_name: redeemTarget.name,
-            reward_description: redeemTarget.description ?? '',
-            reward_image: redeemTarget.image,
-            points_used: redeemTarget.points,
-            tx_id: result.tx_id,
-          }
-
-          const coupon = await addCoupon(payload)
-          setNewCouponId(coupon.coupon_id)
-          setRedeemSuccess(true)
-        } catch (err) {
-          console.error('[Favorites] addCoupon — error:', err)
-          setRedeemError('แลกคะแนนสำเร็จ แต่ไม่สามารถสร้างคูปองได้ กรุณาติดต่อเจ้าหน้าที่')
-        }
-      } else {
-        setRedeemError(result.message || 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่')
-      }
+      setNewCouponId(coupons[0]?.coupon_id ?? null)
+      setRedeemSuccess(true)
+      await refreshPoints()
+    } catch (err) {
+      setRedeemError(err instanceof Error ? err.message : 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่')
     } finally {
       redeemInFlight.current = false
       setProcessing(false)

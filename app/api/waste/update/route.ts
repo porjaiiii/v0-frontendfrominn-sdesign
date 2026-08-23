@@ -1,24 +1,91 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { POINTS_SCRIPT_URL } from '@/lib/points-config'
 
-const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
-const CARBON_FACTORS = {
-  plastic: 1.0310,
-  paper: 3.5460,
-  glass: 0.2760,
-  aluminum: 9.1270,
-  oil: 3.0,
-}
+import { getLineIdentity } from '@/lib/auth/verify-line-token'
+import { backendFor, isMaintenance, MAINTENANCE_MESSAGE } from '@/lib/backend-flags'
+import { parseJsonBody, readIdempotencyKey } from '@/lib/schemas/common'
+import { updateWasteSchema } from '@/lib/schemas/waste'
+import { confirmWaste, WriteError } from '@/lib/supabase/writes'
+import { carbonFactorFor, pointsPerKgFor } from '@/lib/rates'
 
-const POINTS_PER_KG = {
-  plastic: 6,
-  paper: 4,
-  glass: 4,
-  aluminum: 25,
-  oil: 3,
+const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
+
+// GAS branch only, via lib/rates.ts — the Supabase branch reads the rates from
+// app.waste_types, the single LIVE copy of the same numbers.
+
+/**
+ * Supabase path — one transaction where the GAS path below is three sequential
+ * HTTP calls with a try/catch marked "non-fatal".
+ *
+ * That comment is the bug: when `earn_points` fails the record is already
+ * permanently `done` with zero points, and when the user retries it is awarded
+ * a SECOND time. app.confirm_waste does the record update, the point lot, the
+ * transaction, the ledger entry and the account aggregates atomically, and
+ * awards exactly once no matter how many times it is called.
+ */
+async function respondFromSupabase(request: NextRequest) {
+  if (isMaintenance()) {
+    return NextResponse.json({ error: MAINTENANCE_MESSAGE }, { status: 503 })
+  }
+
+  const identity = await getLineIdentity(request)
+  if (!identity) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const parsed = await parseJsonBody(request, updateWasteSchema)
+  if (!parsed.ok) {
+    return NextResponse.json(parsed.body, { status: parsed.status })
+  }
+
+  try {
+    const result = await confirmWaste(
+      identity.lineUserId,
+      parsed.data,
+      readIdempotencyKey(request),
+    )
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: result.record.id,
+        timestamp: result.record.timestamp,
+        user_id: result.record.user_id,
+        waste_type: result.record.waste_type,
+        weight_kg: result.record.weight_kg,
+        carbon_reduction: result.record.carbon_reduction,
+        points_earned: result.record.points_earned,
+        // Same field name the client already reads. It now means "this call
+        // awarded the points", so a replay reports false — which is the truth,
+        // not a failure.
+        points_awarded: result.pointsAwarded,
+        already_confirmed: result.alreadyConfirmed,
+        tx_id: result.txId,
+      },
+    })
+  } catch (error) {
+    if (error instanceof WriteError) {
+      return NextResponse.json(
+        { error: 'เกิดข้อผิดพลาดในการบันทึกขยะกรุณาลองใหม่', details: error.message },
+        { status: error.status },
+      )
+    }
+    console.error('[waste/update] supabase write failed:', error)
+    return NextResponse.json(
+      {
+        error: 'เกิดข้อผิดพลาดในการบันทึกขยะกรุณาลองใหม่',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    )
+  }
 }
 
 export async function PUT(request: NextRequest) {
+  if (backendFor('wasteUpdate') === 'supabase') {
+    return respondFromSupabase(request)
+  }
+
   try {
     const body = await request.json()
     const {
@@ -43,9 +110,9 @@ export async function PUT(request: NextRequest) {
     }
 
     // คำนวณ carbon reduction และแต้มแยกกัน
-    const carbonFactor = CARBON_FACTORS[waste_type as keyof typeof CARBON_FACTORS] || 1.0
+    const carbonFactor = carbonFactorFor(waste_type)
     const carbonReduction = weight_kg * carbonFactor
-    const pointsRate = POINTS_PER_KG[waste_type as keyof typeof POINTS_PER_KG] || 3
+    const pointsRate = pointsPerKgFor(waste_type)
     const pointsEarned = typeof pointsEarnedFromClient === 'number' 
       ? pointsEarnedFromClient 
       : Math.round(weight_kg * pointsRate)

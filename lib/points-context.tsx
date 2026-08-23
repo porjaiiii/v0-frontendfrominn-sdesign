@@ -40,7 +40,7 @@ export interface SpendDetail {
 }
 
 interface PointsContextType {
-  /** The LINE user id backing this account, or null in demo mode (no LIFF). */
+  /** The LINE user id backing this account, or null before LIFF has a profile. */
   userId: string | null
   points: number
   carbon: number
@@ -203,7 +203,7 @@ export function PointsProvider({ children }: { children: ReactNode }) {
 
   const value: PointsContextType = {
     userId,
-    // In demo mode (no LIFF user) fall back to the mock figures so the UI still renders.
+    // Before there's a real LIFF user, fall back to the mock figures so the UI still renders.
     points: account ? account.total_points : userId ? 0 : MOCK_USER.points,
     carbon: account ? account.total_co2 : userId ? 0 : MOCK_USER.carbon,
     weight: account ? account.total_weight : 0,

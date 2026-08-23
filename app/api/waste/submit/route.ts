@@ -1,24 +1,86 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getLineIdentity } from '@/lib/auth/verify-line-token'
+import { backendFor, isMaintenance, MAINTENANCE_MESSAGE } from '@/lib/backend-flags'
+import { parseJsonBody, readIdempotencyKey } from '@/lib/schemas/common'
+import { submitWasteSchema } from '@/lib/schemas/waste'
+import { submitWaste, WriteError } from '@/lib/supabase/writes'
+import { carbonFactorFor, pointsPerKgFor } from '@/lib/rates'
+
 const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
 
-const CARBON_FACTORS = {
-  plastic: 1.0310,
-  paper: 3.5460,
-  glass: 0.2760,
-  aluminum: 9.1270,
-  oil: 3.0,
-}
+// GAS branch only, via lib/rates.ts — the Supabase branch prices from
+// app.waste_types, which is the single LIVE copy of the same numbers.
 
-const POINTS_PER_KG = {
-  plastic: 6,
-  paper: 4,
-  glass: 4,
-  aluminum: 25,
-  oil: 3,
+/**
+ * Supabase path. Three things differ from the GAS path below, all deliberate:
+ *
+ *   1. Identity comes from the verified LINE ID token, never `body.user_id`.
+ *   2. Points and carbon are priced from app.waste_types, so a client cannot
+ *      submit its own numbers.
+ *   3. An `Idempotency-Key` header makes a retried submit return the ORIGINAL
+ *      record with a 200 — never a second row. This is the duplicate-submit
+ *      bug that prompted the migration.
+ */
+async function respondFromSupabase(request: NextRequest) {
+  if (isMaintenance()) {
+    return NextResponse.json({ error: MAINTENANCE_MESSAGE }, { status: 503 })
+  }
+
+  const identity = await getLineIdentity(request)
+  if (!identity) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const parsed = await parseJsonBody(request, submitWasteSchema)
+  if (!parsed.ok) {
+    return NextResponse.json(parsed.body, { status: parsed.status })
+  }
+
+  try {
+    const { record, duplicate } = await submitWaste(
+      identity.lineUserId,
+      parsed.data,
+      readIdempotencyKey(request),
+    )
+
+    return NextResponse.json({
+      success: true,
+      duplicate,
+      data: {
+        id: record.id,
+        timestamp: record.timestamp,
+        user_id: record.user_id,
+        waste_type: record.waste_type,
+        weight_kg: record.weight_kg,
+        carbon_reduction: record.carbon_reduction,
+        points_earned: record.points_earned,
+        status: record.status,
+      },
+    })
+  } catch (error) {
+    if (error instanceof WriteError) {
+      return NextResponse.json(
+        { error: 'เกิดข้อผิดพลาดในการบันทึกขยะกรุณาลองใหม่', details: error.message },
+        { status: error.status },
+      )
+    }
+    console.error('[waste/submit] supabase write failed:', error)
+    return NextResponse.json(
+      {
+        error: 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    )
+  }
 }
 
 export async function POST(request: NextRequest) {
+  if (backendFor('wasteSubmit') === 'supabase') {
+    return respondFromSupabase(request)
+  }
+
   try {
     const body = await request.json()
     const {
@@ -41,9 +103,9 @@ export async function POST(request: NextRequest) {
     }
 
     // คำนวณ carbon reduction และแต้มแยกกัน
-    const carbonFactor = CARBON_FACTORS[waste_type as keyof typeof CARBON_FACTORS] || 1.0
+    const carbonFactor = carbonFactorFor(waste_type)
     const carbonReduction = weight_kg * carbonFactor
-    const pointsRate = POINTS_PER_KG[waste_type as keyof typeof POINTS_PER_KG] || 3
+    const pointsRate = pointsPerKgFor(waste_type)
     const pointsEarned = Math.round(weight_kg * pointsRate)
 
     // บันทึก timestamp

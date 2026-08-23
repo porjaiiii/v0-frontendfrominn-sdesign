@@ -159,7 +159,8 @@ export default function ProfilePage() {
   }
 
   // True while we're still fetching the logged-in user's real profile.
-  // (In demo mode there's no userId, so we skip loading and show fallbacks.)
+  // (Before LIFF resolves a userId there's nothing to fetch yet, so we skip
+  // loading and show fallbacks instead.)
   const isLoadingProfile = profileLoading || (!fetchedProfile && !!liffProfile?.userId)
 
   // CO2 and recycled weight come from the points database (total_co2 / total_weight).

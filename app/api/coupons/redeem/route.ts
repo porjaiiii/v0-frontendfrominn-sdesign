@@ -1,134 +1,232 @@
 /**
- * POST /api/coupons/redeem
+ * POST /api/coupons/redeem — แลกคะแนนเป็นรางวัลและออกคูปอง
  *
- * แลกคะแนนเป็นรางวัล แล้วสร้าง coupon ใหม่เก็บใน Google Sheet
- *
- * Request body:
+ * Request body (Phase 5 shape):
  * {
- *   user_id          : string   — LINE userId ของผู้แลก (required)
- *   reward_id        : number   — รหัส reward template (required)
- *   reward_name      : string   — ชื่อรางวัล (required)
- *   reward_description: string  — คำอธิบายรางวัล (required)
- *   reward_image     : string   — URL รูปรางวัล (required)
- *   points_used      : number   — คะแนนที่ใช้แลก (required)
- *   tx_id            : string   — รหัส points transaction อ้างอิง (optional)
- *   redeem_type      : string   — 'pickup' | 'delivery' (optional, default 'pickup')
- *   expires_at       : string   — ISO datetime หมดอายุ (optional)
+ *   items       : [{ reward_id: number, quantity?: number, points?: number }]
+ *   redeem_type : 'pickup' | 'delivery'   (optional, default 'pickup')
  * }
  *
- * Response 200:
- * {
- *   success : true
- *   coupon  : CouponRecord
- * }
+ * `points` is honoured ONLY for a variable-price reward (the cash-back coupon)
+ * and is floored server-side. For every other reward the price comes from the
+ * catalog and the request cannot influence it.
+ *
+ * The legacy single-reward body — {reward_id, reward_name, points_used, …} — is
+ * still accepted and mapped onto the new shape, so the client bundle and the
+ * BACKEND_COUPONS flag can be deployed in either order. Its `points_used` is
+ * read as a variable-reward amount and otherwise discarded.
+ *
+ * Response 200: { success: true, tx_id, points_used, coupon, coupons[] }
+ *   `coupon` is the first coupon, preserved for existing callers that read a
+ *   single object. One coupon is minted per unit.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+
+import { getLineIdentity } from '@/lib/auth/verify-line-token'
+import { backendFor, isMaintenance, MAINTENANCE_MESSAGE } from '@/lib/backend-flags'
 import { COUPON_SCRIPT_URL, type CouponRecord } from '@/lib/coupon-config'
+import { POINTS_SCRIPT_URL } from '@/lib/points-config'
+import { priceRedemption, PricingError } from '@/lib/rewards-catalog'
+import { parseJsonBody, readIdempotencyKey } from '@/lib/schemas/common'
+import { redeemRequestSchema, type RedeemRewardsInput } from '@/lib/schemas/points'
+import { redeemRewards, WriteError } from '@/lib/supabase/writes'
+
+// ---------------------------------------------------------------------------
+// Supabase — one transaction: price, spend, mint
+// ---------------------------------------------------------------------------
+
+async function respondFromSupabase(request: NextRequest, input: RedeemRewardsInput) {
+  const identity = await getLineIdentity(request)
+  if (!identity) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const result = await redeemRewards(identity.lineUserId, input, readIdempotencyKey(request))
+
+    return NextResponse.json({
+      success: true,
+      tx_id: result.txId,
+      points_used: result.pointsUsed,
+      duplicate: result.duplicate,
+      coupon: result.coupons[0] ?? null,
+      coupons: result.coupons,
+    })
+  } catch (error) {
+    if (error instanceof WriteError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            error.code === 'DW001'
+              ? 'คะแนนของคุณไม่เพียงพอ'
+              : 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่',
+          message: error.message,
+        },
+        { status: error.status },
+      )
+    }
+    console.error('[coupons/redeem] supabase redeem failed:', error)
+    return NextResponse.json(
+      { success: false, error: 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่' },
+      { status: 500 },
+    )
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GAS — spend, then mint. Two web apps, no transaction.
+// ---------------------------------------------------------------------------
 
 function generateCouponId(): string {
+  // Still Math.random() on this path, because the coupon id has to be generated
+  // the same way the sheet has always seen it. app.new_coupon_id() is CSPRNG.
   const hex = () => Math.random().toString(16).substring(2, 10).toUpperCase()
   return `CPN${hex()}-${hex().substring(0, 4)}-${hex().substring(0, 4)}`
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    console.log('[v0] POST /api/coupons/redeem — received body:', JSON.stringify(body))
+/**
+ * Prices from lib/rewards-catalog rather than from the request, so the client
+ * cannot set a price on this backend either — that fix is not conditional on
+ * the flag. Everything else about this path is unchanged: the spend and the
+ * mint remain two independent calls that can half-fail.
+ */
+async function respondFromGas(
+  request: NextRequest,
+  input: RedeemRewardsInput,
+  lineUserId: string,
+) {
+  const { lines, total } = priceRedemption(input.items)
 
-    const {
-      user_id,
-      reward_id,
-      reward_name,
-      reward_description,
-      reward_image,
-      points_used,
-      tx_id,
-      redeem_type, // 🟢 1. แกะค่า redeem_type ออกมาจาก request body
-      expires_at,
-    } = body
+  const spendRes = await fetch(POINTS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'spend_points',
+      user_id: lineUserId,
+      points: total,
+      category: 'reward',
+      items: lines.map((line) => ({
+        name: line.reward.name,
+        quantity: line.quantity,
+        points: line.unitPoints * line.quantity,
+      })),
+    }),
+  })
 
-    // ── Validate required fields ──────────────────────────────────────────
-    if (!user_id || !reward_id || !reward_name || !reward_description || !reward_image || !points_used) {
-      console.warn('[v0] POST /api/coupons/redeem — missing required fields:', {
-        user_id: !!user_id,
-        reward_id: !!reward_id,
-        reward_name: !!reward_name,
-        reward_description: !!reward_description,
-        reward_image: !!reward_image,
-        points_used: !!points_used,
-      })
-      return NextResponse.json(
-        {
-          error: 'Missing required fields',
-          required: ['user_id', 'reward_id', 'reward_name', 'reward_description', 'reward_image', 'points_used'],
-        },
-        { status: 400 }
-      )
-    }
-
-    if (typeof points_used !== 'number' || points_used <= 0) {
-      console.warn('[v0] POST /api/coupons/redeem — invalid points_used:', points_used)
-      return NextResponse.json(
-        { error: 'points_used must be a positive number' },
-        { status: 400 }
-      )
-    }
-
-    // ── Build coupon record ───────────────────────────────────────────────
-    const coupon: CouponRecord & { redeem_type?: string } = {
-      coupon_id: generateCouponId(),
-      user_id,
-      reward_id: Number(reward_id),
-      reward_name,
-      reward_description,
-      reward_image,
-      points_used: Number(points_used),
-      tx_id: tx_id ?? '',
-      redeem_type: redeem_type ?? 'pickup', // object coupon
-      status: 'active',
-      redeemed_at: new Date().toISOString(),
-      used_at: '',
-      expires_at: expires_at ?? '',
-      scanned_by: '',
-    }
-
-    // ── Send to Google Apps Script ────────────────────────────────────────
-    const payload = {
-      action: 'redeem',  // แก้ให้ตรงกับ if (action === 'redeem')
-      coupon: coupon     // ใส่ข้อมูล coupon ยัดเข้าไปใน object ชื่อ coupon ตามที่ GAS เรียกใช้ (data.coupon)
-    }
-
-    console.log('[v0] POST /api/coupons/redeem — sending to GAS URL:', COUPON_SCRIPT_URL)
-    console.log('[v0] POST /api/coupons/redeem — GAS payload:', JSON.stringify(payload))
-
-    const response = await fetch(COUPON_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-
-    console.log('[v0] POST /api/coupons/redeem — GAS response status:', response.status)
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('[v0] POST /api/coupons/redeem — GAS error text:', errorText.substring(0, 500))
-      return NextResponse.json(
-        { error: 'Failed to save coupon to Google Sheet', details: errorText.substring(0, 200) },
-        { status: 500 }
-      )
-    }
-
-    const result = await response.json()
-    console.log('[v0] POST /api/coupons/redeem — GAS success result:', JSON.stringify(result))
-    console.log('[v0] POST /api/coupons/redeem — coupon created:', coupon.coupon_id)
-
-    return NextResponse.json({ success: true, coupon })
-  } catch (error) {
-    console.error('[v0] POST /api/coupons/redeem — unexpected error:', error)
+  const spendResult = await spendRes.json().catch(() => null)
+  if (!spendRes.ok || !spendResult?.success) {
     return NextResponse.json(
-      { error: 'Failed to redeem coupon', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
+      {
+        success: false,
+        error: spendResult?.message ?? 'ไม่สามารถใช้คะแนนได้',
+        current_balance: spendResult?.current_balance,
+      },
+      { status: spendResult?.message?.includes('Not enough') ? 402 : 400 },
+    )
+  }
+
+  const coupons: CouponRecord[] = []
+
+  for (const line of lines) {
+    for (let i = 0; i < line.quantity; i++) {
+      const coupon: CouponRecord & { redeem_type?: string } = {
+        coupon_id: generateCouponId(),
+        user_id: lineUserId,
+        reward_id: line.reward.id,
+        reward_name: line.reward.name,
+        reward_description: line.description,
+        reward_image: line.reward.image,
+        points_used: line.unitPoints,
+        tx_id: spendResult.tx_id ?? '',
+        redeem_type: input.redeem_type,
+        status: 'active',
+        redeemed_at: new Date().toISOString(),
+        used_at: '',
+        expires_at: '',
+        scanned_by: '',
+      }
+
+      const response = await fetch(COUPON_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'redeem', coupon }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[coupons/redeem] GAS error:', errorText.substring(0, 300))
+        // Points are already gone and some coupons may already exist. Nothing
+        // here can undo that — which is the structural reason this path is
+        // being replaced rather than repaired.
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'แลกคะแนนสำเร็จ แต่ไม่สามารถสร้างคูปองได้ กรุณาติดต่อเจ้าหน้าที่',
+            tx_id: spendResult.tx_id,
+            coupons,
+          },
+          { status: 500 },
+        )
+      }
+
+      coupons.push(coupon)
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    tx_id: spendResult.tx_id,
+    points_used: total,
+    duplicate: false,
+    coupon: coupons[0] ?? null,
+    coupons,
+  })
+}
+
+export async function POST(request: NextRequest) {
+  if (isMaintenance()) {
+    return NextResponse.json({ success: false, error: MAINTENANCE_MESSAGE }, { status: 503 })
+  }
+
+  const parsed = await parseJsonBody(request, redeemRequestSchema)
+  if (!parsed.ok) {
+    return NextResponse.json(parsed.body, { status: parsed.status })
+  }
+
+  try {
+    if (backendFor('coupons') === 'supabase') {
+      return await respondFromSupabase(request, parsed.data)
+    }
+
+    // The GAS path has never authenticated; it reads the id from the body,
+    // exactly as it does in production today. Deliberately unchanged — it dies
+    // with the flag rather than being half-migrated.
+    const body = (await request.clone().json().catch(() => ({}))) as { user_id?: string }
+    const identity = await getLineIdentity(request)
+    const lineUserId = identity?.lineUserId ?? body.user_id
+
+    if (!lineUserId) {
+      return NextResponse.json({ success: false, error: 'Missing user_id' }, { status: 400 })
+    }
+
+    return await respondFromGas(request, parsed.data, lineUserId)
+  } catch (error) {
+    if (error instanceof PricingError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: error.status },
+      )
+    }
+    console.error('[coupons/redeem] unexpected error:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
     )
   }
 }

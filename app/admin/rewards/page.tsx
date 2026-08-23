@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Plus, ArrowLeft } from 'lucide-react'
-import { REWARDS } from '@/lib/waste-data'
+import { CATALOG_REWARDS } from '@/lib/rewards-catalog'
 import { useAdmin } from '@/lib/admin-context'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -23,13 +23,28 @@ export default function AdminRewardsPage() {
   const { isAdmin } = useAdmin()
   const router = useRouter()
 
+  // Live catalog (Phase 7) — GET /api/catalog/rewards, replacing the static
+  // REWARDS array. `enabled`/toggleEnabled below stay client-only state (there
+  // is no PATCH endpoint yet to persist an is_active flip) — real stock now
+  // comes from the API instead of a hardcoded 75 for every item.
   const [items, setItems] = useState<RewardItem[]>(
-    REWARDS.map((r) => ({
-      ...r,
-      enabled: true,
-      stock: 75,
-    }))
+    CATALOG_REWARDS.map((r) => ({ ...r, enabled: true }))
   )
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/catalog/rewards')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.success && Array.isArray(data.rewards) && data.rewards.length > 0) {
+          setItems(data.rewards.map((r: Omit<RewardItem, 'enabled'>) => ({ ...r, enabled: true })))
+        }
+      })
+      .catch((err) => console.error('[admin/rewards] catalog fetch failed:', err))
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Redirect non-admin
   if (!isAdmin) {

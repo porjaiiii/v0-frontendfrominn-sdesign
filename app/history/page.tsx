@@ -9,7 +9,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useLiffContext } from '@/lib/liff-context'
 import {
-  mapWasteRecords,
   wasteTypeName,
   wasteSubtypeName,
   type WasteRecord,
@@ -231,7 +230,7 @@ export default function HistoryPage() {
 
     fetch(`/api/waste/records?user_id=${q}`, { signal: controller.signal })
       .then(res => res.json())
-      .then(data => setWasteRecords(mapWasteRecords(data?.records ?? [], userId)))
+      .then(data => setWasteRecords((data?.records ?? []) as WasteRecord[]))
       .catch(err => { if (err.name !== 'AbortError') setWasteRecords([]) })
 
     fetch(`/api/coupons?user_id=${q}`, { signal: controller.signal })

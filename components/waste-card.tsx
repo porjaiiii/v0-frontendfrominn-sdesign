@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { displaySrc } from '@/lib/api-client'
 import { Camera } from 'lucide-react'
 
 interface WasteRecord {
@@ -69,7 +70,7 @@ export function WasteCard({
             record.image_urls.map((url, index) => (
               <div key={index} className="w-28 h-28 flex-shrink-0 rounded border border-[#cccccc] overflow-hidden">
                 <Image
-                  src={url}
+                  src={displaySrc(url)}
                   alt={`${record.waste_type} - ${index + 1}`}
                   width={112}
                   height={112}

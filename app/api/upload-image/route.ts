@@ -1,11 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getLineIdentity } from '@/lib/auth/verify-line-token'
+import { backendFor } from '@/lib/backend-flags'
+import { uploadWastePhoto } from '@/lib/supabase/storage'
+
 const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
+
+/**
+ * Deprecated base64 shim.
+ *
+ * New clients call POST /api/upload-image/sign and PUT the Blob straight to
+ * storage; nothing about the image passes through a Vercel function. This route
+ * stays so that a browser running an older bundle keeps working across a deploy,
+ * and it is where the Drive path lives until the flag is retired.
+ *
+ * Keep the 4.5MB body limit in mind: base64 inflates by ~33%, which is the
+ * entire reason lib/compress-image used to target 0.5MB.
+ */
+async function respondFromSupabase(request: NextRequest, base64Data: string) {
+  const identity = await getLineIdentity(request)
+  if (!identity) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const buffer = Buffer.from(base64Data, 'base64')
+    if (buffer.length === 0) {
+      return NextResponse.json({ error: 'Empty image payload' }, { status: 400 })
+    }
+
+    const path = await uploadWastePhoto(identity.lineUserId, buffer, 'image/jpeg')
+
+    // `imageUrl` is the field every existing caller reads. It now carries a
+    // storage PATH rather than a URL — getWasteRecords signs it on the way out,
+    // and a value that is already a URL (a legacy Drive link) is passed through
+    // untouched.
+    return NextResponse.json({ success: true, imageUrl: path, fileName: path })
+  } catch (error) {
+    console.error('[upload-image] supabase upload failed:', error)
+    return NextResponse.json(
+      { error: 'ไม่สามารถอัปโหลดรูปได้ กรุณาลองใหม่' },
+      { status: 500 },
+    )
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { base64Data, fileName, userId, wasteType, weight } = body
+
+    if (backendFor('wasteSubmit') === 'supabase') {
+      if (!base64Data) {
+        return NextResponse.json({ error: 'Missing base64Data' }, { status: 400 })
+      }
+      return await respondFromSupabase(request, base64Data)
+    }
 
     console.log('[v0] Received image upload request:', { fileName, userId, wasteType, weight, dataSize: base64Data?.length })
 

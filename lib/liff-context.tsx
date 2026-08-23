@@ -46,7 +46,6 @@ export function LiffProvider({ children }: { children: ReactNode }) {
         totalCarbon: 0,
         totalPoints: 0,
         rank: 0,
-        submissions: []
       })
     }
   }, [liff.isReady, liff.isLoggedIn, liff.profile, setUserProfile])

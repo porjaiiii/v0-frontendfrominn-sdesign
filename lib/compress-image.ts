@@ -1,11 +1,19 @@
 /**
- * บีบอัดรูปภาพให้ขนาดไม่เกิน maxSizeBytes (default 0.5 MB)
+ * บีบอัดรูปภาพให้ขนาดไม่เกิน maxSizeBytes (default 2 MB)
  * ใช้ Canvas API วนลด quality จนผ่านเกณฑ์
+ *
+ * The 0.5 MB / 1280px target this replaces was not a quality decision. Images
+ * went to the server as base64 through a Vercel function, base64 inflates by
+ * ~33%, and the body limit is 4.5MB — so the ceiling had to be low, and evidence
+ * photos came out too soft to read a label on.
+ *
+ * Phase 6 PUTs the Blob straight to storage (lib/api-client.ts), so neither
+ * limit applies any more.
  */
 export async function compressImage(
   file: File,
-  maxSizeBytes = 0.5 * 1024 * 1024, // 0.5 MB
-  maxDimension = 1280               // ลด resolution ลงจาก 1920 → 1280 เพื่อช่วยให้ไฟล์เล็กลงไวขึ้น
+  maxSizeBytes = 2 * 1024 * 1024,   // 2 MB
+  maxDimension = 1920
 ): Promise<{ blob: Blob; dataUrl: string }> {
   return new Promise((resolve, reject) => {
     const fileReader = new FileReader()

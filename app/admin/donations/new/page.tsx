@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useAdmin } from '@/lib/admin-context'
 import { cn } from '@/lib/utils'
 import { compressImage } from '@/lib/compress-image'
+import { uploadCatalogImage } from '@/lib/api-client'
 
 export default function AdminAddDonationPage() {
   const { isAdmin } = useAdmin()
@@ -21,7 +22,9 @@ export default function AdminAddDonationPage() {
   const [hasEndDate, setHasEndDate] = useState(true)
   const [endDate, setEndDate] = useState('')
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -40,13 +43,15 @@ export default function AdminAddDonationPage() {
     const file = e.target.files?.[0]
     if (!file) return
     try {
-      const { dataUrl } = await compressImage(file)
+      const { dataUrl, blob } = await compressImage(file)
       setImagePreview(dataUrl)
+      setImageFile(blob as unknown as File)
     } catch {
       // fallback: อ่าน dataUrl ตรงๆ ถ้า compress ไม่ได้
       const reader = new FileReader()
       reader.onload = (ev) => setImagePreview(ev.target?.result as string)
       reader.readAsDataURL(file)
+      setImageFile(file)
     }
   }
 
@@ -63,10 +68,36 @@ export default function AdminAddDonationPage() {
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
 
     setSubmitting(true)
-    // TODO: POST to GAS / API route
-    await new Promise((r) => setTimeout(r, 800))
-    setSubmitting(false)
-    router.back()
+    setSubmitError(null)
+    try {
+      const imagePath = imageFile
+        ? await uploadCatalogImage(imageFile, 'donations')
+        : ''
+
+      // endDate is free-form text in this form (no date picker), but the API
+      // needs YYYY-MM-DD — only send it when it already looks like one, and
+      // leave the campaign open-ended otherwise rather than guessing a format.
+      const closesAt = hasEndDate && /^\d{4}-\d{2}-\d{2}$/.test(endDate.trim())
+        ? endDate.trim()
+        : null
+
+      const res = await fetch('/api/catalog/donations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description, imagePath, closesAt }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error ?? 'ไม่สามารถเพิ่มรายการบริจาคได้')
+      }
+
+      router.back()
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -189,6 +220,9 @@ export default function AdminAddDonationPage() {
       {/* Submit — fixed bottom */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#e5e5e5] px-4 py-4">
         <div className="max-w-md mx-auto">
+          {submitError && (
+            <p className="text-xs text-red-500 mb-2 text-center">{submitError}</p>
+          )}
           <button
             type="button"
             disabled={submitting}

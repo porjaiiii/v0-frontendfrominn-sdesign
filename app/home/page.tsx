@@ -10,29 +10,18 @@ import { CarbonResultModal } from '@/components/carbon-result-modal'
 import { ConfirmIncompleteModal } from '@/components/confirm-incomplete-modal'
 import { SaveSuccessModal } from '@/components/save-success-modal'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
-import { type WasteType, type WasteSubType } from '@/lib/app-context'
+import { type WasteType, type WasteSubType, useApp } from '@/lib/app-context'
+import { carbonFactorFor, pointsPerKgFor } from '@/lib/rates'
 import { useLiffContext } from '@/lib/liff-context'
 import { useProfileGuard } from '@/hooks/use-profile-guard'
 import liff from '@line/liff'
+import { apiFetch, useIdempotencyKey } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
-// Carbon reduction factors per kg (CO2 kg saved)
-const CARBON_FACTORS: Record<WasteType, number> = {
-  plastic: 1.0310,
-  paper: 3.5460,
-  glass: 0.2760,
-  aluminum: 9.1270,
-  oil: 3.0,
-}
-
-// Points per kg for each waste type (คำนวณแยกจาก carbon)
-const POINTS_PER_KG: Record<WasteType, number> = {
-  plastic: 6,
-  paper: 4,
-  glass: 4,
-  aluminum: 25,
-  oil: 3,
-}
+// Carbon/points rates now come from useApp().wasteRates (lib/app-context.tsx) —
+// live from GET /api/catalog/waste-types, falling back to lib/rates.ts. This
+// used to be its own hardcoded copy; see that module's header for the other
+// four places the same numbers were duplicated.
 
 // Waste type images
 const WASTE_IMAGES: Record<WasteType, string> = {
@@ -45,6 +34,7 @@ const WASTE_IMAGES: Record<WasteType, string> = {
 
 export default function HomePage() {
   const liffContext = useLiffContext()
+  const { wasteRates } = useApp()
  
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -57,15 +47,18 @@ export default function HomePage() {
 const [imageEvidence, setImageEvidence] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // `disabled={isSubmitting}` does not survive a network retry or a second tab;
+  // this does. See lib/api-client.ts.
+  const submitKey = useIdempotencyKey()
   const [showConfirmIncomplete, setShowConfirmIncomplete] = useState(false)
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
 
   const calculatedCarbon = selectedType
-    ? weight * CARBON_FACTORS[selectedType]
+    ? weight * carbonFactorFor(selectedType, wasteRates)
     : 0
 
   const calculatedPoints = selectedType
-    ? Math.round(weight * POINTS_PER_KG[selectedType])
+    ? Math.round(weight * pointsPerKgFor(selectedType, wasteRates))
     : 0
 
   const handleTypeSelect = (type: WasteType) => {
@@ -112,9 +105,11 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
     try {
       const userId = liffContext?.profile?.userId || 'unknown-user'
 
-      const response = await fetch('/api/waste/submit', {
+      const response = await apiFetch('/api/waste/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // Held across retries: a double-tap or a network retry replays this
+        // key and gets the original record back rather than a second one.
+        idempotencyKey: submitKey.current(),
         body: JSON.stringify({
           user_id: userId,
           waste_type: selectedType,
@@ -128,6 +123,10 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
       if (!response.ok) {
         throw new Error('Failed to submit waste record')
       }
+
+      // Retired only on success, so the key covers every retry of THIS press
+      // and the next submission starts a fresh one.
+      submitKey.reset()
 
       // Show the existing carbon result modal first
       setShowResult(true)

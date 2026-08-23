@@ -17,7 +17,8 @@
     "test:routes": "vitest run --project routes",
     "test:all": "vitest run",
     "migrate:export": "tsx scripts/migrate/export.ts",
-    "migrate:verify": "tsx scripts/migrate/verify.ts"
+    "migrate:verify": "tsx scripts/migrate/verify.ts",
+    "migrate:load": "tsx scripts/migrate/load.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

@@ -27,6 +27,13 @@ export interface QuarantinedRow {
   rowIndex: number // 1-based, matching the sheet's own row numbers (header = 1)
   reason: string
   raw: CellValue[]
+  /**
+   * Expected and harmless — an empty spreadsheet row, not a defect anyone can
+   * resolve. Reported like any other quarantine, but does not block the load.
+   * Optional so the points transforms, which skip blank rows silently, are
+   * unaffected.
+   */
+  benign?: boolean
 }
 
 function indexHeader(header: CellValue[]): Map<string, number> {
@@ -397,4 +404,7 @@ export function transformPointsAccount(
   return { accounts, quarantined }
 }
 
-export { toISODate, toISODateTime }
+// Shared with transform-registration.ts — the registration tabs need exactly
+// the same header-indexed, order-untrusted reading and the same two date
+// decoders. Duplicating them would let the two halves of one migration drift.
+export { toISODate, toISODateTime, str, num, requireColumns }

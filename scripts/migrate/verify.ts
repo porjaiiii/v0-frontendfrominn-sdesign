@@ -10,6 +10,11 @@
 // DERIVED from the point_lots this migration would create must equal the
 // balance the legacy sheet currently shows, exactly. Points are integers —
 // any delta is a bug, per the plan's own "zero tolerance" framing.
+//
+// The registration side is checked the same way, offline: every foreign key
+// load.ts is about to rely on is resolved here first, against the transformed
+// records rather than against the database, so a FK violation is a readable
+// finding instead of a 23503 halfway through a write.
 
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -22,6 +27,12 @@ import {
   transformSpendDetails,
   type QuarantinedRow,
 } from './transform-points'
+import {
+  transformAdminKeys,
+  transformCoupons,
+  transformRegistration,
+  transformSubmission,
+} from './transform-registration'
 import type { CellValue } from './sheets-client'
 
 const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '.data')
@@ -149,13 +160,108 @@ function main() {
     })
   }
 
+  // ==========================================================================
+  // registration side — users, waste records, coupons, admin keys
+  // ==========================================================================
+  console.log('\n[verify] registration side — export → transform → FK preflight\n')
+
+  const regRows = loadTab('registration', 'Registration')
+  const subRows = loadTab('registration', 'submission')
+  const cpnRows = loadTab('registration', 'coupons')
+  const keyRows = loadTab('registration', 'AdminKeys')
+
+  const { users, quarantined: qUsers, duplicatesCollapsed } = transformRegistration(regRows)
+  const { records, quarantined: qRecords } = transformSubmission(subRows)
+  const { coupons, quarantined: qCoupons } = transformCoupons(cpnRows)
+  const { keys, quarantined: qKeys } = transformAdminKeys(keyRows)
+  allQuarantined.push(...qUsers, ...qRecords, ...qCoupons, ...qKeys)
+
+  console.log(
+    `  transformed: ${users.length} users (${duplicatesCollapsed} re-submit(s) collapsed), ` +
+      `${records.length} waste records, ${coupons.length} coupons, ${keys.length} admin keys`,
+  )
+
+  // ---- Gate 5: row-count accounting. A row either loads, is quarantined for
+  // a real reason, or is a re-submit of a user already counted. Blank rows are
+  // already excluded by dataRowCount (their first column is empty).
+  const blockingOf = (rows: QuarantinedRow[]) => rows.filter((q) => !q.benign).length
+  const regChecks: [string, number, number, number, number][] = [
+    ['Registration', dataRowCount(regRows), users.length, blockingOf(qUsers), duplicatesCollapsed],
+    ['submission', dataRowCount(subRows), records.length, blockingOf(qRecords), 0],
+    ['coupons', dataRowCount(cpnRows), coupons.length, blockingOf(qCoupons), 0],
+    ['AdminKeys', dataRowCount(keyRows), keys.length, blockingOf(qKeys), 0],
+  ]
+  for (const [tab, source, loaded, quarantined, collapsed] of regChecks) {
+    if (source !== loaded + quarantined + collapsed) {
+      findings.push({
+        level: 'FAIL',
+        message:
+          `${tab}: ${source} data rows in, but ${loaded} loaded + ${quarantined} quarantined + ` +
+          `${collapsed} collapsed = ${loaded + quarantined + collapsed}`,
+      })
+    }
+  }
+
+  // ---- Gate 6: every foreign key load.ts will write must already resolve.
+  const registered = new Set(users.map((u) => u.line_user_id))
+  const fkCheck = (label: string, ids: string[]) => {
+    const missing = [...new Set(ids.filter((id) => !registered.has(id)))]
+    if (missing.length > 0) {
+      findings.push({
+        level: 'FAIL',
+        message:
+          `${missing.length} ${label} row(s) reference a line_user_id with no Registration row ` +
+          `(FK to app.users would fail): ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '…' : ''}`,
+      })
+    }
+  }
+  fkCheck('waste_records', records.map((r) => r.line_user_id))
+  fkCheck('coupons', coupons.map((c) => c.line_user_id))
+  fkCheck('admin_keys', keys.flatMap((k) => (k.line_user_id ? [k.line_user_id] : [])))
+
+  const knownTxIds = new Set(transactions.map((t) => t.tx_id))
+  const danglingTx = coupons.filter((c) => c.tx_id && !knownTxIds.has(c.tx_id))
+  if (danglingTx.length > 0) {
+    findings.push({
+      level: 'FAIL',
+      message:
+        `${danglingTx.length} coupon(s) carry a tx_id with no matching point_transactions row ` +
+        `(coupons.tx_id FK would fail): ${danglingTx.slice(0, 5).map((c) => c.coupon_id).join(', ')}`,
+    })
+  }
+  if (findings.filter((f) => f.level === 'FAIL').length === 0) {
+    console.log('  ✓ every foreign key resolves against the transformed set')
+  }
+
+  // ---- Gate 7: points accounts with no registration row cannot be loaded
+  // (points_accounts.line_user_id is an FK). Harmless only while they are the
+  // empty shells get_or_create_account leaves behind — loud if they are not.
+  const shells = accounts.filter((a) => !registered.has(a.line_user_id))
+  const nonEmptyShells = shells.filter(
+    (a) => a.stored_spendable !== 0 || a.lifetime_earned !== 0 || a.total_weight_kg !== 0,
+  )
+  if (nonEmptyShells.length > 0) {
+    findings.push({
+      level: 'FAIL',
+      message:
+        `${nonEmptyShells.length} account(s) hold points or weight but have no Registration row — ` +
+        `they cannot be loaded and must not be silently dropped: ` +
+        nonEmptyShells.map((a) => `${a.line_user_id} (${a.stored_spendable} pts)`).join(', '),
+    })
+  } else if (shells.length > 0) {
+    console.log(
+      `  ✓ ${shells.length} account(s) without a Registration row are all empty shells ` +
+        `(0 points, 0 weight) — safe to skip`,
+    )
+  }
+
   // ---- Quarantine report.
   if (allQuarantined.length > 0) {
     console.log(`\n  quarantined rows (${allQuarantined.length}):`)
     for (const q of allQuarantined) {
       // Never print raw row contents to the console — quarantine reasons are
       // safe (column names, counts), but the row itself carries PII.
-      console.log(`    ${q.tab} row ${q.rowIndex}: ${q.reason}`)
+      console.log(`    ${q.tab} row ${q.rowIndex}: ${q.reason}${q.benign ? '  (ไม่บล็อกการโหลด)' : ''}`)
     }
   }
 

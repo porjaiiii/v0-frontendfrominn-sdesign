@@ -11,8 +11,7 @@
 //
 // The Supabase write path (app.submit_waste / app.confirm_waste RPCs) never
 // reads this file — it prices server-side, directly from app.waste_types. This
-// is purely: the client-side estimate shown before a submission is confirmed,
-// and the GAS branch's server-side price (GAS has no catalog table to read).
+// is purely the client-side estimate shown before a submission is confirmed.
 
 export type WasteType = 'plastic' | 'paper' | 'glass' | 'aluminum' | 'oil'
 
@@ -28,9 +27,8 @@ export const WASTE_RATES: Record<WasteType, WasteRate> = {
   glass:    { carbonFactor: 0.2760, pointsPerKg: 4 },
   aluminum: { carbonFactor: 9.1270, pointsPerKg: 25 },
   // Seeded in app.waste_types but is_active = false — absent from
-  // lib/waste-data.ts's WASTE_TYPES, so no UI flow can select it. Kept here
-  // only so the GAS branch (which never checks is_active) prices a stray
-  // 'oil' payload the same way it always has.
+  // lib/waste-data.ts's WASTE_TYPES, so no UI flow can select it. Kept so this
+  // table stays a faithful mirror of app.waste_types.
   oil:      { carbonFactor: 3.0,    pointsPerKg: 3 },
 }
 
@@ -38,7 +36,7 @@ function isWasteType(value: string): value is WasteType {
   return value in WASTE_RATES
 }
 
-/** Falls back to the plastic-ish default GAS used for an unrecognised type. */
+/** Falls back to the plastic-ish default the legacy script used for an unrecognised type. */
 export function carbonFactorFor(wasteType: string, rates: Record<string, WasteRate> = WASTE_RATES): number {
   return (isWasteType(wasteType) ? rates[wasteType]?.carbonFactor : undefined) ?? 1.0
 }

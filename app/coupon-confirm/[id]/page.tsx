@@ -97,8 +97,7 @@ export default function CouponConfirmPage({
         // here — made after the coupon was already consumed and explicitly
         // allowed to fail, which left the ledger saying "รอใช้งานคูปอง" for a
         // coupon that was gone. /api/coupons/use does it in the same
-        // transaction now. (The GAS backend still needs the extra call; the
-        // route forwards it there.)
+        // transaction now.
         setStatus('success')
     } catch (err) {
       setStatus('error')

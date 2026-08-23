@@ -16,8 +16,8 @@ import { createReward } from '@/lib/supabase/writes'
  * here — without this, that write would have gone into a table nothing ever
  * reads back.
  *
- * Falls back to lib/rewards-catalog.ts (the same offline list app.redeem_rewards'
- * GAS branch already prices from) on any DB error.
+ * Falls back to lib/rewards-catalog.ts, the offline copy of the same list, on
+ * any DB error.
  */
 export async function GET() {
   try {

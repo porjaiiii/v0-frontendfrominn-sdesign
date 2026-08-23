@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { POINTS_SCRIPT_URL } from '@/lib/points-config'
 
 import { getLineIdentity } from '@/lib/auth/verify-line-token'
-import { backendFor, isMaintenance, MAINTENANCE_MESSAGE } from '@/lib/backend-flags'
+import { isMaintenance, MAINTENANCE_MESSAGE } from '@/lib/maintenance'
 import { parseJsonBody, readIdempotencyKey } from '@/lib/schemas/common'
 import { updateWasteSchema } from '@/lib/schemas/waste'
 import { confirmWaste, WriteError } from '@/lib/supabase/writes'
-import { carbonFactorFor, pointsPerKgFor } from '@/lib/rates'
-
-const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
-
-// GAS branch only, via lib/rates.ts — the Supabase branch reads the rates from
-// app.waste_types, the single LIVE copy of the same numbers.
 
 /**
- * Supabase path — one transaction where the GAS path below is three sequential
+ * One transaction, where Apps Script needed three sequential
  * HTTP calls with a try/catch marked "non-fatal".
  *
  * That comment is the bug: when `earn_points` fails the record is already
@@ -82,142 +75,7 @@ async function respondFromSupabase(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  if (backendFor('wasteUpdate') === 'supabase') {
-    return respondFromSupabase(request)
-  }
-
-  try {
-    const body = await request.json()
-    const {
-      timestamp,
-      user_id,
-      waste_type,
-      waste_subtype,
-      weight_kg,
-      image_url,
-      notes,
-      points_earned: pointsEarnedFromClient,
-    } = body
-
-    console.log('[v0] Received waste update:', { timestamp, user_id, waste_type, weight_kg })
-
-    if (!timestamp || !user_id || !waste_type || !waste_subtype || !weight_kg) {
-      console.log('[v0] Missing required fields for update')
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
-
-    // คำนวณ carbon reduction และแต้มแยกกัน
-    const carbonFactor = carbonFactorFor(waste_type)
-    const carbonReduction = weight_kg * carbonFactor
-    const pointsRate = pointsPerKgFor(waste_type)
-    const pointsEarned = typeof pointsEarnedFromClient === 'number' 
-      ? pointsEarnedFromClient 
-      : Math.round(weight_kg * pointsRate)
-
-    // ส่งข้อมูลไปยัง Google Apps Script Webhook
-    const payload = {
-      action: 'updateWaste',
-      type: 'update',
-      status: 'done',
-      timestamp,
-      user_id,
-      waste_type,
-      waste_subtype,
-      weight_kg,
-      image_url: image_url || '',
-      carbon_reduction: carbonReduction,
-      points_earned: pointsEarned,
-      notes: notes || ''
-    }
-
-    console.log('[v0] Sending update to Google Apps Script...')
-    
-    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
-
-    console.log('[v0] Google Apps Script response status:', response.status)
-
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('[v0] Google Apps Script error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: error.substring(0, 500)
-      })
-      return NextResponse.json(
-        { 
-          error: 'เกิดข้อผิดพลาดในการบันทึกขยะกรุณาลองใหม่',
-          details: error.substring(0, 200),
-          status: response.status,
-        },
-        { status: 500 }
-      )
-    }
-
-    const result = await response.json()
-    console.log('[v0] Data updated successfully:', result)
-
-    // Award points + carbon to the user's points account (separate points sheet).
-    // The waste record is now "done", so this is the moment the user earns.
-    // Non-fatal: a failure here must NOT break the waste-sheet update above.
-    let pointsAwarded = false
-    try {
-      // 1) Make sure the points account row exists, otherwise the script's
-      //    syncAccount() has no row to write the new total back to.
-      await fetch(POINTS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get_or_create_account', user_id }),
-      })
-
-      // 2) Earn the points + carbon (writes points_monthly, co2_collection,
-      //    points_transactions, then syncs points_account).
-      const earnRes = await fetch(POINTS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'earn_points',
-          user_id,
-          points: pointsEarned,
-          co2: carbonReduction,
-          weight: weight_kg,
-          waste_type,
-        }),
-      })
-      const earnResult = await earnRes.json()
-      pointsAwarded = earnResult?.success === true
-      console.log('[v0] Points earn result:', earnResult)
-    } catch (err) {
-      console.error('[v0] Failed to award points (waste update still saved):', err)
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        timestamp,
-        user_id,
-        waste_type,
-        weight_kg,
-        carbon_reduction: carbonReduction,
-        points_earned: pointsEarned,
-        points_awarded: pointsAwarded,
-      },
-    })
-  } catch (error) {
-    console.error('[v0] Error updating waste record:', error)
-    return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการบันทึกขยะกรุณาลองใหม่' },
-      { status: 500 }
-    )
-  }
+  return respondFromSupabase(request)
 }
 
 export async function POST(request: NextRequest) {

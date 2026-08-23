@@ -506,10 +506,10 @@ function RegisterPageContent() {
         registrationDate: new Date().toLocaleDateString('th-TH'),
       }
 
-      // Sent for the Supabase path (lib/auth/verify-line-token.ts), which
-      // derives identity from this token rather than requestBody.lineUserId.
-      // The GAS path ignores it. Null before LIFF finishes initialising —
-      // the submit button stays disabled until a real profile is available.
+      // The server derives identity from this token
+      // (lib/auth/verify-line-token.ts) rather than from requestBody.lineUserId.
+      // Null before LIFF finishes initialising — the submit button stays
+      // disabled until a real profile is available.
       const idToken = getIDToken()
 
       const response = await fetch('/api/register', {

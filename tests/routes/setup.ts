@@ -15,5 +15,3 @@ try {
   // No .env.local — the guard in each test file reports this properly.
 }
 
-// These tests exercise the Supabase read paths specifically.
-process.env.BACKEND_DEFAULT = 'supabase'

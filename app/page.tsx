@@ -71,7 +71,7 @@ export default function RootPage() {
     checkedRef.current = lineUserId
 
     // Cookie fast path — if this LINE user was verified registered within
-    // the last 24h, skip the GAS-backed profile lookup entirely (it can
+    // the last 24h, skip the profile lookup entirely (it can
     // take up to ~60s worst case). Cache is bound to lineUserId so it can
     // never wrongly apply to a different LINE account on the same device.
     if (getCachedRegisteredLineId() === lineUserId) {

@@ -27,6 +27,18 @@ export interface AdminSession {
   exp: number
 }
 
+/**
+ * Whether a usable secret is present, without throwing.
+ *
+ * Lets a route check the precondition before taking an action it cannot undo —
+ * see app/api/admin/verify-key, where activating the key first and discovering
+ * the missing secret second spends a single-use key for nothing.
+ */
+export function adminSessionSecretConfigured(): boolean {
+  const value = process.env.ADMIN_SESSION_SECRET?.trim()
+  return Boolean(value && value.length >= 32)
+}
+
 function secret(): string {
   const value = process.env.ADMIN_SESSION_SECRET?.trim()
   if (!value || value.length < 32) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { getLineIdentity } from '@/lib/auth/verify-line-token'
-import { backendFor, isMaintenance, MAINTENANCE_MESSAGE } from '@/lib/backend-flags'
+import { isMaintenance, MAINTENANCE_MESSAGE } from '@/lib/maintenance'
 import { createWastePhotoUpload } from '@/lib/supabase/storage'
 
 /**
@@ -22,15 +22,6 @@ const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp'])
 export async function POST(request: NextRequest) {
   if (isMaintenance()) {
     return NextResponse.json({ error: MAINTENANCE_MESSAGE }, { status: 503 })
-  }
-
-  if (backendFor('wasteSubmit') !== 'supabase') {
-    // The Drive path has no equivalent; callers fall back to POST
-    // /api/upload-image with base64.
-    return NextResponse.json(
-      { error: 'Signed uploads are not available on this backend' },
-      { status: 501 },
-    )
   }
 
   const identity = await getLineIdentity(request)

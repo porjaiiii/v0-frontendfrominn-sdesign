@@ -6,11 +6,9 @@ import liff from '@line/liff'
 // One place that knows how to call our own API, so no call site can forget the
 // two headers that matter.
 //
-//   Authorization: Bearer <LINE ID token>  — the migrated routes derive
-//     line_user_id from this and ignore any user id in the body. Until every
-//     route is migrated the header is best-effort: the GAS branches don't read
-//     it, so sending it costs nothing and flipping a BACKEND_* flag doesn't
-//     need a client deploy.
+//   Authorization: Bearer <LINE ID token>  — the routes derive
+//     it. Every route derives the caller's identity from this token and
+//     ignores any user id in the body.
 //
 //   Idempotency-Key — held in a useRef for the lifetime of one submit press, so
 //     a network retry, a double-tap or a second tab replays the SAME key and
@@ -45,8 +43,8 @@ export function setLiffSdkReady(ready: boolean): void {
 
 /**
  * Best-effort — returns null outside LINE, before liff.init(), or when the
- * session has expired. Never throws: a missing token must not stop a submit
- * that the GAS backend would have accepted.
+ * session has expired. Never throws; the route answers 401 and the caller
+ * surfaces that, rather than a render-time exception.
  */
 function getIdToken(): string | null {
   if (!sdkReady) return null
@@ -136,8 +134,8 @@ export function displaySrc(value: string): string {
  * inflates by ~33% against a 4.5MB body limit, and squeezing under that is why
  * evidence photos used to come out unreadable.
  *
- * Falls back to the old base64 route when signing isn't available (the GAS
- * backend answers 501), so this works on either backend.
+ * Signing is always available now; the base64 fallback this used to carry
+ * existed only for the Apps Script backend, which answered 501 here.
  */
 export async function uploadWastePhoto(
   blob: Blob,
@@ -172,44 +170,15 @@ export async function uploadWastePhoto(
     return path
   }
 
-  if (signRes.status !== 501) {
-    const err = await signRes.json().catch(() => ({}))
-    throw new Error(err?.error ?? 'ไม่สามารถเตรียมการอัปโหลดได้')
-  }
-
-  // GAS backend: base64 through the old route.
-  const base64 = await blobToBase64(blob)
-  const res = await apiFetch('/api/upload-image', {
-    method: 'POST',
-    body: JSON.stringify({
-      base64Data: base64,
-      fileName: fallback.fileName,
-      userId: fallback.userId,
-    }),
-  })
-
-  const result = await res.json().catch(() => ({}))
-  if (!res.ok || !result?.success || !result.imageUrl) {
-    throw new Error(result?.error ?? 'ไม่สามารถอัปโหลดรูปได้')
-  }
-  return result.imageUrl
-}
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '')
-    reader.onerror = () => reject(new Error('Failed to read image'))
-    reader.readAsDataURL(blob)
-  })
+  const err = await signRes.json().catch(() => ({}))
+  throw new Error(err?.error ?? 'ไม่สามารถเตรียมการอัปโหลดได้')
 }
 
 /**
  * Uploads a reward/donation image and returns the storage path to save.
  *
  * Same PUT-straight-to-storage shape as uploadWastePhoto, but against the
- * public catalog-images bucket via /api/catalog/images/sign — admin-only, no
- * GAS fallback (this feature has no GAS equivalent to fall back to).
+ * public catalog-images bucket via /api/catalog/images/sign — admin-only.
  */
 export async function uploadCatalogImage(
   blob: Blob,

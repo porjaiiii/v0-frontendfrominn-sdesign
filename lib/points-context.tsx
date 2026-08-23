@@ -85,71 +85,57 @@ export function PointsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Ensure the account exists (creates it on first login) and load the balance.
+  // Load the balance.
+  //
+  // This used to be three sequential POSTs: a fast read of the public points
+  // sheet, then get_or_create_account against Apps Script, then resync_balance
+  // to repair the drift between points_account.total_points and what was
+  // actually spendable. On Postgres the balance is DERIVED (app.v_user_balances)
+  // rather than stored, so there is no drift to repair and nothing to create
+  // before a user has points — the last two calls became no-ops that still cost
+  // a round trip each on every page load.
+  //
+  // It also fixes a real bug in that chain: a registered user with no waste yet
+  // fell through the fast read's `notFound` into get_or_create_account, which
+  // answered `success:false`, and the UI showed "ไม่สามารถโหลดคะแนนได้" instead
+  // of a zero balance.
   const loadAccount = useCallback(async (uid: string) => {
     setLoading(true)
     setError(null)
     try {
-      // ── Fast path: read the balance straight from the public points sheet ──
-      // No Apps Script cold start. Returns notFound for brand-new users, who
-      // then fall through to the GAS path below so their account gets created.
-      try {
-        const fastRes = await fetch(
-          `/api/points?action=get_account_fast&user_id=${encodeURIComponent(uid)}`,
-          { cache: 'no-store' }
-        )
-        const fast = await fastRes.json()
-        if (fast?.success && fast.account) {
-          setAccount({
-            user_id: fast.account.user_id,
-            total_points: toPoints(fast.account.total_points),
-            total_weight: toMetric(fast.account.total_weight),
-            total_co2: toMetric(fast.account.total_co2),
-            tier: fast.account.tier ?? '',
-            last_updated: fast.account.last_updated,
-          })
-          return
-        }
-      } catch {
-        // Fast read failed — fall through to the authoritative GAS path.
-      }
-
-      // ── Fallback: Apps Script get_or_create (handles new-user creation) ──
-      const res = await fetch('/api/points', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get_or_create_account', user_id: uid }),
-      })
+      const res = await fetch(
+        `/api/points?action=get_account_fast&user_id=${encodeURIComponent(uid)}`,
+        { cache: 'no-store' }
+      )
       const data = await res.json()
-      if (data?.success && data.account) {
-        // The account's total_points can drift from the actual spendable balance
-        // in points_monthly (e.g. hand-edited cells). Resync so the number shown
-        // == the number that can actually be spent. Otherwise the UI shows
-        // "enough points" but the server rejects the spend as "Not enough points".
-        let spendablePoints = toPoints(data.account.total_points)
-        try {
-          const syncRes = await fetch('/api/points', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'resync_balance', user_id: uid }),
-          })
-          const syncData = await syncRes.json()
-          if (syncData?.success) spendablePoints = toPoints(syncData.total_points)
-        } catch {
-          // Resync failed — fall back to the account's stored total.
-        }
 
+      if (data?.success && data.account) {
         setAccount({
           user_id: data.account.user_id,
-          total_points: spendablePoints,
+          total_points: toPoints(data.account.total_points),
           total_weight: toMetric(data.account.total_weight),
           total_co2: toMetric(data.account.total_co2),
           tier: data.account.tier ?? '',
           last_updated: data.account.last_updated,
         })
-      } else {
-        setError(data?.message || 'ไม่สามารถโหลดคะแนนได้')
+        return
       }
+
+      if (data?.notFound) {
+        // Registered, but has never recycled. That is a zero balance, not an
+        // error — showing an error here is what sent new users to a dead end.
+        setAccount({
+          user_id: uid,
+          total_points: 0,
+          total_weight: 0,
+          total_co2: 0,
+          tier: '',
+          last_updated: undefined,
+        })
+        return
+      }
+
+      setError(data?.message || 'ไม่สามารถโหลดคะแนนได้')
     } catch (err) {
       console.error('[points-context] loadAccount failed:', err)
       setError('ไม่สามารถเชื่อมต่อระบบคะแนนได้')

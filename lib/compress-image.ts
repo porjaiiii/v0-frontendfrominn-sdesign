@@ -1,7 +1,7 @@
 export async function compressImage(
   file: File,
-  maxSizeBytes = 2 * 1024 * 1024,
-  maxDimension = 1920
+  maxSizeBytes = 300 * 1024,
+  maxDimension = 1024
 ): Promise<{ blob: Blob; dataUrl: string }> {
   return new Promise((resolve, reject) => {
     // 1. เช็คว่าเป็นไฟล์รูปภาพแน่ๆ (กันไฟล์แปลกๆ หรือ HEIC ในบางกรณี)

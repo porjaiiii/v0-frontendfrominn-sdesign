@@ -13,9 +13,9 @@
 ## Global Constraints
 
 - Package manager is **pnpm** (`node_modules/.pnpm` is the active store). Never run `npm install`.
-- **Do not use `pnpm exec`.** It runs a dependency check that fails in this repo (`ERR_PNPM_IGNORED_BUILDS: sharp@0.34.5`), so the wrapped command never executes. Invoke binaries directly: `./node_modules/.bin/tsc`, `./node_modules/.bin/vitest`. The `pnpm test` script itself works fine.
+- **Do not use `pnpm exec` or `pnpm run`.** Both run a pre-flight dependency check that fails in this environment (`ERR_PNPM_IGNORED_BUILDS: esbuild@0.28.2, sharp@0.34.5`), so the wrapped command never executes. This is pre-existing and affects `pnpm dev`, `pnpm build`, and `pnpm lint` equally — it is not caused by this work. Invoke binaries directly instead: `./node_modules/.bin/vitest run`, `./node_modules/.bin/tsc --noEmit`, `./node_modules/.bin/next build`. The permanent fix is for a maintainer to run `pnpm approve-builds` (it executes third-party postinstall scripts, so it is their call, not this plan's).
 - **`tsc --noEmit` is not clean on this repo.** `main` has 15 pre-existing errors: 6 in `hooks/use-liff.ts`, 2 in `loadtest/write-load.ts`, 7 stale ones in `.next/types/validator.ts` pointing at routes that do not exist. Do not try to fix them — they are out of scope. Every typecheck step below filters to the paths this work touches.
-- **`pnpm build` does not catch type errors.** `next.config.mjs:3` sets `typescript.ignoreBuildErrors: true`. Build success proves the bundle compiles, not that types are sound. Typechecking is the filtered `tsc` command, not the build.
+- **The Next build does not catch type errors.** `next.config.mjs:3` sets `typescript.ignoreBuildErrors: true`. Build success proves the bundle compiles, not that types are sound. Typechecking is the filtered `tsc` command, not the build.
 - TypeScript runs with `"strict": true`. No `any` in new code; use `unknown` and narrow.
 - Path alias `@/*` maps to the repo root (`tsconfig.json:24`).
 - Flag env var is exactly `IDEMPOTENCY_ENABLED`; enabled only when the value is `'1'` or `'true'`. **Default off.**
@@ -155,7 +155,7 @@ describe('MemoryStore', () => {
 
 - [ ] **Step 4: Run the tests to verify they fail**
 
-Run: `pnpm test`
+Run: `./node_modules/.bin/vitest run`
 Expected: FAIL — `Failed to resolve import "./store"`.
 
 - [ ] **Step 5: Implement the store**
@@ -281,7 +281,7 @@ export function setStore(store: IdempotencyStore): void {
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
-Run: `pnpm test`
+Run: `./node_modules/.bin/vitest run`
 Expected: PASS — 7 passing in `store.test.ts`.
 
 - [ ] **Step 7: Commit**
@@ -383,7 +383,7 @@ describe('deriveKey', () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm test key`
+Run: `./node_modules/.bin/vitest run key`
 Expected: FAIL — `Failed to resolve import "./key"`.
 
 - [ ] **Step 3: Implement key derivation**
@@ -460,7 +460,7 @@ export function deriveKey(args: {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `pnpm test`
+Run: `./node_modules/.bin/vitest run`
 Expected: PASS — 7 in `store.test.ts`, 11 in `key.test.ts`.
 
 - [ ] **Step 5: Commit**
@@ -612,7 +612,7 @@ describe('withIdempotency', () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm test with-idempotency`
+Run: `./node_modules/.bin/vitest run with-idempotency`
 Expected: FAIL — `Failed to resolve import "./with-idempotency"`.
 
 - [ ] **Step 3: Implement the wrapper**
@@ -711,7 +711,7 @@ export function withIdempotency(
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `pnpm test`
+Run: `./node_modules/.bin/vitest run`
 Expected: PASS — 7 store, 11 key, 8 wrapper.
 
 - [ ] **Step 5: Commit**
@@ -953,7 +953,7 @@ that route's handler was missed.
 
 - [ ] **Step 7: Verify the tests still pass**
 
-Run: `pnpm test`
+Run: `./node_modules/.bin/vitest run`
 Expected: PASS — 26 tests, unchanged from Task 3.
 
 - [ ] **Step 8: Verify the flag-off path by hand**
@@ -1225,14 +1225,14 @@ Clear it after the `!response.ok` guard passes, on the line before the
 ./node_modules/.bin/tsc --noEmit 2>&1 \
   | grep -E '^(lib/idempotency|lib/points-context|app/home|app/register|components/waste)' \
   || echo 'CLEAN'
-pnpm test
+./node_modules/.bin/vitest run
 ```
 
 Expected: `CLEAN`, then 26 tests passing.
 
 - [ ] **Step 8: Verify the production build**
 
-Run: `pnpm build`
+Run: `./node_modules/.bin/next build`
 Expected: build completes. This validates that Next accepts the changed route
 exports (`export const POST = ...` in place of `export async function POST`) and
 that the client bundles compile. It does **not** validate types — Step 7 is what
@@ -1252,8 +1252,8 @@ git commit -m "feat(idempotency): mint and reuse client keys across the five cal
 
 After Task 5, confirm end to end:
 
-1. `pnpm test` — 26 passing.
+1. `./node_modules/.bin/vitest run` — 26 passing.
 2. `./node_modules/.bin/tsc --noEmit` — no errors in any touched path (the 15 pre-existing errors in `hooks/use-liff.ts` and `loadtest/` remain, untouched).
-3. `pnpm build` — completes.
+3. `./node_modules/.bin/next build` — completes.
 4. With the flag unset, every route behaves exactly as it did before. This is the state that ships when the branch merges.
 5. With `IDEMPOTENCY_ENABLED=1`, a repeated request carrying the same `Idempotency-Key` returns `Idempotent-Replay: true` and does not reach Apps Script — check the dev server log for the absence of a second `[v0] Sending to Google Apps Script...` line.

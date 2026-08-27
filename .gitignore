@@ -11,10 +11,22 @@ node_modules
 tsconfig.tsbuildinfo
 
 loadtest
-graphify-out
-.claude
-CLAUDE.md
 
-# scripts/migrate/export.ts output — real user PII (names, phones, addresses,
-# LINE ids). Never commit this, even for a "dev" snapshot.
+# ── Sensitive: production data exports ────────────────────────────────────
+# Sheet dumps used by the GAS → Supabase migration. Contains PDPA-regulated
+# user PII (names, phone numbers, addresses) and live admin keys.
+# Never commit these.
 scripts/migrate/.data/
+
+# ── Local tooling state (machine-specific or regenerable) ─────────────────
+# Claude Code settings — contains absolute paths from one machine.
+.claude/
+
+# Generated knowledge graph (~6MB). Rebuild with `graphify update .`
+graphify-out/
+
+# Supabase CLI local state. Note: supabase/migrations/ is intentionally NOT
+# ignored — migration SQL must be tracked once the migration lands.
+supabase/.temp/
+supabase/.branches/
+CLAUDE.md

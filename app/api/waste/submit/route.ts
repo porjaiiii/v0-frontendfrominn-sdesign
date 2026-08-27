@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withIdempotency } from '@/lib/idempotency/with-idempotency'
 
 const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
 
@@ -18,9 +19,9 @@ const POINTS_PER_KG = {
   oil: 3,
 }
 
-export async function POST(request: NextRequest) {
+async function submitHandler(request: NextRequest, ctx: { body: unknown }) {
   try {
-    const body = await request.json()
+    const body = ctx.body as Record<string, any>
     const {
       user_id,
       waste_type,
@@ -146,3 +147,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withIdempotency('waste:submit', submitHandler)

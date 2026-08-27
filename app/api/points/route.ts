@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { POINTS_SCRIPT_URL } from '@/lib/points-config'
+import { withIdempotency } from '@/lib/idempotency/with-idempotency'
 
 // ─── Fast balance read (bypasses Apps Script) ──────────────────────────────
 // Reads the public points spreadsheet directly via the Sheets API. The balance
@@ -124,9 +125,9 @@ export async function GET(request: NextRequest) {
 //   earn_points            — { user_id, points, co2?, weight?, waste_type? }
 //   spend_points           — { user_id, points }
 //   resync_balance         — { user_id }
-export async function POST(request: NextRequest) {
+async function pointsHandler(request: NextRequest, ctx: { body: unknown }) {
   try {
-    const body = await request.json()
+    const body = ctx.body as Record<string, any>
     const { action, user_id } = body
 
     if (!action)  return NextResponse.json({ error: 'Missing action'  }, { status: 400 })
@@ -159,3 +160,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to process points action' }, { status: 500 })
   }
 }
+
+export const POST = withIdempotency('points:spend', pointsHandler, {
+  // Only the spending path is idempotent-guarded; reads and resyncs are safe
+  // to repeat and must not be deduplicated.
+  shouldApply: (body) =>
+    (body as { action?: string } | null)?.action === 'spend_points',
+})

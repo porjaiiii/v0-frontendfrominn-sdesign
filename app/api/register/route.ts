@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withIdempotency } from '@/lib/idempotency/with-idempotency'
 
 const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
 
-export async function PATCH(request: NextRequest) {
+async function updateHandler(request: NextRequest, ctx: { body: unknown }) {
   try {
-    const body = await request.json()
+    const body = ctx.body as Record<string, any>
     const {
       lineUserId,
       userId,
@@ -89,9 +90,9 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function createHandler(request: NextRequest, ctx: { body: unknown }) {
   try {
-    const body = await request.json()
+    const body = ctx.body as Record<string, any>
     const {
       lineUserId,
       userId,
@@ -201,3 +202,6 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const PATCH = withIdempotency('register:update', updateHandler)
+export const POST = withIdempotency('register:create', createHandler)

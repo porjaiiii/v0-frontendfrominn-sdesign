@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { POINTS_SCRIPT_URL } from '@/lib/points-config'
+import { withIdempotency } from '@/lib/idempotency/with-idempotency'
 
 const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
 const CARBON_FACTORS = {
@@ -18,9 +19,9 @@ const POINTS_PER_KG = {
   oil: 3,
 }
 
-export async function PUT(request: NextRequest) {
+async function updateHandler(request: NextRequest, ctx: { body: unknown }) {
   try {
-    const body = await request.json()
+    const body = ctx.body as Record<string, any>
     const {
       timestamp,
       user_id,
@@ -153,7 +154,8 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  // Redirect POST to PUT
-  return PUT(request)
-}
+const handler = withIdempotency('waste:update', updateHandler)
+
+export const PUT = handler
+// POST is an alias for PUT — same operation, same idempotency scope.
+export const POST = handler

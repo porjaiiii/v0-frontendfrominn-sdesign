@@ -33,7 +33,10 @@ describe('withIdempotency', () => {
   })
 
   it('hands the parsed body to the handler', async () => {
-    const handler = vi.fn(async () => Response.json({ ok: true }))
+    // Params are declared so `handler.mock.calls[0][1]` is typed.
+    const handler = vi.fn(async (_req: NextRequest, _ctx: { body: unknown }) =>
+      Response.json({ ok: true })
+    )
     const wrapped = withIdempotency('test', handler)
 
     await wrapped(req({ user_id: 'U1', points: 5 }))

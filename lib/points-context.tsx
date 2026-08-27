@@ -6,10 +6,12 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from 'react'
 import { useLiffContext } from './liff-context'
 import { MOCK_USER } from './mock-user'
+import { newIdempotencyKey } from '@/lib/idempotency/client'
 
 export interface PointsAccount {
   user_id: string
@@ -84,6 +86,10 @@ export function PointsProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<PointsAccount | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Idempotency key for the in-progress spend. Held across retries, cleared
+  // once a spend succeeds.
+  const spendKeyRef = useRef<string | null>(null)
 
   // Ensure the account exists (creates it on first login) and load the balance.
   const loadAccount = useCallback(async (uid: string) => {
@@ -173,10 +179,16 @@ export function PointsProvider({ children }: { children: ReactNode }) {
     async (amount: number, detail?: SpendDetail): Promise<SpendResult> => {
       if (!userId) return { success: false, message: 'ไม่พบบัญชีผู้ใช้ (กรุณาเข้าสู่ระบบผ่าน LINE)' }
       if (!amount || amount <= 0) return { success: false, message: 'จำนวนคะแนนไม่ถูกต้อง' }
+      // Reused across retries so re-tapping Confirm after a failure is the
+      // same operation, not a second spend.
+      if (!spendKeyRef.current) spendKeyRef.current = newIdempotencyKey()
       try {
         const res = await fetch('/api/points', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': spendKeyRef.current,
+          },
           body: JSON.stringify({
             action: 'spend_points',
             user_id: userId,
@@ -187,6 +199,7 @@ export function PointsProvider({ children }: { children: ReactNode }) {
         })
         const data = await res.json()
         if (data?.success) {
+          spendKeyRef.current = null // the next spend is a new operation
           await loadAccount(userId) // resync balance after spending
           return { success: true, tx_id: data.tx_id }
         }

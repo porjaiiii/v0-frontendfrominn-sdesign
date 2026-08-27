@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { BottomNav } from '@/components/bottom-nav'
@@ -10,6 +10,7 @@ import { CarbonResultModal } from '@/components/carbon-result-modal'
 import { ConfirmIncompleteModal } from '@/components/confirm-incomplete-modal'
 import { SaveSuccessModal } from '@/components/save-success-modal'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
+import { newIdempotencyKey } from '@/lib/idempotency/client'
 import { type WasteType, type WasteSubType } from '@/lib/app-context'
 import { useLiffContext } from '@/lib/liff-context'
 import { useProfileGuard } from '@/hooks/use-profile-guard'
@@ -57,6 +58,8 @@ export default function HomePage() {
 const [imageEvidence, setImageEvidence] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Idempotency key for the in-progress submission; cleared once it succeeds.
+  const submitKeyRef = useRef<string | null>(null)
   const [showConfirmIncomplete, setShowConfirmIncomplete] = useState(false)
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
 
@@ -109,12 +112,18 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
     setShowConfirmIncomplete(false)
     setIsSubmitting(true)
 
+    // Reused across retries so re-tapping Save is the same submission.
+    if (!submitKeyRef.current) submitKeyRef.current = newIdempotencyKey()
+
     try {
       const userId = liffContext?.profile?.userId || 'unknown-user'
 
       const response = await fetch('/api/waste/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': submitKeyRef.current,
+        },
         body: JSON.stringify({
           user_id: userId,
           waste_type: selectedType,
@@ -130,6 +139,7 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
       }
 
       // Show the existing carbon result modal first
+      submitKeyRef.current = null // next save is a new submission
       setShowResult(true)
     } catch (error) {
       console.error('[v0] Error submitting waste:', error)

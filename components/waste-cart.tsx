@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { WasteDetailModal } from './waste-detail-modal'
 import { WasteCard } from './waste-card'
+import { newIdempotencyKey } from '@/lib/idempotency/client'
 
 interface WasteRecord {
   timestamp: string
@@ -32,6 +33,8 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
   const [savingRecordId, setSavingRecordId] = useState<string | null>(null)
+  // Idempotency key for the in-progress save; cleared once it succeeds.
+  const saveKeyRef = useRef<string | null>(null)
   const [isEditingMode, setIsEditingMode] = useState(false)
 
   useEffect(() => {
@@ -150,22 +153,29 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
     try {
       const recordId = `${record.timestamp}-${record.user_id}`
       setSavingRecordId(recordId)
-      
+
+      // Reused across retries so re-tapping Save is the same update.
+      if (!saveKeyRef.current) saveKeyRef.current = newIdempotencyKey()
+
       const response = await fetch('/api/waste/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Idempotency-Key': saveKeyRef.current,
         },
         body: JSON.stringify(record),
       })
       const resData = await response.json()
-    console.log('ผลลัพธ์จาก API:', resData)
+      console.log('ผลลัพธ์จาก API:', resData)
 
       if (!response.ok) {
-        const error = await response.json()
-        alert('เกิดข้อผิดพลาดในการบันทึก: ' + (error.error || 'Unknown error'))
+        // Reuse resData — the body stream is already consumed above, so a
+        // second response.json() here would throw instead of alerting.
+        alert('เกิดข้อผิดพลาดในการบันทึก: ' + (resData?.error || 'Unknown error'))
         return
       }
+
+      saveKeyRef.current = null // next save is a new update
 
       const newRecords = records.filter(r => 
         !(r.timestamp === record.timestamp && r.user_id === record.user_id)

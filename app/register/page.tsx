@@ -8,6 +8,7 @@ import { ChevronDown, ChevronUp, X, ArrowLeft } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { useLiffContext } from '@/lib/liff-context'
 import { generateUserIdFromLineId } from '@/lib/user-id-generator'
+import { newIdempotencyKey } from '@/lib/idempotency/client'
 
 const OCCUPATIONS = [
   'ผู้ประกอบการ (ร้านค้า/โฮมสเตย์)',
@@ -169,6 +170,8 @@ function RegisterPageContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  // Idempotency key for the in-progress submit; cleared once it succeeds.
+  const registerKeyRef = useRef<string | null>(null)
   const [pdpaExpanded, setPdpaExpanded] = useState(false)
   const [showTour, setShowTour] = useState(false)
   const [tourStep, setTourStep] = useState(0)
@@ -524,9 +527,15 @@ function RegisterPageContent() {
         registrationDate: new Date().toLocaleDateString('th-TH'),
       }
 
+      // Reused across retries so re-tapping Submit is the same registration.
+      if (!registerKeyRef.current) registerKeyRef.current = newIdempotencyKey()
+
       const response = await fetch('/api/register', {
         method: isEditMode ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': registerKeyRef.current,
+        },
         body: JSON.stringify(requestBody),
       })
 
@@ -534,6 +543,8 @@ function RegisterPageContent() {
         const data = await response.json()
         throw new Error(data.error || (isEditMode ? 'อัพเดตไม่สำเร็จกรูณาลองใหม่อีกครั้งในภายหลัง' : 'บันทึกไม่สำเร็จกรุณาลองใหม่อีกครั้ง'))
       }
+
+      registerKeyRef.current = null // next submit is a new operation
 
       // Only greet on first-time registration — editing an existing profile
       // must not trigger the "thanks for registering" LINE OA message.

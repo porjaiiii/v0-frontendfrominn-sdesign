@@ -6,6 +6,7 @@ import { X, CheckCircle2, Camera, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
 import { compressImage } from '@/lib/compress-image'
+import { newIdempotencyKey } from '@/lib/idempotency/client'
 
 // Carbon reduction factors per kg (CO2 kg saved)
 const CARBON_FACTORS: Record<string, number> = {
@@ -64,6 +65,8 @@ export function WasteDetailModal({
 }: WasteDetailModalProps) {
   const [editedRecord, setEditedRecord] = useState<WasteRecord | null>(null)
   const [isSavingApi, setIsSavingApi] = useState(false)
+  // Idempotency key for the in-progress save; cleared once it succeeds.
+  const saveKeyRef = useRef<string | null>(null)
 
   // --- weight input state (รองรับ "0" ต้นและทศนิยม) ---
   const [weightDisplay, setWeightDisplay] = useState<string>('')
@@ -196,6 +199,9 @@ const handleConfirmClick = async () => {
   try {
     setIsSavingApi(true)
 
+    // Reused across retries so re-tapping Save is the same update.
+    if (!saveKeyRef.current) saveKeyRef.current = newIdempotencyKey()
+
     // 🌟 จัดเตรียม Payload ให้ตรงกับที่ API / Sheet ต้องการ
     const payload = {
       ...editedRecord,
@@ -208,7 +214,10 @@ const handleConfirmClick = async () => {
     if (isEditing) {
       const response = await fetch('/api/waste/update', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': saveKeyRef.current,
+        },
         body: JSON.stringify(payload), // 👈 ส่ง payload ตัวที่ปรับชื่อ key แล้ว
       })
 
@@ -219,6 +228,7 @@ const handleConfirmClick = async () => {
       }
     }
 
+    saveKeyRef.current = null // next save is a new update
     // อาจจะต้องปรับ type ของ onConfirm ถ้ารับค่าต่างกัน
     await onConfirm(editedRecord)
     onClose()

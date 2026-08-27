@@ -247,14 +247,14 @@ export default function RewardsPage() {
               </div>
               <div className="p-3 flex flex-col flex-1">
                 <h3 className="text-sm font-medium text-[#444444] mb-1">แลกเงินคืน</h3>
-                <p className="text-xs text-[#666666] mb-2 line-clamp-2">กรอกแต้มที่ต้องการแลก ขั้นต่ำ 20 แต้ม</p>
+                <p className="text-xs text-[#666666] mb-2 line-clamp-2">กรอกแต้มที่ต้องการแลก ขั้นต่ำ 1 แต้ม</p>
                 <div className="flex items-center justify-between mb-3 mt-auto">
-                  <span className={cn('text-sm font-semibold', userPoints >= 20 ? 'text-[#157b03]' : 'text-[#999999]')}>เริ่มต้น 20 แต้ม</span>
+                  <span className={cn('text-sm font-semibold', userPoints >= 1 ? 'text-[#157b03]' : 'text-[#999999]')}>เริ่มต้น 1 แต้ม</span>
                 </div>
                 <button
                   onClick={() => openRedeem(CASH_REWARD)}
                   disabled={userPoints < 20}
-                  className={cn('w-full py-2 rounded-lg text-sm font-medium transition-colors', userPoints >= 20 ? 'bg-[#154212] text-white hover:bg-[#0d3308]' : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed')}
+                  className={cn('w-full py-2 rounded-lg text-sm font-medium transition-colors', userPoints >= 1 ? 'bg-[#154212] text-white hover:bg-[#0d3308]' : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed')}
                 >
                   แลกเงินคืน
                 </button>

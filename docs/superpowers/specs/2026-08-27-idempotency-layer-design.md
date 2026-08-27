@@ -36,7 +36,14 @@ requires a transactional datastore and is explicitly out of scope here.
 | `app/api/points/route.ts` | POST, `action === 'spend_points'` only | `points:spend` |
 | `app/api/waste/submit/route.ts` | POST | `waste:submit` |
 | `app/api/waste/update/route.ts` | PUT, POST | `waste:update` |
-| `app/api/register/route.ts` | POST, PATCH | `register` |
+| `app/api/register/route.ts` | POST | `register:create` |
+| `app/api/register/route.ts` | PATCH | `register:update` |
+
+`waste/update`'s POST delegates to its PUT, so the two methods are one
+operation and share a scope. `register`'s POST and PATCH are genuinely
+different operations (create vs. update), so they get separate scopes —
+otherwise a client reusing one key across both would have its PATCH replay the
+POST's response.
 
 **Not covered:** `/api/coupons/*`, `/api/upload-image`, and all GET routes.
 

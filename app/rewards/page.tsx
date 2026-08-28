@@ -253,7 +253,7 @@ export default function RewardsPage() {
                 </div>
                 <button
                   onClick={() => openRedeem(CASH_REWARD)}
-                  disabled={userPoints < 20}
+                  disabled={userPoints < 1}
                   className={cn('w-full py-2 rounded-lg text-sm font-medium transition-colors', userPoints >= 1 ? 'bg-[#154212] text-white hover:bg-[#0d3308]' : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed')}
                 >
                   แลกเงินคืน

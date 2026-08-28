@@ -52,12 +52,12 @@ export default function RewardsPage() {
   const [redeemError, setRedeemError] = useState<string | null>(null)
   const [redeemSuccess, setRedeemSuccess] = useState(false)
   const [newCouponId, setNewCouponId] = useState<string | null>(null)
-  const [cashPoints, setCashPoints] = useState('20')
+  const [cashPoints, setCashPoints] = useState('')
 
   const redeemInFlight = useRef(false)
   const isCashRedeem = redeemTarget?.id === CASH_REWARD.id
   const cashAmount = Number.parseInt(cashPoints, 10)
-  const cashAmountValid = Number.isInteger(cashAmount) && cashAmount >= 20 && cashAmount <= userPoints
+  const cashAmountValid = Number.isInteger(cashAmount) && cashAmount >= 1 && cashAmount <= userPoints
 
   const openRedeem = (reward: typeof REWARDS[number]) => {
     setRedeemTarget(reward)
@@ -66,7 +66,7 @@ export default function RewardsPage() {
     setRedeemError(null)
     setRedeemSuccess(false)
     setNewCouponId(null)
-    setCashPoints('20')
+    setCashPoints('1')
   }
 
   const handleConfirmRedeem = async () => {
@@ -80,7 +80,7 @@ export default function RewardsPage() {
 
     const pointsToSpend = isCashRedeem ? cashAmount : redeemTarget.points
     if (isCashRedeem && !cashAmountValid) {
-      setRedeemError(cashAmount > userPoints ? 'คะแนนของคุณไม่เพียงพอ' : 'กรุณากรอกจำนวนเต็มอย่างน้อย 20 แต้ม')
+      setRedeemError(cashAmount > userPoints ? 'คะแนนของคุณไม่เพียงพอ' : 'กรุณากรอกจำนวนเต็มอย่างน้อย 1 แต้ม')
       return
     }
 
@@ -394,8 +394,8 @@ export default function RewardsPage() {
   {isCashRedeem && (
     <div className="mb-5 rounded-xl border border-[#c3e2be] bg-[#f0f7ef] p-4">
       <label htmlFor="cash-points" className="block text-sm font-bold text-[#154212] mb-2">ต้องการแลกกี่แต้ม?</label>
-      <input id="cash-points" type="number" min={20} step={1} value={cashPoints} onChange={(e) => setCashPoints(e.target.value)} className="w-full rounded-lg border border-[#c3e2be] bg-white px-3 py-2 text-lg font-bold text-[#154212] outline-none focus:ring-2 focus:ring-[#157b03]" />
-      <p className="mt-2 text-xs leading-relaxed text-[#666666]">ขั้นต่ำ 20 แต้ม และ 1 แต้มมีมูลค่าเท่ากับ 1 บาท</p>
+      <input id="cash-points" type="number" min={1} step={1} value={cashPoints} onChange={(e) => setCashPoints(e.target.value)} className="w-full rounded-lg border border-[#c3e2be] bg-white px-3 py-2 text-lg font-bold text-[#154212] outline-none focus:ring-2 focus:ring-[#157b03]" />
+      <p className="mt-2 text-xs leading-relaxed text-[#666666]">ขั้นต่ำ 1 แต้ม และ 1 แต้มมีมูลค่าเท่ากับ 1 บาท</p>
       {cashPoints && !cashAmountValid && <p className="mt-1 text-xs text-[#cc0000]">กรุณากรอกจำนวนเต็มตั้งแต่ 20 แต้ม และไม่เกินคะแนนคงเหลือ</p>}
       {cashAmountValid && <p className="mt-2 text-sm font-semibold text-[#157b03]">จะได้รับคูปองเงินคืน {cashAmount.toLocaleString()} บาท</p>}
     </div>

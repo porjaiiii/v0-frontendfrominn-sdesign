@@ -16,12 +16,17 @@
 //   3. waste_records, coupons, admin_keys — coupons.tx_id references
 //      point_transactions, so this cannot move above step 2
 //
-// Re-runnable by construction. users/coupons/admin_keys upsert on their natural
-// primary keys; waste_records has none, so each row carries a deterministic
-// idempotency_key ('legacy:submission:<sheet row>') and rides the partial
-// unique index at 0001_schema.sql:218 as an on-conflict-do-nothing. The points
-// block has no natural key to conflict on, so it is skipped outright if legacy
-// lots are already present rather than inserted twice.
+// Re-runnable by construction, and additive: every table diffs against what
+// Supabase already holds and loads only the difference, so a sheet that has
+// gained new rows since the last run merges those in without re-touching or
+// duplicating anything already loaded. users/coupons/admin_keys upsert on
+// their natural primary keys; waste_records has none, so each row carries a
+// deterministic idempotency_key ('legacy:submission:<sheet row>') and the
+// loader reads existing keys before inserting the rest. point_transactions
+// uses its real primary key (tx_id) the same way; point_lots and
+// spend_details have no key column of their own, so the loader dedups them
+// against a (line_user_id, period) pair and tx_id respectively — see
+// diffNewByKey in transform-points.ts.
 //
 // SAFETY BRAKE, independent of the above: refuses to run unless
 // --confirm-target=<project-ref> is passed and matches the linked project's
@@ -37,6 +42,7 @@ import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 
 import {
+  diffNewByKey,
   transformPointsAccount,
   transformPointsMonthly,
   transformPointsTransactions,
@@ -217,88 +223,121 @@ async function main() {
   const loadableDetails = details.filter((d) => registered.has(d.line_user_id))
 
   // ---- 2. points ledger ----------------------------------------------------
-  // No natural key to conflict on, so re-running would duplicate every lot.
-  // Detect an already-loaded ledger and skip instead.
-  const { count: existingLots, error: lotCountError } = await db
-    .from('point_lots')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_legacy', true)
-  if (lotCountError) throw lotCountError
-
-  if ((existingLots ?? 0) > 0) {
-    console.log(
-      `[load] point_lots already holds ${existingLots} legacy row(s) — skipping the points ledger ` +
-        `block (it has no natural key to upsert on). Reset those tables first if you meant to reload it.`,
+  // Re-run-safe by diffing against what's already loaded, the same
+  // insert-only-new pattern waste_records uses below — NOT an all-or-nothing
+  // skip, so a sheet that has gained new rows since the last load merges in
+  // the difference instead of being ignored outright.
+  //
+  // points_accounts upserts as before: lifetime_earned/lifetime_spent are
+  // recomputed from the FULL current lots array (not the filtered diff), and
+  // since export.ts always pulls the whole sheet rather than a delta, that
+  // recomputation is correct on every run, not just the first.
+  console.log(`[load] upserting ${loadableAccounts.length} points_accounts rows...`)
+  {
+    const { error } = await db.from('points_accounts').upsert(
+      loadableAccounts.map((a) => ({
+        line_user_id: a.line_user_id,
+        lifetime_earned: a.lifetime_earned,
+        lifetime_spent: a.lifetime_spent,
+        total_weight_kg: a.total_weight_kg,
+        total_co2_kg: a.total_co2_kg,
+        // tier is NOT taken from the sheet — recomputed by the DB default /
+        // application logic from total_weight_kg, same as every live write.
+      })),
+      { onConflict: 'line_user_id' },
     )
-  } else {
-    console.log(`[load] upserting ${loadableAccounts.length} points_accounts rows...`)
-    {
-      const { error } = await db.from('points_accounts').upsert(
-        loadableAccounts.map((a) => ({
-          line_user_id: a.line_user_id,
-          lifetime_earned: a.lifetime_earned,
-          lifetime_spent: a.lifetime_spent,
-          total_weight_kg: a.total_weight_kg,
-          total_co2_kg: a.total_co2_kg,
-          // tier is NOT taken from the sheet — recomputed by the DB default /
-          // application logic from total_weight_kg, same as every live write.
-        })),
-        { onConflict: 'line_user_id' },
-      )
-      if (error) throw error
-    }
+    if (error) throw error
+  }
 
-    console.log(`[load] inserting ${loadableLots.length} point_lots rows...`)
-    {
-      const { error } = await db.from('point_lots').insert(
-        loadableLots.map((l) => ({
-          line_user_id: l.line_user_id,
-          period: l.period,
-          earned_points: l.earned_points,
-          consumed_points: l.consumed_points,
-          status: l.status,
-          expires_at: l.expires_at,
-          earned_at: l.earned_at,
-          source_waste_id: null,
-          is_legacy: true,
-        })),
-      )
-      if (error) throw error
+  // point_lots has no natural key column of its own, but each row maps 1:1
+  // onto a (line_user_id, period) pair from points_monthly — one bucket per
+  // user per month — so that pair IS the sheet's natural key here.
+  {
+    const { data, error } = await db.from('point_lots').select('line_user_id, period').eq('is_legacy', true)
+    if (error) throw error
+    const existingKeys = new Set((data ?? []).map((r) => `${r.line_user_id} ${r.period}`))
+    const { fresh: newLots, alreadyLoaded } = diffNewByKey(
+      loadableLots,
+      existingKeys,
+      (l) => `${l.line_user_id} ${l.period}`,
+    )
+    if (alreadyLoaded > 0) {
+      console.log(`[load] ${alreadyLoaded} point_lots row(s) already loaded — skipping those`)
     }
+    console.log(`[load] inserting ${newLots.length} point_lots rows...`)
+    const { error: insertError } = await db.from('point_lots').insert(
+      newLots.map((l) => ({
+        line_user_id: l.line_user_id,
+        period: l.period,
+        earned_points: l.earned_points,
+        consumed_points: l.consumed_points,
+        status: l.status,
+        expires_at: l.expires_at,
+        earned_at: l.earned_at,
+        source_waste_id: null,
+        is_legacy: true,
+      })),
+    )
+    if (insertError) throw insertError
+  }
 
-    console.log(`[load] inserting ${loadableTransactions.length} point_transactions rows (history only)...`)
-    {
-      const { error } = await db.from('point_transactions').insert(
-        loadableTransactions.map((t) => ({
-          tx_id: t.tx_id,
-          line_user_id: t.line_user_id,
-          kind: t.kind,
-          points_delta: t.points_delta,
-          co2_kg: t.co2_kg,
-          weight_kg: t.weight_kg,
-          is_legacy: true,
-          occurred_at: t.occurred_at,
-        })),
-      )
-      if (error) throw error
+  // point_transactions.tx_id IS the table's real primary key.
+  {
+    const { data, error } = await db
+      .from('point_transactions')
+      .select('tx_id')
+      .in('tx_id', loadableTransactions.map((t) => t.tx_id))
+    if (error) throw error
+    const existingKeys = new Set((data ?? []).map((r) => r.tx_id))
+    const { fresh: newTransactions, alreadyLoaded } = diffNewByKey(loadableTransactions, existingKeys, (t) => t.tx_id)
+    if (alreadyLoaded > 0) {
+      console.log(`[load] ${alreadyLoaded} point_transactions row(s) already loaded — skipping those`)
     }
+    console.log(`[load] inserting ${newTransactions.length} point_transactions rows (history only)...`)
+    const { error: insertError } = await db.from('point_transactions').insert(
+      newTransactions.map((t) => ({
+        tx_id: t.tx_id,
+        line_user_id: t.line_user_id,
+        kind: t.kind,
+        points_delta: t.points_delta,
+        co2_kg: t.co2_kg,
+        weight_kg: t.weight_kg,
+        is_legacy: true,
+        occurred_at: t.occurred_at,
+      })),
+    )
+    if (insertError) throw insertError
+  }
 
-    console.log(`[load] inserting ${loadableDetails.length} spend_details rows...`)
-    {
-      const { error } = await db.from('spend_details').insert(
-        loadableDetails.map((d) => ({
-          tx_id: d.tx_id,
-          line_user_id: d.line_user_id,
-          category: d.category,
-          item_name: d.item_name,
-          quantity: d.quantity,
-          points: d.points,
-          status: d.status,
-          occurred_at: d.occurred_at,
-        })),
-      )
-      if (error) throw error
+  // spend_details has no key of its own either, but its tx_id references
+  // point_transactions.tx_id — already globally unique — and the sheet
+  // carries exactly one spend_details row per transaction, so tx_id is a
+  // safe dedup key here too.
+  {
+    const { data, error } = await db
+      .from('spend_details')
+      .select('tx_id')
+      .in('tx_id', loadableDetails.map((d) => d.tx_id))
+    if (error) throw error
+    const existingKeys = new Set((data ?? []).map((r) => r.tx_id))
+    const { fresh: newDetails, alreadyLoaded } = diffNewByKey(loadableDetails, existingKeys, (d) => d.tx_id)
+    if (alreadyLoaded > 0) {
+      console.log(`[load] ${alreadyLoaded} spend_details row(s) already loaded — skipping those`)
     }
+    console.log(`[load] inserting ${newDetails.length} spend_details rows...`)
+    const { error: insertError } = await db.from('spend_details').insert(
+      newDetails.map((d) => ({
+        tx_id: d.tx_id,
+        line_user_id: d.line_user_id,
+        category: d.category,
+        item_name: d.item_name,
+        quantity: d.quantity,
+        points: d.points,
+        status: d.status,
+        occurred_at: d.occurred_at,
+      })),
+    )
+    if (insertError) throw insertError
   }
 
   // ---- 3. waste_records, coupons, admin_keys -------------------------------

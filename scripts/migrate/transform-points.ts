@@ -404,6 +404,21 @@ export function transformPointsAccount(
   return { accounts, quarantined }
 }
 
+// ---------------------------------------------------------------------------
+// Insert-only-new diffing, for any legacy table load.ts re-runs against rows
+// that may already be loaded. Pure and generic so load.ts stays a thin I/O
+// shell around it instead of re-deriving the same filter three times.
+// ---------------------------------------------------------------------------
+
+export function diffNewByKey<T>(
+  incoming: T[],
+  existingKeys: ReadonlySet<string>,
+  keyOf: (item: T) => string,
+): { fresh: T[]; alreadyLoaded: number } {
+  const fresh = incoming.filter((item) => !existingKeys.has(keyOf(item)))
+  return { fresh, alreadyLoaded: incoming.length - fresh.length }
+}
+
 // Shared with transform-registration.ts — the registration tabs need exactly
 // the same header-indexed, order-untrusted reading and the same two date
 // decoders. Duplicating them would let the two halves of one migration drift.

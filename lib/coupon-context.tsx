@@ -134,13 +134,10 @@ export function CouponProvider({ children }: { children: ReactNode }) {
         throw new Error('ไม่พบข้อมูลผู้ใช้ LINE กรุณาเข้าสู่ระบบผ่าน LINE อีกครั้ง')
       }
 
-      const response = await fetch('/api/coupons/redeem', {
+      const response = await apiFetch('/api/coupons/redeem', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // One key per press, so a retry replays instead of double-charging.
-          'Idempotency-Key': newIdempotencyKey(),
-        },
+        // One key per press, so a retry replays instead of double-charging.
+        idempotencyKey: newIdempotencyKey(),
         body: JSON.stringify({
           user_id: userId,
           items: params.items,

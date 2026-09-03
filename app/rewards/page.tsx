@@ -7,25 +7,44 @@ import { Heart, CheckCircle2, Ticket, ArrowUpDown, Store, Truck, ChevronLeft } f
 import { motion } from 'framer-motion'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
-import { REWARDS } from '@/lib/waste-data'
 import { useCart } from '@/lib/cart-context'
 import { cn } from '@/lib/utils'
 import { usePoints } from '@/lib/points-context'
 import { useCoupons } from '@/lib/coupon-context'
+import { CASH_REWARD_ID, CATALOG_REWARDS, findReward, type CatalogReward } from '@/lib/rewards-catalog'
 
-const CASH_REWARD = {
-  id: 99,
-  name: 'แลกแต้มเป็นเงินคืน',
-  description: 'คูปองแลกเงินสด',
-  points: 1,
-  image: '/images/rewards/THB-cash.jpg',
-  isCash: true,
-} as const
+// Was a component-local constant duplicating the catalog. Sourced from the
+// shared module so the minimum shown here is the same one app.rewards enforces
+// — it used to be a client-side check with nothing behind it.
+const CASH_REWARD = findReward(CASH_REWARD_ID)!
+const CASH_MIN_POINTS = CASH_REWARD.minPoints ?? 1
 
 export default function RewardsPage() {
-  const { points: userPoints, loading: pointsLoading, spendPoints } = usePoints()
+  const { points: userPoints, loading: pointsLoading, refresh: refreshPoints } = usePoints()
   const { addToCart, cartCount } = useCart()
-  const { addCoupon } = useCoupons()
+  const { redeemRewards } = useCoupons()
+
+  // Live catalog (Phase 7) — GET /api/catalog/rewards, replacing the static
+  // REWARDS array. Starts as CATALOG_REWARDS (lib/rewards-catalog.ts) so the
+  // page never renders empty before the fetch resolves, and stays that way if
+  // the fetch fails — the exact same fallback the API route itself falls back
+  // to on a DB error.
+  const [rewards, setRewards] = useState<CatalogReward[]>(CATALOG_REWARDS)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/catalog/rewards')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.success && Array.isArray(data.rewards) && data.rewards.length > 0) {
+          setRewards(data.rewards)
+        }
+      })
+      .catch((err) => console.error('[rewards] catalog fetch failed:', err))
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [mounted, setMounted] = useState(false)
   const [clickedButton, setClickedButton] = useState<number | null>(null)
@@ -35,15 +54,15 @@ export default function RewardsPage() {
   // Sort State: default 'asc' (น้อยไปมาก)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  // Sorted REWARDS based on sortOrder
+  // Sorted rewards based on sortOrder
   const sortedRewards = useMemo(() => {
-    return [...REWARDS].sort((a, b) => {
+    return [...rewards].sort((a, b) => {
       return sortOrder === 'asc' ? a.points - b.points : b.points - a.points
     })
-  }, [sortOrder])
+  }, [rewards, sortOrder])
 
   // Direct "แลกเลย" redeem (single item, no cart)
-  const [redeemTarget, setRedeemTarget] = useState<typeof REWARDS[number] | null>(null)
+  const [redeemTarget, setRedeemTarget] = useState<CatalogReward | null>(null)
   // State สำหรับขั้นตอนใน Modal: 1 = เลือกช่องทางรับ, 2 = ยืนยันการแลก
   const [redeemStep, setRedeemStep] = useState<1 | 2>(1)
   // State สำหรับเลือกรูปแบบการรับของรางวัล: 'pickup' (เดินทางไปรับเอง) หรือ 'delivery' (รอรับที่บ้าน)
@@ -52,21 +71,22 @@ export default function RewardsPage() {
   const [redeemError, setRedeemError] = useState<string | null>(null)
   const [redeemSuccess, setRedeemSuccess] = useState(false)
   const [newCouponId, setNewCouponId] = useState<string | null>(null)
-  const [cashPoints, setCashPoints] = useState('')
+  const [cashPoints, setCashPoints] = useState(String(CASH_MIN_POINTS))
 
   const redeemInFlight = useRef(false)
   const isCashRedeem = redeemTarget?.id === CASH_REWARD.id
   const cashAmount = Number.parseInt(cashPoints, 10)
-  const cashAmountValid = Number.isInteger(cashAmount) && cashAmount >= 1 && cashAmount <= userPoints
+  const cashAmountValid =
+    Number.isInteger(cashAmount) && cashAmount >= CASH_MIN_POINTS && cashAmount <= userPoints
 
-  const openRedeem = (reward: typeof REWARDS[number]) => {
+  const openRedeem = (reward: CatalogReward) => {
     setRedeemTarget(reward)
     setRedeemStep(1) // รีเซ็ตกลับไปขั้นตอนที่ 1 เสมอ
     setRedeemType('pickup') // รีเซ็ตกลับเป็น 'รับเอง' เป็นค่าเริ่มต้น
     setRedeemError(null)
     setRedeemSuccess(false)
     setNewCouponId(null)
-    setCashPoints('1')
+    setCashPoints(String(CASH_MIN_POINTS))
   }
 
   const handleConfirmRedeem = async () => {
@@ -80,7 +100,7 @@ export default function RewardsPage() {
 
     const pointsToSpend = isCashRedeem ? cashAmount : redeemTarget.points
     if (isCashRedeem && !cashAmountValid) {
-      setRedeemError(cashAmount > userPoints ? 'คะแนนของคุณไม่เพียงพอ' : 'กรุณากรอกจำนวนเต็มอย่างน้อย 1 แต้ม')
+      setRedeemError(cashAmount > userPoints ? 'คะแนนของคุณไม่เพียงพอ' : `กรุณากรอกจำนวนเต็มอย่างน้อย ${CASH_MIN_POINTS} แต้ม`)
       return
     }
 
@@ -94,40 +114,30 @@ export default function RewardsPage() {
     setProcessing(true)
 
     try {
-      const result = await spendPoints(pointsToSpend, {
-        category: 'reward',
-        items: [{ name: redeemTarget.name, quantity: 1, points: pointsToSpend }],
+      // Spending and minting are one server-side transaction now, so the
+      // "แลกคะแนนสำเร็จ แต่ไม่สามารถสร้างคูปองได้" branch that used to sit here
+      // is unreachable and gone.
+      //
+      // The price is not sent. Only the cash-back reward carries an amount, and
+      // the server floors it at app.rewards.min_points — the 20-point minimum
+      // used to be a client-side check and nothing else.
+      const { coupons } = await redeemRewards({
+        items: [
+          {
+            reward_id: redeemTarget.id,
+            quantity: 1,
+            ...(isCashRedeem ? { points: cashAmount } : {}),
+          },
+        ],
+        // เงินคืนรับคูปองไปดำเนินการกับเจ้าหน้าที่
+        redeem_type: isCashRedeem ? 'pickup' : redeemType,
       })
 
-      console.log('[v0] spendPoints — result:', result)
-
-      if (result.success) {
-        console.log('[v0] spendPoints — success, tx_id:', result.tx_id)
-        try {
-          const payload = {
-            reward_id: redeemTarget.id,
-            reward_name: redeemTarget.name,
-            reward_description: `${redeemTarget.description ?? ''}${isCashRedeem ? ` ${cashAmount.toLocaleString()} บาท` : ''}`,
-            reward_image: redeemTarget.image,
-            points_used: pointsToSpend,
-            tx_id: result.tx_id,
-            redeem_type: isCashRedeem ? 'pickup' : redeemType, // เงินคืนรับคูปองไปดำเนินการกับเจ้าหน้าที่
-          }
-          console.log('[v0] addCoupon — calling with payload:', payload)
-
-          const coupon = await addCoupon(payload)
-
-          console.log('[v0] addCoupon — response coupon:', coupon)
-          setNewCouponId(coupon.coupon_id)
-          setRedeemSuccess(true)
-        } catch (err) {
-          console.error('[v0] addCoupon — error:', err)
-          setRedeemError('แลกคะแนนสำเร็จ แต่ไม่สามารถสร้างคูปองได้ กรุณาติดต่อเจ้าหน้าที่')
-        }
-      } else {
-        console.warn('[v0] spendPoints — failed:', result.message)
-        setRedeemError(result.message || 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่')
-      }
+      setNewCouponId(coupons[0]?.coupon_id ?? null)
+      setRedeemSuccess(true)
+      await refreshPoints()
+    } catch (err) {
+      setRedeemError(err instanceof Error ? err.message : 'ไม่สามารถแลกของรางวัลได้ กรุณาลองใหม่')
     } finally {
       redeemInFlight.current = false
       setProcessing(false)

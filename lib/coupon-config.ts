@@ -1,18 +1,12 @@
-/**
- * Single source of truth for the coupon Google Apps Script web app.
- *
- * Google Sheet tabs used:
- *  - coupons            : ตาราง coupon ทั้งหมด
- *  - coupon_templates   : แม่แบบของรางวัลแต่ละชนิด (ถ้ามี)
- *
- * ถ้า redeploy Apps Script ให้เปลี่ยน URL ที่นี่ที่เดียว
- * ทุก route import จากไฟล์นี้
- */
-export const COUPON_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
+// The coupon record shape shared by the API routes and the client.
+//
+// This file used to also export COUPON_SCRIPT_URL, the Apps Script web app every
+// coupon route posted to. Coupons live in app.coupons now; the column reference
+// below is kept because the field names carried over verbatim.
 
 // ─── Field reference ───────────────────────────────────────────────────────
 //
-// TABLE: coupons
+// TABLE: app.coupons
 // ─────────────────────────────────────────────────────────────────────────
 // coupon_id          string      PK — รหัส coupon (= payload ของ QR Code)
 //                                     Format: CPNxxxxxxxx-xxxx-xxxx

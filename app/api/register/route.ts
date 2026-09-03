@@ -1,203 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
+import { getLineIdentity } from '@/lib/auth/verify-line-token'
+import { notifyRegistrationComplete } from '@/lib/notify-registration'
+import { parseJsonBody } from '@/lib/schemas/common'
+import { registerUserSchema } from '@/lib/schemas/register'
+import { registerUser, updateUser } from '@/lib/supabase/writes'
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const {
-      lineUserId,
-      userId,
-      pdpaConsent,
-      fullName,
-      nickname,
-      phoneNumber,
-      address,
-      gender,
-      ageRange,
-      userType,
-      subdistrict,
-      occupation,
-    } = body
-
-    if (!lineUserId || !fullName) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-
-    const payload = {
-      action: 'updateUser',
-      lineUserId,
-      userId: userId || '',
-      pdpaConsent,
-      fullName,
-      nickname: nickname || '',
-      phoneNumber,
-      address: address || '',
-      gender,
-      ageRange,
-      userType: userType || '',
-      subdistrict: subdistrict || '',
-      occupation: occupation || '',
-      timestamp: new Date().toISOString(),
-    }
-
-    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-
-    const responseText = await response.text()
-
-    // 1. ดักจับ Error ระดับ Network / HTTP status จาก Google
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลโปรดลองใหม่อีกครั้ง', details: responseText.substring(0, 200) },
-        { status: 500 }
-      )
-    }
-
-    // 2. แปลง Response เป็น JSON
-    let result
-    try {
-      result = JSON.parse(responseText)
-    } catch (e) {
-      return NextResponse.json(
-        { error: 'Invalid response format from Google Sheet', details: responseText.substring(0, 100) },
-        { status: 500 }
-      )
-    }
-
-    // 🔴 3. ตรวจสอบ Error ที่ส่งมาจาก Google Apps Script (เช่น Lock Timeout หรือ ไม่พบ User)
-    if (result.status === 'error') {
-      const isLockTimeout = result.message?.toLowerCase().includes('lock timeout') || result.message?.includes('busy')
-      return NextResponse.json(
-        { 
-          error: isLockTimeout ? 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง' : (result.message || 'Failed to update user'),
-          details: result.message 
-        },
-        { status: isLockTimeout ? 429 : 400 }
-      )
-    }
-
-    return NextResponse.json({ success: true, data: { lineUserId, fullName } })
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to update user', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    )
+/**
+ * Both verbs — identity comes from the verified LINE ID token, never the
+ * request body. Apps Script trusted whatever `lineUserId` the caller sent,
+ * which is what let one account write another's profile.
+ */
+async function respondFromSupabase(
+  request: NextRequest,
+  write: typeof registerUser,
+  { greet }: { greet: boolean } = { greet: false },
+) {
+  const identity = await getLineIdentity(request)
+  if (!identity) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-}
 
-export async function POST(request: NextRequest) {
+  const parsed = await parseJsonBody(request, registerUserSchema)
+  if (!parsed.ok) {
+    return NextResponse.json(parsed.body, { status: parsed.status })
+  }
+
   try {
-    const body = await request.json()
-    const {
-      lineUserId,
-      userId,
-      pdpaConsent,
-      fullName,
-      nickname,
-      phoneNumber,
-      address,
-      gender,
-      ageRange,
-      userType,
-      subdistrict,
-      occupation,
-      registrationDate,
-    } = body
+    const profile = await write(identity.lineUserId, parsed.data)
 
-    // Validate required fields (address is only required for community residents, not tourists)
-    const isTourist = userType === 'นักท่องเที่ยว'
-    if (!lineUserId || !fullName || (!isTourist && !address) || !phoneNumber || !gender || !ageRange || !pdpaConsent) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
-
-    // ส่งข้อมูลไปยัง Google Apps Script Webhook
-    const payload = {
-      action: 'registerUser',
-      type: 'insert',
-      status: 'done',
-      lineUserId,
-      userId: userId || '',
-      pdpaConsent,
-      fullName,
-      nickname: nickname || '',
-      phoneNumber,
-      address,
-      gender,
-      ageRange,
-      userType: userType || '',
-      subdistrict: subdistrict || '',
-      occupation: occupation || '',
-      registrationDate: registrationDate || new Date().toLocaleDateString('th-TH'),
-      timestamp: new Date().toISOString(),
-    }
-
-    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
-
-    const responseText = await response.text()
-
-    // 1. ดักจับ Error ระดับ Network / HTTP status จาก Google
-    if (!response.ok) {
-      return NextResponse.json(
-        { 
-          error: 'Failed to save registration to Google Sheet',
-          details: responseText.substring(0, 200),
-          status: response.status,
-        },
-        { status: 500 }
-      )
-    }
-
-    // 2. แปลง Response เป็น JSON
-    let result
-    try {
-      result = JSON.parse(responseText)
-    } catch (e) {
-      return NextResponse.json(
-        { error: 'Invalid response format from Google Sheet', details: responseText.substring(0, 100) },
-        { status: 500 }
-      )
-    }
-
-    // 🔴 3. ตรวจสอบ Error ที่ส่งมาจาก Google Apps Script (เช่น Lock Timeout หรือ ลงทะเบียนซ้ำ)
-    if (result.status === 'error') {
-      const isLockTimeout = result.message?.toLowerCase().includes('lock timeout') || result.message?.includes('busy')
-      return NextResponse.json(
-        { 
-          error: isLockTimeout ? 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง' : (result.message || 'เซิร์ฟเวอร์หนาแน่น กรุณาลองใหม่อีกครั้ง'),
-          details: result.message 
-        },
-        { status: isLockTimeout ? 429 : 400 }
-      )
+    // Only on first-time registration — editing a profile must not re-trigger
+    // the "thanks for registering" LINE OA message. Built from the stored row
+    // rather than the request, so the greeting can never disagree with what was
+    // actually saved.
+    if (greet) {
+      await notifyRegistrationComplete({
+        lineUserId: profile.lineUserId,
+        userId: profile.userId,
+        pdpaConsent: profile.pdpaConsent,
+        fullName: profile.fullName,
+        nickname: profile.nickname,
+        phoneNumber: profile.phoneNumber,
+        address: profile.address,
+        gender: profile.gender,
+        ageRange: profile.ageRange,
+        userType: profile.userType,
+        subdistrict: profile.subdistrict,
+        occupation: profile.occupation,
+        registrationDate: profile.registrationDate,
+      })
     }
 
     return NextResponse.json({
       success: true,
       data: {
-        lineUserId,
-        fullName,
-        registrationDate: payload.registrationDate,
+        lineUserId: profile.lineUserId,
+        fullName: profile.fullName,
+        registrationDate: profile.registrationDate,
       },
     })
   } catch (error) {
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to submit registration',
-        details: error instanceof Error ? error.message : String(error)
+        details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
+}
+
+export async function PATCH(request: NextRequest) {
+  return respondFromSupabase(request, updateUser)
+}
+
+export async function POST(request: NextRequest) {
+  return respondFromSupabase(request, registerUser, { greet: true })
 }

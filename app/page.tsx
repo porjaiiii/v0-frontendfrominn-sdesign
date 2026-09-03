@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useLiffContext } from '@/lib/liff-context'
+import { getCachedRegisteredLineId, setCachedRegisteredLineId } from '@/lib/registration-cookie'
 
 // How long (ms) to wait for the profile API before giving up and failing
 // open to /register. Matches the API route's own ~50s worst-case retry
@@ -62,25 +63,21 @@ export default function RootPage() {
     const params = new URLSearchParams(window.location.search)
     if (params.has('liff.state')) return
 
-    // ตรวจสอบจาก localStorage ว่าเคยลงทะเบียนหรือยัง — fast path, no API call.
- 
-
-    // Demo mode — no LIFF_ID configured, so there's no LINE user to check
-    // against the database. Fall back to cache-only behavior.
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID
-    if (!liffId) {
-      router.replace('/register')
-      return
-    }
-
-    // Cache says "not registered" (or is simply empty, e.g. a new device).
-    // That's not definitive — verify against the database before deciding.
     if (!isLoggedIn) return
     if (!profile?.userId) return
 
     const lineUserId = profile.userId
     if (checkedRef.current === lineUserId) return
     checkedRef.current = lineUserId
+
+    // Cookie fast path — if this LINE user was verified registered within
+    // the last 24h, skip the profile lookup entirely (it can
+    // take up to ~60s worst case). Cache is bound to lineUserId so it can
+    // never wrongly apply to a different LINE account on the same device.
+    if (getCachedRegisteredLineId() === lineUserId) {
+      router.replace('/home')
+      return
+    }
 
     const checkProfile = async () => {
       setChecking(true)
@@ -113,7 +110,7 @@ export default function RootPage() {
 
         if (hasProfile) {
           // Registered in the database (just not cached on this device yet).
-          localStorage.setItem('is_registered', 'true')
+          setCachedRegisteredLineId(lineUserId)
           router.replace('/home')
         } else {
           router.replace('/register')

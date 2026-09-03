@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import liff from '@line/liff'
+
+import { setLiffSdkReady } from '@/lib/api-client'
 
 export interface LiffProfile {
   userId: string
@@ -57,23 +59,49 @@ export function useLiff(liffId?: string): UseLiffReturn {
   const [lineVersion, setLineVersion] = useState<string | null>(null)
   const [loadingStep, setLoadingStep] = useState<LiffLoadingStep>('idle')
 
+  // "liff.init() resolved, so SDK calls are safe" — deliberately NOT the same as
+  // `isReady`, which only means "the hook has finished trying". They diverge
+  // while liff.init() is still in flight, and permanently if NEXT_PUBLIC_LIFF_ID
+  // is missing (a real misconfiguration now, not a supported mode) — either way,
+  // calling an SDK method before init resolves throws
+  // `liffId is necessary for liff.init()`. Guarding on readiness alone let that
+  // throw on every getIDToken() — caught and logged, but noisy and misleading.
+  //
+  // A ref rather than state because the useCallbacks below have empty dep arrays
+  // and would otherwise close over the initial `false`. That is also why these
+  // guards can't read `liff.isReady`: the SDK does not define it, so the
+  // expression was always undefined and getIDToken/getAccessToken always
+  // returned null, login/logout were no-ops, and scanCode always threw.
+  // `typescript.ignoreBuildErrors` hid all of it.
+  const sdkReadyRef = useRef(false)
+
+  const markReady = useCallback(() => {
+    setIsReady(true)
+  }, [])
+
   useEffect(() => {
     const initLiff = async () => {
       try {
         // Use environment variable or provided liffId
         const id = liffId || process.env.NEXT_PUBLIC_LIFF_ID
-        
+
         if (!id) {
-          console.warn('[LIFF] No LIFF ID provided. Running in demo mode.')
+          // A real misconfiguration, not a supported "demo mode" — there is no
+          // fake identity to fall back to. Every page that needs a LINE user id
+          // stays logged-out until this is set.
+          console.error('[LIFF] NEXT_PUBLIC_LIFF_ID is not set — LINE login is unavailable.')
+          setError('ระบบยังไม่ได้ตั้งค่า LINE Login (NEXT_PUBLIC_LIFF_ID)')
           setLoadingStep('ready')
-          setIsReady(true)
+          markReady()
           return
         }
 
         setLoadingStep('initializing')
         await liff.init({ liffId: id })
+        sdkReadyRef.current = true
+        setLiffSdkReady(true)
         setIsInClient(liff.isInClient())
-        setOs(liff.getOS())
+        setOs(liff.getOS() ?? null)
         setLanguage(liff.getLanguage())
         setLineVersion(liff.getLineVersion())
 
@@ -128,12 +156,12 @@ export function useLiff(liffId?: string): UseLiffReturn {
         setIsLoggedIn(true)
         setProfile(userProfile)
         setLoadingStep('ready')
-        setIsReady(true)
+        markReady()
       } catch (err) {
         console.error('[LIFF] Initialization failed:', err)
         setError(err instanceof Error ? err.message : 'LIFF initialization failed')
         setLoadingStep('ready')
-        setIsReady(true) // Still mark as ready for fallback
+        markReady() // Still mark as ready for fallback
       }
     }
 
@@ -142,7 +170,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
 
   const login = useCallback(() => {
     try {
-      if (liff.isReady && !liff.isLoggedIn()) {
+      if (sdkReadyRef.current && !liff.isLoggedIn()) {
         liff.login()
       }
     } catch (err) {
@@ -152,7 +180,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
 
   const logout = useCallback(() => {
     try {
-      if (liff.isReady && liff.isLoggedIn()) {
+      if (sdkReadyRef.current && liff.isLoggedIn()) {
         liff.logout()
         setIsLoggedIn(false)
         setProfile(null)
@@ -165,7 +193,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
 
   const sendMessage = useCallback(async (message: string) => {
     try {
-      if (liff.isInClient()) {
+      if (sdkReadyRef.current && liff.isInClient()) {
         await liff.sendMessages([
           {
             type: 'text',
@@ -183,7 +211,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
 
   const closeWindow = useCallback(() => {
     try {
-      if (liff.isInClient()) {
+      if (sdkReadyRef.current && liff.isInClient()) {
         liff.closeWindow()
       } else {
         window.close()
@@ -195,7 +223,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
 
   const scanCode = useCallback(async (): Promise<ScanCodeResult> => {
     try {
-      if (!liff.isReady) {
+      if (!sdkReadyRef.current) {
         throw new Error('LIFF ยังไม่พร้อม โปรดรอสักครู่')
       }
       
@@ -229,7 +257,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
 
   const openExternalBrowser = useCallback((url: string) => {
     try {
-      if (liff.isInClient()) {
+      if (sdkReadyRef.current && liff.isInClient()) {
         liff.openWindow({
           url,
           external: true
@@ -245,7 +273,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
 
   const getAccessToken = useCallback((): string | null => {
     try {
-      if (liff.isReady && liff.isLoggedIn()) {
+      if (sdkReadyRef.current && liff.isLoggedIn()) {
         return liff.getAccessToken()
       }
       return null
@@ -257,7 +285,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
 
   const getIDToken = useCallback((): string | null => {
     try {
-      if (liff.isReady && liff.isLoggedIn()) {
+      if (sdkReadyRef.current && liff.isLoggedIn()) {
         return liff.getIDToken()
       }
       return null

@@ -5,6 +5,7 @@ import { Camera, Loader2, Minus, Plus, X } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { useLiffContext } from '@/lib/liff-context'
+import { displaySrc, uploadWastePhoto } from '@/lib/api-client'
 import { compressImage } from '@/lib/compress-image'
 
 interface WeightInputProps {
@@ -192,30 +193,17 @@ export function ImageEvidence({ imageUrls = [], onImagesChange, referenceImage, 
       setIsUploading(true)
       setError(null)
 
-      const { dataUrl: base64String } = await compressImage(file)
+      // The Blob, not the data URL — it goes straight to storage now.
+      const { blob } = await compressImage(file)
 
       try {
-        const response = await fetch('/api/upload-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            base64Data: base64String.split(',')[1],
-            fileName: `${profile?.userId || 'unknown'}_${wasteType || 'unknown'}_${weight || 0}_${Date.now()}.jpg`,
-            userId: profile?.userId || 'unknown'
-          })
+        const stored = await uploadWastePhoto(blob, {
+          fileName: `${profile?.userId || 'unknown'}_${wasteType || 'unknown'}_${weight || 0}_${Date.now()}.jpg`,
+          userId: profile?.userId || 'unknown',
         })
-
-        const result = await response.json()
-        
-        if (result.success && result.imageUrl) {
-          // เพิ่มรูปใหม่เข้าไปใน Array เดิม
-          onImagesChange([...imageUrls, result.imageUrl])
-        } else {
-          const errorMsg = result.error || 'ไม่สามารถอัพโหลดรูปได้'
-          setError(errorMsg)
-        }
+        onImagesChange([...imageUrls, stored])
       } catch (err) {
-        setError('เกิดข้อผิดพลาดในการอัปโหลด')
+        setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการอัปโหลด')
       }
     } catch (err) {
       setError('เกิดข้อผิดพลาดในการบีบอัดรูป')
@@ -257,7 +245,7 @@ export function ImageEvidence({ imageUrls = [], onImagesChange, referenceImage, 
         {/* วนลูปแสดงรูปที่มีทั้งหมด */}
         {imageUrls.map((url, index) => (
           <div key={index} className="w-36 h-36 shrink-0 rounded-2xl overflow-hidden relative border-2 border-[#154212]">
-            <Image src={url} alt="หลักฐาน" fill className="object-cover" />
+            <Image src={displaySrc(url)} alt="หลักฐาน" fill className="object-cover" />
             <button
               type="button"
               onClick={() => onImagesChange(imageUrls.filter((_, i) => i !== index))}

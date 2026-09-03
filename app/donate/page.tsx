@@ -39,8 +39,10 @@ const DONATION_AS_OF = 'ณ วันที่ 5 มิถุนายน 2567 �
 const DONATION_NOTE =
   'ยอดเงินบริจาคที่ได้รับจากทุกการร่วมทำบุญจะถูกนำไปรวมเป็นยอดสะสม และทางเว็บไซต์จะดำเนินการโอนเงินไปยังวัดเพื่อการบูรณะเป็นรอบ ๆ เมื่อยอดสะสมครบ 100 บาท (หรือมากกว่า) เพื่อให้การจัดการและการส่งมอบเงินเป็นไปอย่างเหมาะสม โปร่งใส และตรวจสอบได้'
 
-// Mock donation data
-const DONATIONS: DonationItem[] = [
+// Offline fallback — supabase/migrations/0008_catalog.sql seeded
+// app.donation_campaigns from exactly this list, so it doubles as the
+// pre-fetch/on-error state below.
+const FALLBACK_DONATIONS: DonationItem[] = [
   {
     id: 1,
     name: 'ทำบุญค่าบูรณะวัดจากแดง',
@@ -76,6 +78,26 @@ export default function DonatePage() {
   const { points: userPoints, loading: pointsLoading, spendPoints } = usePoints()
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+
+  // Live campaigns (Phase 7) — GET /api/catalog/donations, replacing the
+  // hardcoded DONATIONS array so an admin-created campaign
+  // (POST /api/catalog/donations) actually shows up here.
+  const [donations, setDonations] = useState<DonationItem[]>(FALLBACK_DONATIONS)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/catalog/donations')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.success && Array.isArray(data.donations) && data.donations.length > 0) {
+          setDonations(data.donations)
+        }
+      })
+      .catch((err) => console.error('[donate] catalog fetch failed:', err))
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Detail page state — opened by the "รายละเอียด" button
   const [detailDonation, setDetailDonation] = useState<DonationItem | null>(null)
@@ -212,7 +234,7 @@ export default function DonatePage() {
           </div>
         ) : (
         <div className="space-y-4">
-          {DONATIONS
+          {donations
             .filter(donation => !showFavoritesOnly || favorites.has(donation.id))
             .map((donation, index) => {
             const isFavorited = favorites.has(donation.id)

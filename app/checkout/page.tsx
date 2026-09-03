@@ -7,16 +7,19 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, CheckCircle2 } from 'lucide-react'
 import { useCart } from '@/lib/cart-context'
 import { usePoints } from '@/lib/points-context'
+import { useCoupons } from '@/lib/coupon-context'
 import { cn } from '@/lib/utils'
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { items: cartItems, clearCart } = useCart()
-  const { points: userPoints, loading: pointsLoading, spendPoints } = usePoints()
+  const { points: userPoints, loading: pointsLoading, refresh: refreshPoints } = usePoints()
+  const { redeemRewards } = useCoupons()
 
   const [processing, setProcessing] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [couponIds, setCouponIds] = useState<string[]>([])
 
   const totalPointsNeeded = cartItems.reduce(
     (sum, item) => sum + item.points * item.quantity,
@@ -38,21 +41,24 @@ export default function CheckoutPage() {
     }
 
     setProcessing(true)
-    const result = await spendPoints(totalPointsNeeded, {
-      category: 'reward',
-      items: cartItems.map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        points: item.points * item.quantity,
-      })),
-    })
-    setProcessing(false)
-
-    if (result.success) {
+    try {
+      // This used to call spendPoints() and then clearCart() — with no
+      // addCoupon anywhere. Checkout took the points and handed back a success
+      // screen for nothing; there was no coupon to collect the items with.
+      //
+      // One call now spends and mints together, one coupon per unit, priced
+      // from the catalog rather than from the cart's client-side totals.
+      const { coupons } = await redeemRewards({
+        items: cartItems.map(item => ({ reward_id: item.id, quantity: item.quantity })),
+      })
+      setCouponIds(coupons.map(coupon => coupon.coupon_id))
       clearCart()
       setSuccess(true)
-    } else {
-      setError(result.message || 'ไม่สามารถชำระแต้มได้ กรุณาลองใหม่')
+      await refreshPoints()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ไม่สามารถชำระแต้มได้ กรุณาลองใหม่')
+    } finally {
+      setProcessing(false)
     }
   }
 
@@ -62,16 +68,21 @@ export default function CheckoutPage() {
       <div className="min-h-screen bg-white pb-24 flex flex-col items-center justify-center px-4 text-center">
         <CheckCircle2 size={72} className="text-[#157b03] mb-4" />
         <h1 className="text-xl font-semibold text-[#154212] mb-2">แลกรางวัลสำเร็จ!</h1>
-        <p className="text-sm text-[#666666] mb-6">
+        <p className="text-sm text-[#666666] mb-2">
           ใช้ไป {totalPointsNeeded.toLocaleString()} คะแนน · คงเหลือ{' '}
           {Math.max(0, remainingPoints).toLocaleString()} คะแนน
         </p>
+        {/* Checkout mints coupons now, so say so — this screen used to claim
+            success while the user had nothing to collect the items with. */}
+        <p className="text-sm text-[#157b03] font-medium mb-6">
+          ได้รับคูปอง {couponIds.length} ใบ
+        </p>
         <div className="flex gap-3">
           <Link
-            href="/rewards"
+            href="/coupons"
             className="px-5 py-2.5 bg-[#154212] text-white rounded-lg text-sm font-medium hover:bg-[#0d3308] transition-colors"
           >
-            กลับไปหน้ารางวัล
+            ดูคูปองของฉัน
           </Link>
           <Link
             href="/history"

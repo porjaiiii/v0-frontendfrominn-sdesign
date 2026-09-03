@@ -8,6 +8,7 @@ import { ChevronDown, ChevronUp, X, ArrowLeft } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { useLiffContext } from '@/lib/liff-context'
 import { generateUserIdFromLineId } from '@/lib/user-id-generator'
+import { setCachedRegisteredLineId } from '@/lib/registration-cookie'
 
 const OCCUPATIONS = [
   'ผู้ประกอบการ (ร้านค้า/โฮมสเตย์)',
@@ -165,7 +166,7 @@ function ChoiceGroup({
 }
 
 function RegisterPageContent() {
-  const { profile, isReady } = useLiffContext()
+  const { profile, isReady, getIDToken } = useLiffContext()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -189,11 +190,19 @@ function RegisterPageContent() {
       }
       return
     }
-    if (liff.isInClient()) {
-      liff.closeWindow()
-    } else {
-      router.push('/home')
+    // liff.isInClient() throws if the SDK hasn't finished initialising yet,
+    // which used to leave this button doing nothing at all after a successful
+    // registration. Falling through to /home is the right answer whenever
+    // LINE isn't there to close.
+    try {
+      if (liff.isInClient()) {
+        liff.closeWindow()
+        return
+      }
+    } catch {
+      // Not in LINE, or LIFF unavailable.
     }
+    router.push('/home')
   }
 
   const [formData, setFormData] = useState({
@@ -442,38 +451,11 @@ function RegisterPageContent() {
     if (focusable) setTimeout(() => focusable.focus({ preventScroll: true }), 300)
   }
 
-  async function notifyRegistrationComplete(lineUserId: string, data: typeof formData) {
-    console.log(process.env.NEXT_PUBLIC_GAS_URL3)
-  // ✅ 1. URL ของ GAS web app + route=register
-  const GAS_WEBHOOK_URL = `${process.env.NEXT_PUBLIC_GAS_URL3 ?? ''}?route=register`
-  const SECRET = 'dwa-secret-2024'
-  const fullName = `${data.firstName} ${data.lastName}`.trim()
-  try {
-    await fetch(GAS_WEBHOOK_URL, {
-      method: 'POST',
-      // ✅ 3. text/plain เลี่ยง CORS preflight (เอา x-registration-secret ออก)
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        secret: SECRET,          // ✅ 2. ย้าย secret มาไว้ใน body
-        lineUserId: data.lineUserId,
-        userId: data.userId,
-        pdpaConsent: data.pdpaConsent ? 'ยอมรับ' : 'ไม่ยอมรับ',
-        fullName,
-        nickname: data.nickname,
-        phoneNumber: data.phoneNumber,
-        address: data.address,
-        gender: data.gender,
-        ageRange: data.ageRange,
-        userType: data.userType,
-        subdistrict: data.subdistrict,
-        occupation: data.occupation,
-        registrationDate: new Date().toLocaleDateString('th-TH'),
-      }),
-    })
-  } catch (err) {
-    console.error('Webhook notification failed:', err)
-  }
-}
+  // The LINE OA greeting used to be POSTed to GAS #3 from right here, with the
+  // shared secret inlined in the bundle and the endpoint URL console.log'd on
+  // every call. POST /api/register now makes that call server-side
+  // (lib/notify-registration.ts) — same script, same payload, but the secret is
+  // no longer published and delivery no longer races the LIFF window closing.
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -524,9 +506,18 @@ function RegisterPageContent() {
         registrationDate: new Date().toLocaleDateString('th-TH'),
       }
 
+      // The server derives identity from this token
+      // (lib/auth/verify-line-token.ts) rather than from requestBody.lineUserId.
+      // Null before LIFF finishes initialising — the submit button stays
+      // disabled until a real profile is available.
+      const idToken = getIDToken()
+
       const response = await fetch('/api/register', {
         method: isEditMode ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
         body: JSON.stringify(requestBody),
       })
 
@@ -535,14 +526,13 @@ function RegisterPageContent() {
         throw new Error(data.error || (isEditMode ? 'อัพเดตไม่สำเร็จกรูณาลองใหม่อีกครั้งในภายหลัง' : 'บันทึกไม่สำเร็จกรุณาลองใหม่อีกครั้ง'))
       }
 
-      // Only greet on first-time registration — editing an existing profile
-      // must not trigger the "thanks for registering" LINE OA message.
-      if (!isEditMode && formData.lineUserId) {
-        await notifyRegistrationComplete(formData.lineUserId, formData)
-      }
+      // The "thanks for registering" LINE OA message is sent by the server, on
+      // POST only — so editing a profile (PATCH) still can't re-trigger it.
 
       setSuccess(true)
-      localStorage.setItem('is_registered', 'true');
+      if (formData.lineUserId) {
+        setCachedRegisteredLineId(formData.lineUserId)
+      }
 
       setFormData({
         lineUserId: '', userId: '', pdpaConsent: false, firstName: '', lastName: '',

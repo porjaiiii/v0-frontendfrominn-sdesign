@@ -1,65 +1,72 @@
-/**
- * บีบอัดรูปภาพให้ขนาดไม่เกิน maxSizeBytes (default 0.5 MB)
- * ใช้ Canvas API วนลด quality จนผ่านเกณฑ์
- */
 export async function compressImage(
   file: File,
-  maxSizeBytes = 0.5 * 1024 * 1024, // 0.5 MB
-  maxDimension = 1280               // ลด resolution ลงจาก 1920 → 1280 เพื่อช่วยให้ไฟล์เล็กลงไวขึ้น
+  maxSizeBytes = 300 * 1024,
+  maxDimension = 1024
 ): Promise<{ blob: Blob; dataUrl: string }> {
   return new Promise((resolve, reject) => {
-    const img = new window.Image()
-    const objectUrl = URL.createObjectURL(file)
+    // 1. เช็คว่าเป็นไฟล์รูปภาพแน่ๆ (กันไฟล์แปลกๆ หรือ HEIC ในบางกรณี)
+    if (!file.type.startsWith('image/')) {
+      return reject(new Error('File is not an image'));
+    }
+
+    const img = new window.Image();
+    
+    // 2. ใช้ URL.createObjectURL แทน FileReader (ประหยัด RAM มหาศาล)
+    const objectUrl = URL.createObjectURL(file);
 
     img.onload = () => {
-      URL.revokeObjectURL(objectUrl)
+      // คืน Memory ทันทีที่โหลดรูปเสร็จ
+      URL.revokeObjectURL(objectUrl);
 
-      // คำนวณ dimension ใหม่ถ้าใหญ่เกิน
-      let { width, height } = img
+      let { width, height } = img;
       if (width > maxDimension || height > maxDimension) {
-        const ratio = Math.min(maxDimension / width, maxDimension / height)
-        width = Math.round(width * ratio)
-        height = Math.round(height * ratio)
+        const ratio = Math.min(maxDimension / width, maxDimension / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
       }
 
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0, width, height)
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        return reject(new Error('Canvas setup failed'));
+      }
+      
+      ctx.drawImage(img, 0, 0, width, height);
 
-      // เริ่มที่ quality 0.85 และลดทีละ 0.15 เพื่อให้ถึงเป้าเร็วขึ้น
-      let quality = 0.85
+      let quality = 0.85;
+      
       const tryCompress = () => {
         canvas.toBlob(
           (blob) => {
-            if (!blob) { reject(new Error('Canvas toBlob failed')); return }
+            if (!blob) { reject(new Error('Canvas toBlob failed')); return; }
 
             if (blob.size <= maxSizeBytes || quality <= 0.1) {
-              // แปลงเป็น dataUrl ด้วย
-              const reader = new FileReader()
-              reader.onload = () => resolve({ blob, dataUrl: reader.result as string })
-              reader.onerror = reject
-              reader.readAsDataURL(blob)
+              // อ่านเฉพาะไฟล์ที่ย่อเสร็จแล้วเป็น Base64 เพื่อส่งออก
+              const reader = new FileReader();
+              reader.onload = () => resolve({ blob, dataUrl: reader.result as string });
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
             } else {
-              // ลด quality ทีละ 0.15 (เร็วกว่าเดิมที่ลดทีละ 0.1)
-              quality = Math.max(0.1, quality - 0.15)
-              tryCompress()
+              quality = Math.max(0.1, quality - 0.15);
+              tryCompress();
             }
           },
           'image/jpeg',
           quality
-        )
-      }
+        );
+      };
 
-      tryCompress()
-    }
+      tryCompress();
+    };
 
     img.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      reject(new Error('Failed to load image'))
-    }
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to load image. If this is an HEIC file from iPhone, it might not be supported.'));
+    };
 
-    img.src = objectUrl
-  })
+    img.src = objectUrl;
+  });
 }

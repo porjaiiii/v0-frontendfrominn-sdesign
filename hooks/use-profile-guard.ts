@@ -29,13 +29,6 @@ export function useProfileGuard(): { status: GuardStatus } {
     // Wait until LIFF SDK has finished initialising
     if (!isReady) return
 
-    // Demo mode — no LIFF_ID configured, skip guard entirely
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID
-    if (!liffId) {
-      setStatus('ok')
-      return
-    }
-
     // LIFF is ready but user is not logged in yet — keep waiting.
     // (The LIFF SDK will redirect to LINE login automatically.)
     if (!isLoggedIn) return

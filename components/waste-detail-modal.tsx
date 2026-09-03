@@ -5,25 +5,10 @@ import Image from 'next/image'
 import { X, CheckCircle2, Camera, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
+import { apiFetch, displaySrc, uploadWastePhoto, useIdempotencyKey } from '@/lib/api-client'
+import { useApp } from '@/lib/app-context'
 import { compressImage } from '@/lib/compress-image'
-
-// Carbon reduction factors per kg (CO2 kg saved)
-const CARBON_FACTORS: Record<string, number> = {
- plastic: 1.0310,
-  paper: 3.5460,
-  glass: 0.2760,
-  aluminum: 9.1270,
-  oil: 3.0,
-}
-
-// Points per kg (คำนวณแยกจาก carbon)
-const POINTS_PER_KG: Record<string, number> = {
-  plastic: 6,
-  paper: 4,
-  glass: 4,
-  aluminum: 25,
-  oil: 3,
-}
+import { carbonFactorFor, pointsPerKgFor, type WasteRate, WASTE_RATES } from '@/lib/rates'
 
 interface WasteRecord {
   timestamp: string
@@ -46,11 +31,12 @@ interface WasteDetailModalProps {
   isEditing?: boolean
 }
 
-function recalculate(record: WasteRecord): WasteRecord {
-  const carbonFactor = CARBON_FACTORS[record.waste_type] ?? 1.0
-  const carbonReduction = record.weight_kg * carbonFactor
-  const rate = POINTS_PER_KG[record.waste_type] ?? 3
-  const pointsEarned = Math.round(record.weight_kg * rate)
+function recalculate(
+  record: WasteRecord,
+  rates: Record<string, WasteRate> = WASTE_RATES,
+): WasteRecord {
+  const carbonReduction = record.weight_kg * carbonFactorFor(record.waste_type, rates)
+  const pointsEarned = Math.round(record.weight_kg * pointsPerKgFor(record.waste_type, rates))
   return { ...record, carbon_reduction: carbonReduction, points_earned: pointsEarned }
 }
 
@@ -64,6 +50,10 @@ export function WasteDetailModal({
 }: WasteDetailModalProps) {
   const [editedRecord, setEditedRecord] = useState<WasteRecord | null>(null)
   const [isSavingApi, setIsSavingApi] = useState(false)
+  // Photos whose upload failed. Shown to the user, never sent to the server —
+  // see handleFileChange.
+  const [localPreviews, setLocalPreviews] = useState<string[]>([])
+  const confirmKey = useIdempotencyKey()
 
   // --- weight input state (รองรับ "0" ต้นและทศนิยม) ---
   const [weightDisplay, setWeightDisplay] = useState<string>('')
@@ -85,11 +75,13 @@ export function WasteDetailModal({
   }, [record])
 
   // ฟังก์ชันอัปเดตค่าพร้อมคำนวณคะแนนใหม่ทุกครั้ง
+  const { wasteRates } = useApp()
+
   const updateField = (fields: Partial<WasteRecord>) => {
     setEditedRecord((prev) => {
       if (!prev) return prev
       const updated = { ...prev, ...fields }
-      return recalculate(updated)
+      return recalculate(updated, wasteRates)
     })
   }
 
@@ -153,34 +145,34 @@ export function WasteDetailModal({
     setIsUploading(true)
     setUploadError(null)
 
-    const { dataUrl: base64String } = await compressImage(file)
-
-    const response = await fetch('/api/upload-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        base64Data: base64String.split(',')[1],
-        fileName: `${editedRecord.user_id}_${editedRecord.waste_type}_${editedRecord.weight_kg}_${Date.now()}.jpg`,
-        userId: editedRecord.user_id,
-        wasteType: editedRecord.waste_type,
-        weight: editedRecord.weight_kg,
-        mimeType: 'image/jpeg',
-      }),
-    })
-
-    const result = await response.json()
-
-    // 🌟 ส่วนที่ต้องแก้: เพิ่มรูปใหม่เข้าไปต่อท้ายอาเรย์เดิม
-    // เราใช้ (editedRecord.image_urls || []) เพื่อป้องกันกรณีที่ค่าเดิมเป็น undefined หรือ null
+    // The Blob, not the data URL — it goes straight to storage now.
+    const { blob } = await compressImage(file)
     const currentUrls = editedRecord.image_urls || []
 
-    if (result.success && result.imageUrl) {
-      updateField({ image_urls: [...currentUrls, result.imageUrl] })
+    let stored: string | null = null
+    try {
+      stored = await uploadWastePhoto(blob, {
+        fileName: `${editedRecord.user_id}_${editedRecord.waste_type}_${editedRecord.weight_kg}_${Date.now()}.jpg`,
+        userId: editedRecord.user_id,
+      })
+    } catch (uploadErr) {
+      console.error('[waste-detail-modal] upload failed:', uploadErr)
+    }
+
+    if (stored) {
+      updateField({ image_urls: [...currentUrls, stored] })
     } else {
-      // fallback: ใช้ local object URL
-      const localUrl = URL.createObjectURL(file)
-      updateField({ image_urls: [...currentUrls, localUrl] })
-      setUploadError(result.details || result.error || 'อัปโหลดไม่สำเร็จ (ใช้รูป local แทน)')
+      // A failed upload used to push URL.createObjectURL(file) into image_urls,
+      // which then got SAVED. A blob: URL is alive only in the tab that made it,
+      // so what reached the sheet was a permanently broken link posing as
+      // evidence — and the server now rejects it outright (a CHECK constraint
+      // plus the zod schema), which would fail the whole submit with a 400.
+      //
+      // Keep it as a local preview instead: the user still sees their photo and
+      // a clear error, nothing unsaveable enters the record, and the save button
+      // stays disabled until a real upload lands.
+      setLocalPreviews((prev) => [...prev, URL.createObjectURL(file)])
+      setUploadError('อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่')
     }
   } catch (err) {
     setUploadError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการอัปโหลด')
@@ -206,9 +198,9 @@ const handleConfirmClick = async () => {
     }
 
     if (isEditing) {
-      const response = await fetch('/api/waste/update', {
+      const response = await apiFetch('/api/waste/update', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        idempotencyKey: confirmKey.current(),
         body: JSON.stringify(payload), // 👈 ส่ง payload ตัวที่ปรับชื่อ key แล้ว
       })
 
@@ -217,6 +209,8 @@ const handleConfirmClick = async () => {
         alert('เกิดข้อผิดพลาดในการบันทึก: ' + (error.error || 'Unknown error'))
         return
       }
+
+      confirmKey.reset()
     }
 
     // อาจจะต้องปรับ type ของ onConfirm ถ้ารับค่าต่างกัน
@@ -228,6 +222,15 @@ const handleConfirmClick = async () => {
     setIsSavingApi(false)
   }
 }
+
+  // Object URLs hold the file in memory until revoked.
+  useEffect(() => {
+    if (isOpen) return
+    setLocalPreviews((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url))
+      return []
+    })
+  }, [isOpen])
 
   if (!isOpen || !record || !editedRecord) return null
 
@@ -260,7 +263,7 @@ const handleConfirmClick = async () => {
     {/* แสดงรูปที่มีอยู่แล้ว */}
     {editedRecord.image_urls?.map((url, i) => (
       <div key={i} className="relative rounded-xl overflow-hidden h-32 border border-[#aaaaaa]">
-        <Image src={url} alt="รูปขยะ" fill className="object-cover" />
+        <Image src={displaySrc(url)} alt="รูปขยะ" fill className="object-cover" />
         {/* ปุ่มลบรูป (ถ้าต้องการ) */}
         <button 
           onClick={() => { /* ฟังก์ชันลบรูปจาก Array */ }}
@@ -268,6 +271,16 @@ const handleConfirmClick = async () => {
         >
           ×
         </button>
+      </div>
+    ))}
+
+    {/* รูปที่อัปโหลดไม่สำเร็จ — แสดงให้เห็นแต่ไม่ถูกบันทึก */}
+    {localPreviews.map((url, i) => (
+      <div key={`local-${i}`} className="relative rounded-xl overflow-hidden h-32 border border-red-300">
+        <Image src={url} alt="รูปที่ยังไม่ได้อัปโหลด" fill className="object-cover opacity-60" />
+        <div className="absolute inset-x-0 bottom-0 bg-red-500/90 text-white text-[10px] text-center py-1">
+          ยังไม่ได้อัปโหลด
+        </div>
       </div>
     ))}
 
@@ -294,7 +307,7 @@ const handleConfirmClick = async () => {
     record.image_urls.map((url, i) => (
       <div key={i} className="relative rounded-xl overflow-hidden h-32 bg-gray-100 border border-[#d4d4d4]">
         <Image
-          src={url}
+          src={displaySrc(url)}
           alt={`รูปขยะที่ ${i + 1}`}
           fill
           className="object-cover"
@@ -403,7 +416,7 @@ const handleConfirmClick = async () => {
               {editedRecord.points_earned} แต้ม
               {isEditing && editedRecord.weight_kg > 0 && (
                 <span className="text-xs text-[#888888] font-normal ml-2">
-                  ({editedRecord.weight_kg} กก. × {POINTS_PER_KG[editedRecord.waste_type] ?? 3} แต้ม/กก.)
+                  ({editedRecord.weight_kg} กก. × {pointsPerKgFor(editedRecord.waste_type, wasteRates)} แต้ม/กก.)
                 </span>
               )}
             </div>

@@ -1,50 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GAS_URL1 ?? ''
+
+import { parseSearchParams } from '@/lib/schemas/common'
+import { wasteRecordsQuerySchema } from '@/lib/schemas/waste'
+import { getWasteRecords } from '@/lib/supabase/reads'
+import type { WasteRecord } from '@/lib/waste-records'
+
+// GET /api/waste/records?user_id=...
+//
+// Returns TYPED OBJECTS, not the array-of-arrays Apps Script produced.
+//
+// This is a net deletion: mapWasteRecords (lib/waste-records.ts) used to run in
+// three separate places on the client, once as a hand-inlined copy in
+// components/waste-cart.tsx.
+
+interface RecordsPayload {
+  records: WasteRecord[]
+  stats: { total: number; pending: number }
+}
 
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+
+  const parsed = parseSearchParams(searchParams, wasteRecordsQuerySchema)
+  if (!parsed.ok) {
+    return NextResponse.json({ error: 'user_id parameter is required' }, { status: 400 })
+  }
+
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('user_id')
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'user_id parameter is required' },
-        { status: 400 }
-      )
-    }
-
-    // เรียก Google Apps Script เพื่อดึงข้อมูล
-    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'getRecords',
-        user_id: userId,
-        type: 'query',
-      }),
-    })
-
-    if (!response.ok) {
-      console.error('[v0] Apps Script error:', response.statusText)
-      return NextResponse.json(
-        { error: 'Failed to fetch waste records' },
-        { status: response.status }
-      )
-    }
-
-    const data = await response.json()
-
-    return NextResponse.json({
-      records: data.records || [],
-      stats: data.stats || null,
-    })
+    const payload: RecordsPayload = await getWasteRecords(parsed.data.user_id)
+    return NextResponse.json(payload)
   } catch (error) {
-    console.error('[v0] Error fetching waste records:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch waste records' },
-      { status: 500 }
-    )
+    console.error('[waste/records] error:', error)
+    return NextResponse.json({ error: 'Failed to fetch waste records' }, { status: 500 })
   }
 }

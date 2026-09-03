@@ -11,3 +11,10 @@ node_modules
 tsconfig.tsbuildinfo
 
 loadtest
+graphify-out
+.claude
+CLAUDE.md
+
+# scripts/migrate/export.ts output — real user PII (names, phones, addresses,
+# LINE ids). Never commit this, even for a "dev" snapshot.
+scripts/migrate/.data/

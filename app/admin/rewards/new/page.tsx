@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useAdmin } from '@/lib/admin-context'
 import { cn } from '@/lib/utils'
 import { compressImage } from '@/lib/compress-image'
+import { uploadCatalogImage } from '@/lib/api-client'
 
 export default function AdminAddRewardPage() {
   const { isAdmin } = useAdmin()
@@ -17,7 +18,9 @@ export default function AdminAddRewardPage() {
   const [points, setPoints] = useState('')
   const [stock, setStock] = useState('')
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -36,13 +39,17 @@ export default function AdminAddRewardPage() {
     const file = e.target.files?.[0]
     if (!file) return
     try {
-      const { dataUrl } = await compressImage(file)
+      const { dataUrl, blob } = await compressImage(file)
       setImagePreview(dataUrl)
+      // The compressed Blob, not the raw file, is what gets uploaded on
+      // submit — same compress-then-upload shape as evidence photos.
+      setImageFile(blob as unknown as File)
     } catch {
       // fallback: อ่าน dataUrl ตรงๆ ถ้า compress ไม่ได้
       const reader = new FileReader()
       reader.onload = (ev) => setImagePreview(ev.target?.result as string)
       reader.readAsDataURL(file)
+      setImageFile(file)
     }
   }
 
@@ -60,10 +67,35 @@ export default function AdminAddRewardPage() {
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
 
     setSubmitting(true)
-    // TODO: POST to GAS / API route
-    await new Promise((r) => setTimeout(r, 800))
-    setSubmitting(false)
-    router.back()
+    setSubmitError(null)
+    try {
+      const imagePath = imageFile
+        ? await uploadCatalogImage(imageFile, 'rewards')
+        : ''
+
+      const res = await fetch('/api/catalog/rewards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          description,
+          points: Number(points),
+          imagePath,
+          stock: stock.trim() ? Number(stock) : null,
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error ?? 'ไม่สามารถเพิ่มของรางวัลได้')
+      }
+
+      router.back()
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -171,6 +203,9 @@ export default function AdminAddRewardPage() {
       {/* Submit — fixed bottom */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#e5e5e5] px-4 py-4">
         <div className="max-w-md mx-auto">
+          {submitError && (
+            <p className="text-xs text-red-500 mb-2 text-center">{submitError}</p>
+          )}
           <button
             type="submit"
             form=""

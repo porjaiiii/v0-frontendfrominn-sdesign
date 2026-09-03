@@ -288,11 +288,11 @@ async function main() {
   {
     const { data, error } = await db.from('point_lots').select('line_user_id, period').eq('is_legacy', true)
     if (error) throw error
-    const existingKeys = new Set((data ?? []).map((r) => `${r.line_user_id} ${r.period}`))
+    const existingKeys = new Set((data ?? []).map((r) => `${r.line_user_id}\u0000${r.period}`))
     const { fresh: newLots, alreadyLoaded } = diffNewByKey(
       loadableLots,
       existingKeys,
-      (l) => `${l.line_user_id} ${l.period}`,
+      (l) => `${l.line_user_id}\u0000${l.period}`,
     )
     if (alreadyLoaded > 0) {
       console.log(`[load] ${alreadyLoaded} point_lots row(s) already loaded — skipping those`)

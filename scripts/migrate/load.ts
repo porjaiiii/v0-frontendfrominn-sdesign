@@ -16,17 +16,22 @@
 //   3. waste_records, coupons, admin_keys — coupons.tx_id references
 //      point_transactions, so this cannot move above step 2
 //
-// Re-runnable by construction, and additive: every table diffs against what
-// Supabase already holds and loads only the difference, so a sheet that has
-// gained new rows since the last run merges those in without re-touching or
-// duplicating anything already loaded. users/coupons/admin_keys upsert on
-// their natural primary keys; waste_records has none, so each row carries a
-// deterministic idempotency_key ('legacy:submission:<sheet row>') and the
-// loader reads existing keys before inserting the rest. point_transactions
-// uses its real primary key (tx_id) the same way; point_lots and
-// spend_details have no key column of their own, so the loader dedups them
-// against a (line_user_id, period) pair and tx_id respectively — see
-// diffNewByKey in transform-points.ts.
+// Re-runnable by construction, additive, and NON-DESTRUCTIVE: nothing in this
+// file ever deletes or overwrites a row already in Supabase. Every table
+// (except points_accounts, see below) reads its existing keys first and
+// inserts only rows Supabase doesn't have yet — users, coupons, admin_keys
+// and waste_records all switched from upsert to this insert-only-new pattern
+// specifically because their status/profile fields can change for real after
+// loading (a live redemption, a live edit), and a sheet-wins upsert would
+// silently revert that. waste_records dedups on its idempotency_key
+// ('legacy:submission:<sheet row>'); users/coupons/admin_keys on their real
+// primary key; point_transactions on its real primary key (tx_id); point_lots
+// and spend_details have no key column of their own, so they dedup on a
+// (line_user_id, period) pair and tx_id respectively — see diffNewByKey in
+// transform-points.ts. points_accounts is the one table re-derived on every
+// run instead of diffed, but each field is loaded as MAX(existing, freshly
+// computed) — see the comment at that block — so a re-run can only push its
+// numbers up, never down.
 //
 // SAFETY BRAKE, independent of the above: refuses to run unless
 // --confirm-target=<project-ref> is passed and matches the linked project's
@@ -163,10 +168,25 @@ async function main() {
   const db = createClient(url, key, { db: { schema: 'app' } })
 
   // ---- 1. users ------------------------------------------------------------
-  console.log(`[load] upserting ${users.length} users rows...`)
+  // Insert-only-new, NOT upsert: a line_user_id already in Supabase may have
+  // been registered or edited for real (post-cutover, or by hand) since the
+  // last load, and a sheet-wins upsert would silently overwrite that with
+  // stale legacy data. Loading must never destroy something Supabase already
+  // has — only add rows Supabase doesn't have yet.
   {
-    const { error } = await db.from('users').upsert(
-      users.map((u) => ({
+    const { data, error } = await db
+      .from('users')
+      .select('line_user_id')
+      .in('line_user_id', users.map((u) => u.line_user_id))
+    if (error) throw error
+    const existingKeys = new Set((data ?? []).map((r) => r.line_user_id))
+    const { fresh: newUsers, alreadyLoaded } = diffNewByKey(users, existingKeys, (u) => u.line_user_id)
+    if (alreadyLoaded > 0) {
+      console.log(`[load] ${alreadyLoaded} users row(s) already present — skipping those`)
+    }
+    console.log(`[load] inserting ${newUsers.length} users rows...`)
+    const { error: insertError } = await db.from('users').insert(
+      newUsers.map((u) => ({
         line_user_id: u.line_user_id,
         display_user_id: u.display_user_id,
         pdpa_consent: u.pdpa_consent,
@@ -183,9 +203,8 @@ async function main() {
         registered_at: u.registered_at,
         is_legacy: true,
       })),
-      { onConflict: 'line_user_id' },
     )
-    if (error) throw error
+    if (insertError) throw insertError
   }
 
   // Accounts whose owner never completed registration cannot be loaded —
@@ -228,22 +247,36 @@ async function main() {
   // skip, so a sheet that has gained new rows since the last load merges in
   // the difference instead of being ignored outright.
   //
-  // points_accounts upserts as before: lifetime_earned/lifetime_spent are
-  // recomputed from the FULL current lots array (not the filtered diff), and
-  // since export.ts always pulls the whole sheet rather than a delta, that
-  // recomputation is correct on every run, not just the first.
-  console.log(`[load] upserting ${loadableAccounts.length} points_accounts rows...`)
+  // points_accounts is the one aggregate table re-derived (not diffed) on
+  // every run, from the FULL current lots array — correct as long as growth
+  // only ever goes up. To guarantee that direction even if a live Supabase
+  // account has already moved past what this legacy snapshot shows (e.g.
+  // real post-cutover activity), each field takes the MAX of the existing
+  // Supabase value and the freshly recomputed one — never the freshly
+  // recomputed one outright. A re-run can only push these numbers up, never
+  // back down.
   {
+    const { data: existingAccountRows, error: existingAccountsError } = await db
+      .from('points_accounts')
+      .select('line_user_id, lifetime_earned, lifetime_spent, total_weight_kg, total_co2_kg')
+      .in('line_user_id', loadableAccounts.map((a) => a.line_user_id))
+    if (existingAccountsError) throw existingAccountsError
+    const existingByUser = new Map((existingAccountRows ?? []).map((r) => [r.line_user_id, r]))
+
+    console.log(`[load] upserting ${loadableAccounts.length} points_accounts rows (never decreasing an existing value)...`)
     const { error } = await db.from('points_accounts').upsert(
-      loadableAccounts.map((a) => ({
-        line_user_id: a.line_user_id,
-        lifetime_earned: a.lifetime_earned,
-        lifetime_spent: a.lifetime_spent,
-        total_weight_kg: a.total_weight_kg,
-        total_co2_kg: a.total_co2_kg,
-        // tier is NOT taken from the sheet — recomputed by the DB default /
-        // application logic from total_weight_kg, same as every live write.
-      })),
+      loadableAccounts.map((a) => {
+        const existing = existingByUser.get(a.line_user_id)
+        return {
+          line_user_id: a.line_user_id,
+          lifetime_earned: Math.max(a.lifetime_earned, Number(existing?.lifetime_earned ?? 0)),
+          lifetime_spent: Math.max(a.lifetime_spent, Number(existing?.lifetime_spent ?? 0)),
+          total_weight_kg: Math.max(a.total_weight_kg, Number(existing?.total_weight_kg ?? 0)),
+          total_co2_kg: Math.max(a.total_co2_kg, Number(existing?.total_co2_kg ?? 0)),
+          // tier is NOT taken from the sheet — recomputed by the DB default /
+          // application logic from total_weight_kg, same as every live write.
+        }
+      }),
       { onConflict: 'line_user_id' },
     )
     if (error) throw error
@@ -385,10 +418,24 @@ async function main() {
     if (error) throw error
   }
 
-  console.log(`[load] upserting ${coupons.length} coupons rows...`)
+  // Insert-only-new, NOT upsert: a coupon's status/used_at can change for
+  // real after loading (someone redeems it via the live app), and a
+  // sheet-wins upsert would revert that back to whatever the legacy sheet
+  // still shows. Same reasoning as users above — only add what's missing.
   {
-    const { error } = await db.from('coupons').upsert(
-      coupons.map((c) => ({
+    const { data, error } = await db
+      .from('coupons')
+      .select('coupon_id')
+      .in('coupon_id', coupons.map((c) => c.coupon_id))
+    if (error) throw error
+    const existingKeys = new Set((data ?? []).map((r) => r.coupon_id))
+    const { fresh: newCoupons, alreadyLoaded } = diffNewByKey(coupons, existingKeys, (c) => c.coupon_id)
+    if (alreadyLoaded > 0) {
+      console.log(`[load] ${alreadyLoaded} coupons row(s) already present — skipping those`)
+    }
+    console.log(`[load] inserting ${newCoupons.length} coupons rows...`)
+    const { error: insertError } = await db.from('coupons').insert(
+      newCoupons.map((c) => ({
         coupon_id: c.coupon_id,
         line_user_id: c.line_user_id,
         reward_id: c.reward_id,
@@ -405,23 +452,30 @@ async function main() {
         redeem_type: c.redeem_type,
         is_legacy: true,
       })),
-      { onConflict: 'coupon_id' },
     )
-    if (error) throw error
+    if (insertError) throw insertError
   }
 
-  console.log(`[load] upserting ${keys.length} admin_keys rows...`)
+  // Same reasoning again: an admin key's status can flip live (activated) —
+  // insert-only-new so a re-run can never revert that.
   {
-    const { error } = await db.from('admin_keys').upsert(
-      keys.map((k) => ({
+    const { data, error } = await db.from('admin_keys').select('key').in('key', keys.map((k) => k.key))
+    if (error) throw error
+    const existingKeys = new Set((data ?? []).map((r) => r.key))
+    const { fresh: newKeys, alreadyLoaded } = diffNewByKey(keys, existingKeys, (k) => k.key)
+    if (alreadyLoaded > 0) {
+      console.log(`[load] ${alreadyLoaded} admin_keys row(s) already present — skipping those`)
+    }
+    console.log(`[load] inserting ${newKeys.length} admin_keys rows...`)
+    const { error: insertError } = await db.from('admin_keys').insert(
+      newKeys.map((k) => ({
         key: k.key,
         status: k.status,
         line_user_id: k.line_user_id,
         activated_at: k.activated_at,
       })),
-      { onConflict: 'key' },
     )
-    if (error) throw error
+    if (insertError) throw insertError
   }
 
   console.log('[load] done. Run `pnpm migrate:verify` for the reconciliation report.')

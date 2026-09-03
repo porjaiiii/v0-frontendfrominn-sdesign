@@ -17,7 +17,7 @@ import { CASH_REWARD_ID, CATALOG_REWARDS, findReward, type CatalogReward } from 
 // shared module so the minimum shown here is the same one app.rewards enforces
 // — it used to be a client-side check with nothing behind it.
 const CASH_REWARD = findReward(CASH_REWARD_ID)!
-const CASH_MIN_POINTS = CASH_REWARD.minPoints ?? 20
+const CASH_MIN_POINTS = CASH_REWARD.minPoints ?? 1
 
 export default function RewardsPage() {
   const { points: userPoints, loading: pointsLoading, refresh: refreshPoints } = usePoints()
@@ -245,7 +245,8 @@ export default function RewardsPage() {
               </select>
             </div>
           </div>
-          
+          <p className="text-xs text-red-600 leading-relaxed">* หมายเหตุ รูปใช้เพื่อการโฆษณาเท่านั้น แบรนด์ของสินค้าสามารถปรับเปลี่ยนได้ตามความเหมาะสม</p>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white rounded-xl border border-[#c3e2be] overflow-hidden relative flex flex-col">
               <div className="aspect-square relative bg-[#f0f7ef]">
@@ -256,14 +257,14 @@ export default function RewardsPage() {
               </div>
               <div className="p-3 flex flex-col flex-1">
                 <h3 className="text-sm font-medium text-[#444444] mb-1">แลกเงินคืน</h3>
-                <p className="text-xs text-[#666666] mb-2 line-clamp-2">กรอกแต้มที่ต้องการแลก ขั้นต่ำ 20 แต้ม</p>
+                <p className="text-xs text-[#666666] mb-2 line-clamp-2">กรอกแต้มที่ต้องการแลก ขั้นต่ำ 1 แต้ม</p>
                 <div className="flex items-center justify-between mb-3 mt-auto">
-                  <span className={cn('text-sm font-semibold', userPoints >= 20 ? 'text-[#157b03]' : 'text-[#999999]')}>เริ่มต้น 20 แต้ม</span>
+                  <span className={cn('text-sm font-semibold', userPoints >= 1 ? 'text-[#157b03]' : 'text-[#999999]')}>เริ่มต้น 1 แต้ม</span>
                 </div>
                 <button
                   onClick={() => openRedeem(CASH_REWARD)}
-                  disabled={userPoints < 20}
-                  className={cn('w-full py-2 rounded-lg text-sm font-medium transition-colors', userPoints >= 20 ? 'bg-[#154212] text-white hover:bg-[#0d3308]' : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed')}
+                  disabled={userPoints < 1}
+                  className={cn('w-full py-2 rounded-lg text-sm font-medium transition-colors', userPoints >= 1 ? 'bg-[#154212] text-white hover:bg-[#0d3308]' : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed')}
                 >
                   แลกเงินคืน
                 </button>
@@ -320,7 +321,6 @@ export default function RewardsPage() {
                         {reward.points} แต้ม
                       </span>
                     </div>
-
                     <div className="flex gap-2">
                       <button
                         onClick={() => openRedeem(reward)}
@@ -404,9 +404,9 @@ export default function RewardsPage() {
   {isCashRedeem && (
     <div className="mb-5 rounded-xl border border-[#c3e2be] bg-[#f0f7ef] p-4">
       <label htmlFor="cash-points" className="block text-sm font-bold text-[#154212] mb-2">ต้องการแลกกี่แต้ม?</label>
-      <input id="cash-points" type="number" min={20} step={1} value={cashPoints} onChange={(e) => setCashPoints(e.target.value)} className="w-full rounded-lg border border-[#c3e2be] bg-white px-3 py-2 text-lg font-bold text-[#154212] outline-none focus:ring-2 focus:ring-[#157b03]" />
-      <p className="mt-2 text-xs leading-relaxed text-[#666666]">ขั้นต่ำ 20 แต้ม และ 1 แต้มมีมูลค่าเท่ากับ 1 บาท</p>
-      {cashPoints && !cashAmountValid && <p className="mt-1 text-xs text-[#cc0000]">กรุณากรอกจำนวนเต็มตั้งแต่ {CASH_MIN_POINTS} แต้ม และไม่เกินคะแนนคงเหลือ</p>}
+      <input id="cash-points" type="number" min={1} step={1} value={cashPoints} onChange={(e) => setCashPoints(e.target.value)} className="w-full rounded-lg border border-[#c3e2be] bg-white px-3 py-2 text-lg font-bold text-[#154212] outline-none focus:ring-2 focus:ring-[#157b03]" />
+      <p className="mt-2 text-xs leading-relaxed text-[#666666]">ขั้นต่ำ 1 แต้ม และ 1 แต้มมีมูลค่าเท่ากับ 1 บาท</p>
+      {cashPoints && !cashAmountValid && <p className="mt-1 text-xs text-[#cc0000]">กรุณากรอกจำนวนเต็มตั้งแต่ 20 แต้ม และไม่เกินคะแนนคงเหลือ</p>}
       {cashAmountValid && <p className="mt-2 text-sm font-semibold text-[#157b03]">จะได้รับคูปองเงินคืน {cashAmount.toLocaleString()} บาท</p>}
     </div>
   )}

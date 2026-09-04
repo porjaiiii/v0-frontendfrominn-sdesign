@@ -17,7 +17,7 @@ import { CASH_REWARD_ID, CATALOG_REWARDS, findReward, type CatalogReward } from 
 // shared module so the minimum shown here is the same one app.rewards enforces
 // — it used to be a client-side check with nothing behind it.
 const CASH_REWARD = findReward(CASH_REWARD_ID)!
-const CASH_MIN_POINTS = CASH_REWARD.minPoints ?? 1
+const CASH_MIN_POINTS = 1
 
 export default function RewardsPage() {
   const { points: userPoints, loading: pointsLoading, refresh: refreshPoints } = usePoints()
@@ -406,7 +406,7 @@ export default function RewardsPage() {
       <label htmlFor="cash-points" className="block text-sm font-bold text-[#154212] mb-2">ต้องการแลกกี่แต้ม?</label>
       <input id="cash-points" type="number" min={1} step={1} value={cashPoints} onChange={(e) => setCashPoints(e.target.value)} className="w-full rounded-lg border border-[#c3e2be] bg-white px-3 py-2 text-lg font-bold text-[#154212] outline-none focus:ring-2 focus:ring-[#157b03]" />
       <p className="mt-2 text-xs leading-relaxed text-[#666666]">ขั้นต่ำ 1 แต้ม และ 1 แต้มมีมูลค่าเท่ากับ 1 บาท</p>
-      {cashPoints && !cashAmountValid && <p className="mt-1 text-xs text-[#cc0000]">กรุณากรอกจำนวนเต็มตั้งแต่ 20 แต้ม และไม่เกินคะแนนคงเหลือ</p>}
+      {cashPoints  && <p className="mt-1 text-xs text-[#cc0000]">กรุณากรอกจำนวนเต็มตั้งแต่ 20 แต้ม และไม่เกินคะแนนคงเหลือ</p>}
       {cashAmountValid && <p className="mt-2 text-sm font-semibold text-[#157b03]">จะได้รับคูปองเงินคืน {cashAmount.toLocaleString()} บาท</p>}
     </div>
   )}

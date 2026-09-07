@@ -91,6 +91,26 @@ export async function getProfile(lineUserId: string): Promise<ProfileResponse | 
   return mapProfileRow(data)
 }
 
+/**
+ * "Has this LINE user registered?" — one indexed column, never the PII row.
+ *
+ * Exists for GAS #3's rich-menu switch (google-apps-script/GAS3/Code.gs
+ * checkIfRegistered), which used to answer this by scanning the GAS-era
+ * registration spreadsheet. Nothing has written to that sheet since the
+ * Supabase migration, so it silently reported every post-migration user as
+ * unregistered and stranded them on the unregistered rich menu.
+ */
+export async function isRegistered(lineUserId: string): Promise<boolean> {
+  const { data, error } = await getServiceClient()
+    .from('users')
+    .select('line_user_id')
+    .eq('line_user_id', lineUserId)
+    .maybeSingle()
+
+  if (error) throw error
+  return data !== null
+}
+
 // ---------------------------------------------------------------------------
 // Waste records
 // ---------------------------------------------------------------------------

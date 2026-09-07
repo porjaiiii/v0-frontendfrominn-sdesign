@@ -30,3 +30,9 @@ graphify-out/
 supabase/.temp/
 supabase/.branches/
 CLAUDE.md
+
+# ── Sensitive: Apps Script export ─────────────────────────────────────────
+# GAS #3's source carries the live REGISTRATION_WEBHOOK_SECRET, the admin's
+# LINE userId and spreadsheet ids. Kept locally as a reference for the one
+# script still in the request path (lib/notify-registration.ts); not tracked.
+google-apps-script/GAS3/

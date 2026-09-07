@@ -1,7 +1,8 @@
 import 'server-only'
 
 // Server-side call to GAS #3 — the "LINE OA GAS" deployment that greets a newly
-// registered user (see google-apps-script/PHASE-0-FINDINGS.md).
+// registered user and switches their LINE rich menu to the registered one.
+// Source: google-apps-script/GAS3/Code.gs (handleRegistration).
 //
 // The script itself is unchanged and stays deployed. What moves is the CALLER:
 // this used to run in the browser from app/register/page.tsx, which meant
@@ -80,19 +81,48 @@ export async function notifyRegistrationComplete(
     const response = await fetch(`${url}?route=register`, {
       method: 'POST',
       // Kept as text/plain, byte-identical to what GAS #3 has always received.
-      // There is no CORS preflight to dodge from a server, but the script's
-      // doPost may branch on e.postData.type, and its source is not exported —
-      // so this is not the change to make blind.
+      // Its doPost JSON.parses e.postData.contents without looking at the type,
+      // so this is cosmetic — but changing it buys nothing either.
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ secret, ...payload }),
       signal: AbortSignal.timeout(5000),
       cache: 'no-store',
     })
 
+    const text = await response.text()
+
     if (!response.ok) {
-      console.error('[register] LINE greeting failed:', response.status)
+      console.error('[register] LINE greeting failed:', response.status, text.slice(0, 200))
       return false
     }
+
+    // A 200 is not success here. Apps Script's ContentService cannot set a
+    // status code at all, so every outcome — including a rejected secret —
+    // arrives as 200 with the real result in the BODY. Trusting the status code
+    // is what let a stale secret read as a delivered greeting: no message, no
+    // rich-menu switch, nothing in the logs.
+    //
+    // Deliberately asymmetric, because the deployed script's exact success
+    // shape is not something this code should depend on:
+    //   - not JSON at all  -> failure. An Apps Script web app answering with
+    //     HTML is the Google sign-in page, i.e. the deployment stopped being
+    //     reachable anonymously.
+    //   - { status: 'error' } -> failure, the documented rejection shape.
+    //   - anything else JSON -> treated as success, so a script revision that
+    //     returns a different body cannot turn working greetings into noise.
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text)
+    } catch {
+      console.error('[register] LINE greeting: GAS did not return JSON:', text.slice(0, 200))
+      return false
+    }
+
+    if ((parsed as { status?: string } | null)?.status === 'error') {
+      console.error('[register] LINE greeting rejected by GAS:', text.slice(0, 200))
+      return false
+    }
+
     return true
   } catch (error) {
     console.error('[register] LINE greeting failed:', error)

@@ -52,7 +52,16 @@ export const CATALOG_REWARDS: CatalogReward[] = [
     isVariable: false,
     minPoints: null,
     stock: null,
-  })),
+  })),  {
+    id: CASH_REWARD_ID,
+    name: 'แลกแต้มเป็นเงินคืน',
+    description: 'คูปองแลกเงินสด',
+    points: VARIABLE[CASH_REWARD_ID],
+    image: '/images/rewards/THB-cash.jpg',
+    isVariable: true,
+    minPoints: VARIABLE[CASH_REWARD_ID],
+    stock: null,
+  },
 
 ]
 

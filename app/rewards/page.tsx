@@ -130,7 +130,7 @@ export default function RewardsPage() {
           },
         ],
         // เงินคืนรับคูปองไปดำเนินการกับเจ้าหน้าที่
-        redeem_type: isCashRedeem ? 'pickup' : redeemType,
+        redeem_type: 'pickup' ,
       })
 
       setNewCouponId(coupons[0]?.coupon_id ?? null)

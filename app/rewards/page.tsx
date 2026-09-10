@@ -74,7 +74,9 @@ export default function RewardsPage() {
   const [cashPoints, setCashPoints] = useState(String(CASH_MIN_POINTS))
 
   const redeemInFlight = useRef(false)
-  const isCashRedeem = redeemTarget?.id === CASH_REWARD.id
+ const isCashRedeem = Boolean(
+  redeemTarget?.isVariable
+)
   const cashAmount = Number.parseInt(cashPoints, 10)
   const cashAmountValid =
     Number.isInteger(cashAmount) && cashAmount >= CASH_MIN_POINTS && cashAmount <= userPoints
@@ -385,7 +387,7 @@ export default function RewardsPage() {
       <label htmlFor="cash-points" className="block text-sm font-bold text-[#154212] mb-2">ต้องการแลกกี่แต้ม?</label>
       <input id="cash-points" type="number" min={1} step={1} value={cashPoints} onChange={(e) => setCashPoints(e.target.value)} className="w-full rounded-lg border border-[#c3e2be] bg-white px-3 py-2 text-lg font-bold text-[#154212] outline-none focus:ring-2 focus:ring-[#157b03]" />
       <p className="mt-2 text-xs leading-relaxed text-[#666666]">ขั้นต่ำ 1 แต้ม และ 1 แต้มมีมูลค่าเท่ากับ 1 บาท</p>
-      {cashPoints  && <p className="mt-1 text-xs text-[#cc0000]">กรุณากรอกจำนวนเต็มตั้งแต่ {CASH_MIN_POINTS} แต้ม และไม่เกินคะแนนคงเหลือ</p>}
+      {cashPoints  && <p className="mt-1 text-xs text-[#cc0000]">กรุณากรอกจำนวนเต็มตั้งแต่ 1 แต้ม และไม่เกินคะแนนคงเหลือ</p>}
       {cashAmountValid && <p className="mt-2 text-sm font-semibold text-[#157b03]">จะได้รับคูปองเงินคืน {cashAmount.toLocaleString()} บาท</p>}
     </div>
   )}

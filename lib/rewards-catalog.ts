@@ -32,14 +32,20 @@ export interface CatalogReward {
  * Redeem points for a cash-back coupon at 1 point = 1 baht.
  *
  * This lived in app/rewards/page.tsx as a component-local constant, which meant
- * the floor of 20 was a client-side check and nothing more — the amount the user
+ * the floor was a client-side check and nothing more — the amount the user
  * typed became `points_used` verbatim. It is now a catalog row
- * (app.rewards id 99, is_variable) so the floor is enforced server-side.
+ * (app.rewards, is_variable) so the floor is enforced server-side.
+ *
+ * id 100, not the original 99: 0010_add_low_floor_cash_reward.sql is
+ * insert-only (never updates or deletes an existing app.rewards row), so
+ * lowering the floor from 20 to 1 added a new row instead of editing id 99
+ * in place. id 99 is still in the table — retiring it is a follow-up done
+ * through the reward management page, not this file.
  */
-export const CASH_REWARD_ID = 99
+export const CASH_REWARD_ID = 100
 
 const VARIABLE: Record<number, number> = {
-  [CASH_REWARD_ID]: 20,
+  [CASH_REWARD_ID]: 1,
 }
 
 export const CATALOG_REWARDS: CatalogReward[] = [

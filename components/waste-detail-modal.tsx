@@ -182,6 +182,14 @@ export function WasteDetailModal({
   }
 }
 
+  const handleRemoveImage = (index: number) => {
+    if (!editedRecord) return
+
+    updateField({
+      image_urls: editedRecord.image_urls.filter((_, imageIndex) => imageIndex !== index),
+    })
+  }
+
 const handleConfirmClick = async () => {
   if (!editedRecord) return
 
@@ -264,9 +272,10 @@ const handleConfirmClick = async () => {
     {editedRecord.image_urls?.map((url, i) => (
       <div key={i} className="relative rounded-xl overflow-hidden h-32 border border-[#aaaaaa]">
         <Image src={displaySrc(url)} alt="รูปขยะ" fill className="object-cover" />
-        {/* ปุ่มลบรูป (ถ้าต้องการ) */}
-        <button 
-          onClick={() => { /* ฟังก์ชันลบรูปจาก Array */ }}
+        <button
+          type="button"
+          onClick={() => handleRemoveImage(i)}
+          aria-label={`ลบรูปขยะที่ ${i + 1}`}
           className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
         >
           ×

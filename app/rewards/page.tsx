@@ -248,28 +248,7 @@ export default function RewardsPage() {
           <p className="text-xs text-red-600 leading-relaxed">* หมายเหตุ รูปใช้เพื่อการโฆษณาเท่านั้น แบรนด์ของสินค้าสามารถปรับเปลี่ยนได้ตามความเหมาะสม</p>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl border border-[#c3e2be] overflow-hidden relative flex flex-col">
-              <div className="aspect-square relative bg-[#f0f7ef]">
-                <Image src={CASH_REWARD.image} alt="แลกเงินคืน" fill className="object-cover opacity-80" />
-                <div className="absolute inset-0 flex items-center justify-center bg-[#154212]/10">
-                  <span className="rounded-full bg-white/90 px-3 py-1 text-sm font-bold text-[#154212]">เงินคืน</span>
-                </div>
-              </div>
-              <div className="p-3 flex flex-col flex-1">
-                <h3 className="text-sm font-medium text-[#444444] mb-1">แลกเงินคืน</h3>
-                <p className="text-xs text-[#666666] mb-2 line-clamp-2">กรอกแต้มที่ต้องการแลก ขั้นต่ำ 1 แต้ม</p>
-                <div className="flex items-center justify-between mb-3 mt-auto">
-                  <span className={cn('text-sm font-semibold', userPoints >= 1 ? 'text-[#157b03]' : 'text-[#999999]')}>เริ่มต้น 1 แต้ม</span>
-                </div>
-                <button
-                  onClick={() => openRedeem(CASH_REWARD)}
-                  disabled={userPoints < 1}
-                  className={cn('w-full py-2 rounded-lg text-sm font-medium transition-colors', userPoints >= 1 ? 'bg-[#154212] text-white hover:bg-[#0d3308]' : 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed')}
-                >
-                  แลกเงินคืน
-                </button>
-              </div>
-            </div>
+        
             {sortedRewards.map((reward) => {
               const canRedeem = userPoints >= reward.points
               const isFavorited = favorites.has(reward.id)

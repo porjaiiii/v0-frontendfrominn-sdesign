@@ -41,6 +41,8 @@ export function CarbonResultModal({
   }
 
   const handleDone = () => {
+    if (!collectionMethod) return
+
     if (onNext) onNext()
     else onClose()
   }
@@ -155,8 +157,15 @@ export function CarbonResultModal({
         <div className="px-6 pb-8 flex gap-3">
       
           <button
+            type="button"
             onClick={handleDone}
-            className="flex-1 py-3 rounded-full font-semibold bg-[#154212] text-white text-sm hover:bg-[#0d3308] transition-colors"
+            disabled={!noWeight && !collectionMethod}
+            className={cn(
+              'flex-1 py-3 rounded-full font-semibold text-sm transition-colors',
+              !noWeight && !collectionMethod
+                ? 'cursor-not-allowed bg-[#d1d5db] text-[#6b7280]'
+                : 'bg-[#154212] text-white hover:bg-[#0d3308]'
+            )}
           >
             เสร็จสิ้น
           </button>

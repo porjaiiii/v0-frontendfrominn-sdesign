@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { useState } from 'react'
 
 interface CarbonResultModalProps {
   isOpen: boolean
@@ -28,6 +29,7 @@ export function CarbonResultModal({
   onNext,
 }: CarbonResultModalProps) {
   const router = useRouter()
+  const [collectionMethod, setCollectionMethod] = useState<string | null>(null)
 
   if (!isOpen) return null
 
@@ -71,6 +73,54 @@ export function CarbonResultModal({
                 ขอบคุณที่ส่งข้อมูลเข้ามา<br />
                 เจ้าหน้าที่จะเข้าดำเนินการเก็บและรับขยะในภายหลัง
               </p>
+            </div>
+
+            {/* Collection method selector (visual placeholder for the next flow) */}
+            <div className="space-y-3">
+              <div className="text-center">
+                <h3 className="text-2xl font-bold text-[#111111]">ต้องการส่งขยะแบบไหน?</h3>
+                <p className="mt-1 text-sm text-[#d00000]">*โปรดระบุ</p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  aria-pressed={collectionMethod === 'walk-in'}
+                  onClick={() => setCollectionMethod('walk-in')}
+                  className={cn(
+                    'w-full rounded-2xl border-2 px-4 py-2.5 text-center transition-colors',
+                    collectionMethod === 'walk-in'
+                      ? 'border-[#16851a] bg-[#c5e2c2]'
+                      : 'border-[#16851a] bg-[#d5ead2] hover:bg-[#c5e2c2]'
+                  )}
+                >
+                  <span className="block text-lg font-semibold text-[#111111]">
+                    📍 นำมาส่งด้วยตนเอง (Walk-in)
+                  </span>
+                  <span className="block text-sm font-medium text-[#111111]">
+                    นำขยะมาส่งที่จุดรับขยะตามเวลาที่กำหนด
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  aria-pressed={collectionMethod === 'pickup'}
+                  onClick={() => setCollectionMethod('pickup')}
+                  className={cn(
+                    'w-full rounded-2xl border-2 px-4 py-2.5 text-center transition-colors',
+                    collectionMethod === 'pickup'
+                      ? 'border-[#16851a] bg-[#c5e2c2]'
+                      : 'border-[#16851a] bg-[#d5ead2] hover:bg-[#c5e2c2]'
+                  )}
+                >
+                  <span className="block text-lg font-semibold text-[#111111]">
+                    🏠 ให้เจ้าหน้าที่เข้ารับ
+                  </span>
+                  <span className="block text-sm font-medium text-[#111111]">
+                    เลือกวันและเวลาที่สะดวก
+                  </span>
+                </button>
+              </div>
             </div>
 
             {/* Carbon summary */}

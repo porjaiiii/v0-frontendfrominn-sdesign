@@ -17,7 +17,7 @@ import { CASH_REWARD_ID, CATALOG_REWARDS, findReward, type CatalogReward } from 
 // shared module so the minimum shown here is the same one app.rewards enforces
 // — it used to be a client-side check with nothing behind it.
 const CASH_REWARD = findReward(CASH_REWARD_ID)!
-const CASH_MIN_POINTS = 1
+const CASH_MIN_POINTS = CASH_REWARD.minPoints ?? 1
 
 export default function RewardsPage() {
   const { points: userPoints, loading: pointsLoading, refresh: refreshPoints } = usePoints()

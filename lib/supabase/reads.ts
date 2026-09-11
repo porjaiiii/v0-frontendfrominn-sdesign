@@ -111,6 +111,50 @@ export async function isRegistered(lineUserId: string): Promise<boolean> {
   return data !== null
 }
 
+/** One page of registered LINE user ids, oldest id first. */
+export interface RegisteredPage {
+  lineUserIds: string[]
+  /** Pass back as `after` to get the next page; null when this is the last. */
+  nextCursor: string | null
+}
+
+/**
+ * Every registered LINE user id, paged — ids only, never the PII row.
+ *
+ * Backs GAS #3's syncRegisteredUsersToMenuB(), which bulk-links the registered
+ * rich menu. Keyset paging on the primary key rather than offset, so a user
+ * registering mid-sync cannot make the walk skip or repeat a row.
+ */
+export async function listRegisteredLineUserIds({
+  limit,
+  after,
+}: {
+  limit: number
+  after?: string
+}): Promise<RegisteredPage> {
+  let query = getServiceClient()
+    .from('users')
+    .select('line_user_id')
+    .order('line_user_id', { ascending: true })
+    // One extra row is the "is there more?" probe — cheaper than a count.
+    .limit(limit + 1)
+
+  if (after) query = query.gt('line_user_id', after)
+
+  const { data, error } = await query
+  if (error) throw error
+
+  const rows = data ?? []
+  const hasMore = rows.length > limit
+  const page = hasMore ? rows.slice(0, limit) : rows
+  const lineUserIds = page.map((row) => row.line_user_id)
+
+  return {
+    lineUserIds,
+    nextCursor: hasMore ? lineUserIds[lineUserIds.length - 1] : null,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Waste records
 // ---------------------------------------------------------------------------

@@ -8,6 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react'
+import { apiFetch } from './api-client'
 import { useLiffContext } from './liff-context'
 import { MOCK_USER } from './mock-user'
 
@@ -103,7 +104,11 @@ export function PointsProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(
+      // apiFetch, not fetch: GET /api/points derives the caller from the LINE
+      // ID token. Without the header the route answers 401, which falls through
+      // to the generic error below and tells a signed-in user their points
+      // could not be loaded.
+      const res = await apiFetch(
         `/api/points?action=get_account_fast&user_id=${encodeURIComponent(uid)}`,
         { cache: 'no-store' }
       )
@@ -160,7 +165,9 @@ export function PointsProvider({ children }: { children: ReactNode }) {
       if (!userId) return { success: false, message: 'ไม่พบบัญชีผู้ใช้ (กรุณาเข้าสู่ระบบผ่าน LINE)' }
       if (!amount || amount <= 0) return { success: false, message: 'จำนวนคะแนนไม่ถูกต้อง' }
       try {
-        const res = await fetch('/api/points', {
+        // spend_points is gated on the verified identity, not on the user_id in
+        // the body, so this has to carry the token too.
+        const res = await apiFetch('/api/points', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

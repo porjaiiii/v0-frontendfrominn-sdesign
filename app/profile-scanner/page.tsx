@@ -7,6 +7,7 @@ import { WasteCart } from '@/components/waste-cart'
 import { Award, TreePine, ChevronLeft, ChevronRight, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useLiffContext } from '@/lib/liff-context'
+import { apiFetch } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
@@ -83,8 +84,11 @@ export default function ProfileScannerPage() {
       
       console.log('[v0] Fetching profile for LINE ID:', lineId)
       
-      const response = await fetch(`/api/profile/${encodeURIComponent(lineId)}`)
-      
+      // Scanning somebody else's QR reads THEIR profile, which is an admin
+      // action — /api/profile/[id] now serves only the caller's own row. This
+      // needs a signed-in admin session; a 401 here means staff must log in.
+      const response = await apiFetch(`/api/admin/profile/${encodeURIComponent(lineId)}`)
+
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
       }
@@ -374,7 +378,8 @@ export default function ProfileScannerPage() {
 
         {/* Waste Cart Section */}
         <div className="mt-6">
-          <WasteCart userId={scannedLineId || ''} />
+          {/* admin: reads the scanned user's records via the staff route. */}
+          <WasteCart userId={scannedLineId || ''} admin />
         </div>
       </main>
 

@@ -95,7 +95,7 @@ export function CouponProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true)
     try {
-      const res = await fetch(`/api/coupons?user_id=${encodeURIComponent(userId)}`)
+      const res = await apiFetch(`/api/coupons?user_id=${encodeURIComponent(userId)}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.success && Array.isArray(data.coupons)) {

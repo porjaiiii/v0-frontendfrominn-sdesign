@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { GET as couponsGet } from '@/app/api/coupons/route'
 import { GET as pointsGet } from '@/app/api/points/route'
@@ -13,6 +13,15 @@ import { cleanup, seed, supabaseConfigured, TEST_USER } from './fixtures'
 //
 // These assert the SHAPE each route returned in the GAS era, because that is
 // what "preserve the contract" has to mean to be checkable.
+//
+// Every one of these routes now requires a LINE ID token and serves only the
+// caller's own id, so the identity is mocked to TEST_USER and each request
+// carries a bearer token. Only the AUTH boundary is mocked — the data still
+// comes from the real database, which is the point of this file. Who is
+// allowed in is covered separately, without a database, in self-access.test.ts.
+
+const mocks = vi.hoisted(() => ({ getLineIdentity: vi.fn() }))
+vi.mock('@/lib/auth/verify-line-token', () => ({ getLineIdentity: mocks.getLineIdentity }))
 
 if (!supabaseConfigured()) {
   throw new Error(
@@ -21,10 +30,17 @@ if (!supabaseConfigured()) {
   )
 }
 
-const req = (url: string) => new NextRequest(new URL(url, 'http://localhost:3000'))
+const req = (url: string) =>
+  new NextRequest(new URL(url, 'http://localhost:3000'), {
+    headers: { authorization: 'Bearer a-valid-token' },
+  })
 
 beforeAll(seed)
 afterAll(cleanup)
+
+beforeEach(() => {
+  mocks.getLineIdentity.mockResolvedValue({ lineUserId: TEST_USER })
+})
 
 describe('GET /api/profile/[id]', () => {
   it('returns the profile with the GAS-era field aliases', async () => {
@@ -44,11 +60,14 @@ describe('GET /api/profile/[id]', () => {
     expect(body.type).toBe(body.userType)
   })
 
-  it('404s an unknown user instead of failing open', async () => {
+  it("refuses somebody else's id before it ever looks the row up", async () => {
+    // This used to be a 404 for an unknown id. It is now a 403, and the
+    // difference matters: the route no longer says whether a stranger's id
+    // exists. Staff read other people through /api/admin/profile/[id].
     const res = await profileGet(req('/api/profile/x'), {
       params: Promise.resolve({ id: 'Udoes_not_exist' }),
     })
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(403)
   })
 })
 
@@ -107,7 +126,11 @@ describe('GET /api/points', () => {
     expect(body.account.tier).toBe('นักอนุรักษ์มือใหม่')
   })
 
-  it('reports notFound for a user with no account', async () => {
+  it('reports notFound for a signed-in user with no account', async () => {
+    // The id now comes from the token, so this is "a real caller who has no
+    // account row yet" rather than "ask about an arbitrary stranger".
+    mocks.getLineIdentity.mockResolvedValue({ lineUserId: 'Unobody' })
+
     const res = await pointsGet(req('/api/points?action=get_account_fast&user_id=Unobody'))
     const body = await res.json()
     expect(body).toEqual({ success: false, notFound: true })
@@ -163,17 +186,7 @@ describe('GET /api/coupons', () => {
     expect(body.coupons[0].user_id).toBe(TEST_USER)
   })
 
-  it('looks a single coupon up by id for the scanner', async () => {
-    const res = await couponsGet(req('/api/coupons?coupon_id=CPNTEST01-AAAA-BBBB'))
-    const body = await res.json()
-
-    expect(body.success).toBe(true)
-    expect(body.coupon.reward_name).toBe('น้ำยาล้างจาน ซันไลต์')
-    expect(body.coupon.points_used).toBe(25)
-  })
-
-  it('404s an unknown coupon id', async () => {
-    const res = await couponsGet(req('/api/coupons?coupon_id=CPNNOPE'))
-    expect(res.status).toBe(404)
-  })
+  // The ?coupon_id= lookup that used to be tested here is gone — it served any
+  // coupon id to anyone. /api/coupons/[id] covers that read under "owner or
+  // admin"; self-access.test.ts asserts this route no longer answers it.
 })

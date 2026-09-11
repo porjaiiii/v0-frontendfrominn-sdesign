@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/page-header'
 import { useLiffContext } from '@/lib/liff-context'
 import { generateUserIdFromLineId } from '@/lib/user-id-generator'
 import { setCachedRegisteredLineId } from '@/lib/registration-cookie'
+import { apiFetch } from '@/lib/api-client'
 
 const OCCUPATIONS = [
   'ผู้ประกอบการ (ร้านค้า/โฮมสเตย์)',
@@ -237,7 +238,7 @@ function RegisterPageContent() {
   // In edit mode: fetch existing profile data and pre-fill the form
   useEffect(() => {
     if (!isEditMode || !profile?.userId) return
-    fetch(`/api/profile/${encodeURIComponent(profile.userId)}`, { cache: 'no-store' })
+    apiFetch(`/api/profile/${encodeURIComponent(profile.userId)}`, { cache: 'no-store' })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (!data) return

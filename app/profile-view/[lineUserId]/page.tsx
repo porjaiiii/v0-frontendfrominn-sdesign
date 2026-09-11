@@ -8,6 +8,7 @@ import { WasteCart } from '@/components/waste-cart'
 import { AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAdmin } from '@/lib/admin-context'
+import { apiFetch } from '@/lib/api-client'
 
 export default function ProfileViewPage() {
   const params = useParams()
@@ -27,9 +28,18 @@ export default function ProfileViewPage() {
       try {
         setLoading(true)
         setError(null)
-        const response = await fetch(`/api/profile/${encodeURIComponent(lineUserId)}`)
+        // Reading somebody else's profile is an admin action, so it goes to the
+        // admin route. /api/profile/[id] now serves only the caller's own row.
+        // The admin session cookie is sent automatically.
+        const response = await apiFetch(`/api/admin/profile/${encodeURIComponent(lineUserId)}`)
         if (!response.ok) {
-          setError(response.status === 404 ? 'ไม่พบผู้ใช้งานนี้ในระบบ' : 'ไม่สามารถดึงข้อมูลโปรไฟล์ได้ โปรดลองใหม่อีกครั้ง')
+          setError(
+            response.status === 404
+              ? 'ไม่พบผู้ใช้งานนี้ในระบบ'
+              : response.status === 401
+                ? 'กรุณาเข้าสู่ระบบผู้ดูแลอีกครั้ง'
+                : 'ไม่สามารถดึงข้อมูลโปรไฟล์ได้ โปรดลองใหม่อีกครั้ง',
+          )
           return
         }
         const data = await response.json()
@@ -116,6 +126,8 @@ export default function ProfileViewPage() {
           userId={profile.lineUserId || lineUserId}
           onTotalWeightChange={setTotalWeight}
           sortMode={sortMode}
+          // Someone else's records, so this reads through the staff route.
+          admin
         />
       </main>
     </div>

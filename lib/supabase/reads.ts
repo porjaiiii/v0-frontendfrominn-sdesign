@@ -111,49 +111,13 @@ export async function isRegistered(lineUserId: string): Promise<boolean> {
   return data !== null
 }
 
-/** One page of registered LINE user ids, oldest id first. */
-export interface RegisteredPage {
-  lineUserIds: string[]
-  /** Pass back as `after` to get the next page; null when this is the last. */
-  nextCursor: string | null
-}
-
-/**
- * Every registered LINE user id, paged — ids only, never the PII row.
- *
- * Backs GAS #3's syncRegisteredUsersToMenuB(), which bulk-links the registered
- * rich menu. Keyset paging on the primary key rather than offset, so a user
- * registering mid-sync cannot make the walk skip or repeat a row.
- */
-export async function listRegisteredLineUserIds({
-  limit,
-  after,
-}: {
-  limit: number
-  after?: string
-}): Promise<RegisteredPage> {
-  let query = getServiceClient()
-    .from('users')
-    .select('line_user_id')
-    .order('line_user_id', { ascending: true })
-    // One extra row is the "is there more?" probe — cheaper than a count.
-    .limit(limit + 1)
-
-  if (after) query = query.gt('line_user_id', after)
-
-  const { data, error } = await query
-  if (error) throw error
-
-  const rows = data ?? []
-  const hasMore = rows.length > limit
-  const page = hasMore ? rows.slice(0, limit) : rows
-  const lineUserIds = page.map((row) => row.line_user_id)
-
-  return {
-    lineUserIds,
-    nextCursor: hasMore ? lineUserIds[lineUserIds.length - 1] : null,
-  }
-}
+// listRegisteredLineUserIds() lived here: it paged out EVERY registered LINE
+// user id for GAS #3's syncRegisteredUsersToMenuB(). Removed along with
+// GET /api/registered, because a LINE user id is the key the rest of this API
+// is addressed by, and a bulk source of them is worth more to an attacker than
+// the repair tool it served was worth to us — that tool has not worked since
+// the Supabase migration anyway. The per-user check, isRegistered() above,
+// stays: GAS #3 calls it on every follow to pick the right rich menu.
 
 // ---------------------------------------------------------------------------
 // Waste records
@@ -416,8 +380,15 @@ export async function getCo2Collection(lineUserId: string): Promise<Co2EntryResp
 // Leaderboard
 // ---------------------------------------------------------------------------
 
+/**
+ * Server-internal row: a wire entry plus the LINE id it is keyed on. The id
+ * backs the caller lookup and must be stripped before the rows reach a
+ * browser — see app/api/points/ranking/route.ts.
+ */
+export type LeaderboardRow = RankingEntry & { lineUserId: string }
+
 export interface LeaderboardResult {
-  ranking: RankingEntry[]
+  ranking: LeaderboardRow[]
   byUser: Record<string, { location: string; isTourist: boolean }>
 }
 
@@ -438,7 +409,7 @@ export async function getLeaderboard(limit = 200): Promise<LeaderboardResult> {
   if (error) throw error
 
   const byUser: LeaderboardResult['byUser'] = {}
-  const ranking: RankingEntry[] = (data ?? []).map((row, index) => {
+  const ranking: LeaderboardRow[] = (data ?? []).map((row, index) => {
     const lineUserId = str(row.line_user_id)
     byUser[lineUserId] = {
       location: str(row.subdistrict),
@@ -453,6 +424,8 @@ export async function getLeaderboard(limit = 200): Promise<LeaderboardResult> {
       avatar: FALLBACK_AVATAR,
       location: str(row.subdistrict),
       isTourist: row.is_tourist ?? false,
+      // Set per viewer in the route; the cached rows are viewer-independent.
+      isYou: false,
     }
   })
 

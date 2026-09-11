@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { requireSelf } from '@/lib/auth/require-self'
 import { getLineIdentity } from '@/lib/auth/verify-line-token'
 import { parseJsonBody, readIdempotencyKey } from '@/lib/schemas/common'
 import { donatePointsSchema } from '@/lib/schemas/points'
@@ -50,16 +51,22 @@ async function readFromSupabase(action: string, userId: string) {
   }
 }
 
+// Every action here reads one user's balance, transactions or CO2 history, so
+// the gate is the same for all of them: prove who you are, and read only your
+// own. `user_id` used to be taken from the query string unverified.
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const action  = searchParams.get('action')
-    const user_id = searchParams.get('user_id')
+
+    const access = await requireSelf(request, searchParams.get('user_id'))
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
 
     if (!action)  return NextResponse.json({ error: 'Missing action'  }, { status: 400 })
-    if (!user_id) return NextResponse.json({ error: 'Missing user_id' }, { status: 400 })
 
-    return await readFromSupabase(action, user_id)
+    return await readFromSupabase(action, access.lineUserId)
   } catch (error) {
     console.error('[points] GET error:', error)
     return NextResponse.json({ error: 'Failed to fetch points data' }, { status: 500 })

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useLiffContext } from '@/lib/liff-context'
 import { getCachedRegisteredLineId, setCachedRegisteredLineId } from '@/lib/registration-cookie'
+import { apiFetch } from '@/lib/api-client'
 
 // How long (ms) to wait for the profile API before giving up and failing
 // open to /register. Matches the API route's own ~50s worst-case retry
@@ -85,7 +86,7 @@ export default function RootPage() {
       const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
       try {
-        const res = await fetch(`/api/profile/${encodeURIComponent(lineUserId)}`, {
+        const res = await apiFetch(`/api/profile/${encodeURIComponent(lineUserId)}`, {
           signal: controller.signal,
           cache: 'no-store',
         })
@@ -97,10 +98,24 @@ export default function RootPage() {
           return
         }
 
+        // Anything that is not a clean answer — 401/403 (a missing or expired
+        // LINE token, and LIFF id tokens do expire), a 5xx, an unexpected
+        // status — is NOT a verdict about registration. It only means we could
+        // not get one right now. Sending such a user to /register marches a
+        // fully registered person back through the signup form because the
+        // backend hiccuped, which costs them far more than a moment's delay.
+        //
+        // /home re-checks through useProfileGuard, which redirects to
+        // /register only on a definitive 404 and otherwise fails open. That is
+        // the rule the hook already states — "legitimate users are never
+        // locked out due to a slow backend" — and this page now follows it
+        // instead of contradicting it.
         if (!res.ok) {
-          // 5xx / ambiguous error — can't confirm either way, fail to /register
-          console.warn('[RootPage] non-404 error from profile API:', res.status, '— falling back to /register')
-          router.replace('/register')
+          console.warn(
+            '[RootPage] profile lookup inconclusive:', res.status,
+            '— routing to /home to re-check rather than assuming unregistered',
+          )
+          router.replace('/home')
           return
         }
 
@@ -120,11 +135,14 @@ export default function RootPage() {
         const isAbort = err instanceof DOMException && err.name === 'AbortError'
         console.warn(
           isAbort
-            ? '[RootPage] profile fetch timed out — falling back to /register'
-            : '[RootPage] profile fetch failed — falling back to /register',
+            ? '[RootPage] profile fetch timed out — routing to /home to re-check'
+            : '[RootPage] profile fetch failed — routing to /home to re-check',
           err
         )
-        router.replace('/register')
+        // A timeout or a dropped connection says nothing about whether this
+        // person registered, so it must not cost them their account. Same rule
+        // as above: /register is for a definitive 404 only.
+        router.replace('/home')
       }
     }
 

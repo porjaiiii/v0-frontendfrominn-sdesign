@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { apiFetch } from '@/lib/api-client'
 import { useLiffContext } from '@/lib/liff-context'
 
 type GuardStatus = 'loading' | 'ok' | 'redirecting'
@@ -47,7 +48,9 @@ export function useProfileGuard(): { status: GuardStatus } {
       const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
       try {
-        const res = await fetch(`/api/profile/${encodeURIComponent(lineUserId)}`, {
+        // apiFetch, not fetch: /api/profile/[id] now serves only the caller's
+        // own row and needs the LINE ID token.
+        const res = await apiFetch(`/api/profile/${encodeURIComponent(lineUserId)}`, {
           signal: controller.signal,
           cache: 'no-store',
         })

@@ -29,7 +29,7 @@ export function CarbonResultModal({
   onNext,
 }: CarbonResultModalProps) {
   const router = useRouter()
-  const [collectionMethod, setCollectionMethod] = useState<string | null>(null)
+const [collectionMethod, setCollectionMethod] = useState<string | null>('walk-in')
 
   if (!isOpen) return null
 

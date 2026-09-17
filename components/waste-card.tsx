@@ -116,7 +116,7 @@ export function WasteCard({
         </div>
       </div>
 
-      {/* Action Buttons */}
+   {/* Action Buttons */}
       <div className="flex gap-2 px-3 pb-3">
         <button
           onClick={() => onEdit(record, true)}
@@ -137,7 +137,6 @@ export function WasteCard({
           {isSaving ? 'กำลัง...' : 'ยืนยันข้อมูล'}
         </button>
       </div>
-      )}
     </div>
   )
 }

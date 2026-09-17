@@ -116,30 +116,27 @@ export function WasteCard({
         </div>
       </div>
 
-      {/* Action Buttons — omitted entirely in readOnly mode rather than
-          disabled, because a greyed-out button still reads as "not yet", and
-          for staff the answer is "not here at all". */}
-      {!readOnly && (
-        <div className="flex gap-2 px-3 pb-3">
-          <button
-            onClick={() => onEdit(record, true)}
-            disabled={isAnySaving}
-            className="flex-1 py-2 border border-[#aaaaaa] text-[#444444] text-sm font-semibold rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            แก้ไข
-          </button>
-          <button
-            onClick={handleSaveWithBonus} // 🌟 เปลี่ยนมาเรียกใช้ฟังก์ชันใหม่
-            disabled={isSubmitDisabled}
-            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${
-              isSubmitDisabled
-                ? 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
-                : 'bg-[#154212] text-white hover:bg-[#0f300c]'
-            }`}
-          >
-            {isSaving ? 'กำลัง...' : 'ยืนยันข้อมูล'}
-          </button>
-        </div>
+      {/* Action Buttons */}
+      <div className="flex gap-2 px-3 pb-3">
+        <button
+          onClick={() => onEdit(record, true)}
+          disabled={isAnySaving}
+          className="flex-1 py-2 border border-[#aaaaaa] text-[#444444] text-sm font-semibold rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          แก้ไข
+        </button>
+        <button
+          onClick={handleSaveWithBonus} // 🌟 เปลี่ยนมาเรียกใช้ฟังก์ชันใหม่
+          disabled={isSubmitDisabled}
+          className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${
+            isSubmitDisabled
+              ? 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
+              : 'bg-[#154212] text-white hover:bg-[#0f300c]'
+          }`}
+        >
+          {isSaving ? 'กำลัง...' : 'ยืนยันข้อมูล'}
+        </button>
+      </div>
       )}
     </div>
   )

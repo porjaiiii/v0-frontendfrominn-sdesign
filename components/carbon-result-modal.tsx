@@ -159,7 +159,7 @@ export function CarbonResultModal({
           <button
             type="button"
             onClick={handleDone}
-            disabled={!noWeight && !collectionMethod}
+            disabled={!collectionMethod}
             className={cn(
               'flex-1 py-3 rounded-full font-semibold text-sm transition-colors',
               !noWeight && !collectionMethod

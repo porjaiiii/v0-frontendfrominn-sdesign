@@ -630,8 +630,10 @@ const handleConfirmClick = async () => {
           </div>
 
           {/* Deleting a cart item added by mistake. Gone once confirmed — the
-              record is marked cancelled server-side and leaves this list. */}
-          {onDeleted && record?.status === 'pending' && !isEditing && (
+              record is marked cancelled server-side and leaves this list.
+              Shown in edit mode too: แก้ไข on the card is the only way this
+              modal opens, so hiding it there hid it everywhere. */}
+          {onDeleted && record?.status === 'pending' && (
             <button
               onClick={handleDeleteClick}
               disabled={isDeleting || isSavingApi || isConfirming}

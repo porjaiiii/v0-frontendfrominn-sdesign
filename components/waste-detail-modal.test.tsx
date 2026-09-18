@@ -58,7 +58,7 @@ describe('WasteDetailModal delete', () => {
     })
   }
 
-  async function render(record = pendingRecord, admin = false) {
+  async function render(record = pendingRecord, admin = false, isEditing = false) {
     await act(async () => {
       root.render(
         <WasteDetailModal
@@ -68,6 +68,7 @@ describe('WasteDetailModal delete', () => {
           onConfirm={() => {}}
           onDeleted={onDeleted}
           admin={admin}
+          isEditing={isEditing}
         />,
       )
     })
@@ -95,6 +96,12 @@ describe('WasteDetailModal delete', () => {
 
   it('offers to delete a record still sitting in the cart', async () => {
     await render()
+
+    expect(buttons('ลบรายการ')).toHaveLength(1)
+  })
+
+  it('offers to delete from edit mode, the only way the cart opens this modal', async () => {
+    await render(pendingRecord, false, true)
 
     expect(buttons('ลบรายการ')).toHaveLength(1)
   })

@@ -58,7 +58,7 @@ export function CarbonResultModal({
   }> = [
     {
       id: 'pickup',
-      label: 'นำรับขยะ',
+      label: 'นัดรับขยะ',
       detail: 'เจ้าหน้าที่จะเข้ารับขยะที่บ้านของคุณ',
       icon: '🏠',
     },
@@ -73,7 +73,7 @@ export function CarbonResultModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 sm:items-center sm:p-4">
       <div className="bg-[#f7f7f7] rounded-t-[30px] sm:rounded-[30px] w-full max-w-[420px] overflow-hidden border-[2px] border-[#1f8f47]/40 shadow-[0_20px_60px_rgba(0,0,0,0.12)]">
-        <div className="px-6 pt-6 pb-4 border-[2px] border-[#3aa6e5] border-dashed bg-[#f7f7f7] mx-4 mt-4 rounded-[18px] flex flex-col items-center gap-3 text-center">
+        <div className="px-6 pt-6 pb-4 bg-[#f7f7f7] mx-4 mt-4 rounded-[18px] flex flex-col items-center gap-3 text-center">
           <div className="text-[46px] leading-none">&#127807;</div>
           <h2 className="text-[26px] font-bold text-[#154212] leading-tight tracking-tight">
             บันทึกข้อมูลสำเร็จ
@@ -90,7 +90,7 @@ export function CarbonResultModal({
 
         {!noWeight && (
           <div className="px-5 pb-5 sm:px-6">
-            <div className="rounded-[18px] border-[2px] border-[#3aa6e5] border-dashed bg-[#f7f7f7] px-4 py-5">
+            <div className="rounded-[18px] bg-[#f7f7f7] px-4 py-5">
               <h3 className="text-center text-[30px] font-bold text-[#111111] leading-tight">
                 สรุปผลคาร์บอน
               </h3>
@@ -119,7 +119,7 @@ export function CarbonResultModal({
         )}
 
         <div className="px-5 pb-4 sm:px-6">
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             {methodOptions.map((option) => {
               const selected = collectionMethod === option.id
 
@@ -129,7 +129,7 @@ export function CarbonResultModal({
                   type="button"
                   onClick={() => setCollectionMethod(option.id)}
                   className={cn(
-                    'flex w-full items-center justify-between rounded-[18px] border-[2px] px-4 py-3 text-left transition-all duration-200',
+                    'flex flex-col items-center justify-center gap-2 rounded-[18px] border-[2px] p-4 text-center transition-all duration-200',
                     selected
                       ? option.id === 'pickup'
                         ? 'border-[#1d7f36] bg-[#1d7f36] text-white shadow-[0_8px_18px_rgba(29,127,54,0.22)]'
@@ -137,25 +137,15 @@ export function CarbonResultModal({
                       : 'border-[#d5d5d5] bg-[#f5f5f5] text-[#111111] hover:border-[#86bde3] hover:bg-[#eef7ff]'
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={cn('inline-flex h-7 w-7 items-center justify-center rounded-full text-lg', selected && option.id === 'pickup' ? 'bg-white/20' : 'bg-white')}>
-                      {option.icon}
-                    </span>
-                    <span className="text-[18px] font-bold leading-none">{option.label}</span>
-                  </div>
-
                   <span
                     className={cn(
-                      'inline-flex h-5 w-5 items-center justify-center rounded-full border-2',
-                      selected && option.id === 'pickup'
-                        ? 'border-white bg-white'
-                        : selected
-                          ? 'border-[#1d7f36] bg-[#1d7f36]'
-                          : 'border-[#a5a5a5] bg-white'
+                      'inline-flex h-10 w-10 items-center justify-center rounded-full text-xl',
+                      selected && option.id === 'pickup' ? 'bg-white/20' : 'bg-white'
                     )}
                   >
-                    {selected && <span className={cn('h-2.5 w-2.5 rounded-full', option.id === 'pickup' ? 'bg-[#1d7f36]' : 'bg-white')} />}
+                    {option.icon}
                   </span>
+                  <span className="text-[16px] font-bold leading-tight">{option.label}</span>
                 </button>
               )
             })}
@@ -164,7 +154,7 @@ export function CarbonResultModal({
 
         <div className="px-5 pb-5 text-center sm:px-6">
           <p className="text-[16px] text-[#111111] leading-relaxed">
-            เจ้าหน้าที่จะเข้ามารับขยะวันที่ 23 กันยายน 2569<br />
+            เจ้าหน้าที่จะเข้ามารับขยะในสัปดาถัดไปตามตาราง<br />
             เวลา 10.00 - 16.00 น.
           </p>
           <p className="mt-3 text-[15px] font-medium text-[#d02b2b]">

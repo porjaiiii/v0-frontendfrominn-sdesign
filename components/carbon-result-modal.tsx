@@ -8,9 +8,10 @@ import { useEffect, useState } from 'react'
 interface CarbonResultModalProps {
   isOpen: boolean
   onClose: () => void
-  carbonAmount: number
+  /** null when the live rates never loaded, so no estimate can be shown. */
+  carbonAmount: number | null
   noWeight?: boolean
-  pointsEarned?: number
+  pointsEarned?: number | null
   showQR?: boolean
   qrData?: string
   onSubmit?: () => void
@@ -24,7 +25,7 @@ export function CarbonResultModal({
   onClose,
   carbonAmount,
   noWeight = false,
-  pointsEarned = 100,
+  pointsEarned,
   showQR = false,
   qrData,
   onSubmit,
@@ -41,7 +42,10 @@ export function CarbonResultModal({
 
   if (!isOpen) return null
 
-  const treesEquivalent = Math.floor(carbonAmount / 9.5)
+  // "—" rather than 0: a carbon figure of zero reads as "you saved nothing",
+  // which is a different claim from "the rate could not be loaded".
+  const carbonText = carbonAmount === null ? '—' : carbonAmount.toFixed(0)
+  const treesEquivalent = carbonAmount === null ? null : Math.floor(carbonAmount / 9.5)
 
   const handleDone = () => {
     if (!collectionMethod) return
@@ -100,7 +104,7 @@ export function CarbonResultModal({
 
               <div className="mt-4 text-center">
                 <span className="block text-[76px] font-black leading-[0.9] tracking-[-0.06em] text-[#111111]">
-                  {Number(carbonAmount || 0).toFixed(0)}
+                  {carbonText}
                 </span>
                 <span className="mt-2 block text-[26px] font-semibold text-[#111111]">kgCO2e</span>
               </div>
@@ -111,7 +115,7 @@ export function CarbonResultModal({
                 </div>
                 <p className="text-[15px] leading-relaxed text-[#2b2b2b]">
                   เทียบเท่ากับคุณช่วยบำรุง<br />
-                  ปลูกต้นไม้เพิ่ม {treesEquivalent} ต้นแล้ว!
+                  ปลูกต้นไม้เพิ่ม {treesEquivalent ?? '—'} ต้นแล้ว!
                 </p>
               </div>
             </div>

@@ -9,7 +9,7 @@ import { apiFetch, displaySrc, uploadWastePhoto, useIdempotencyKey } from '@/lib
 import { useApp } from '@/lib/app-context'
 import { compressImage } from '@/lib/compress-image'
 import { wasteSubtypeName, wasteTypeName } from '@/lib/waste-records'
-import { carbonFactorFor, pointsPerKgFor, type WasteRate, WASTE_RATES } from '@/lib/rates'
+import { carbonFactorFor, pointsPerKgFor, type WasteRates } from '@/lib/rates'
 
 interface WasteRecord {
   timestamp: string
@@ -40,13 +40,28 @@ interface WasteDetailModalProps {
   isEditing?: boolean
 }
 
-function recalculate(
-  record: WasteRecord,
-  rates: Record<string, WasteRate> = WASTE_RATES,
-): WasteRecord {
-  const carbonReduction = record.weight_kg * carbonFactorFor(record.waste_type, rates)
-  const pointsEarned = Math.round(record.weight_kg * pointsPerKgFor(record.waste_type, rates))
-  return { ...record, carbon_reduction: carbonReduction, points_earned: pointsEarned }
+/**
+ * The on-screen estimate, or nulls while the live rates are unknown.
+ *
+ * There is no static rate table to fall back on any more — showing a number
+ * from one would mean showing an estimate the server may not agree with. The
+ * record still saves: app.confirm_waste prices it from app.waste_types.
+ */
+type RecordEstimate = Omit<WasteRecord, 'carbon_reduction' | 'points_earned'> & {
+  /** null while the live rates are unknown — rendered as "—". */
+  carbon_reduction: number | null
+  points_earned: number | null
+}
+
+function recalculate(record: WasteRecord | RecordEstimate, rates: WasteRates): RecordEstimate {
+  const carbonFactor = carbonFactorFor(record.waste_type, rates)
+  const pointsPerKg = pointsPerKgFor(record.waste_type, rates)
+
+  return {
+    ...record,
+    carbon_reduction: carbonFactor === null ? null : record.weight_kg * carbonFactor,
+    points_earned: pointsPerKg === null ? null : Math.round(record.weight_kg * pointsPerKg),
+  }
 }
 
 export function WasteDetailModal({
@@ -58,7 +73,7 @@ export function WasteDetailModal({
   isConfirming = false,
   isEditing = false,
 }: WasteDetailModalProps) {
-  const [editedRecord, setEditedRecord] = useState<WasteRecord | null>(null)
+  const [editedRecord, setEditedRecord] = useState<RecordEstimate | null>(null)
   const [isSavingApi, setIsSavingApi] = useState(false)
   // Two taps to delete. There is no undo once the record leaves the cart, and
   // this modal has no dialog of its own to ask in.
@@ -298,8 +313,14 @@ const handleConfirmClick = async () => {
       confirmKey.reset()
     }
 
-    // อาจจะต้องปรับ type ของ onConfirm ถ้ารับค่าต่างกัน
-    await onConfirm(editedRecord)
+    // The estimate is the caller's concern only for display. An unknown rate
+    // becomes 0 here rather than travelling further: the server reprices the
+    // record from app.waste_types and ignores both of these fields.
+    await onConfirm({
+      ...editedRecord,
+      carbon_reduction: editedRecord.carbon_reduction ?? 0,
+      points_earned: editedRecord.points_earned ?? 0,
+    })
     onClose()
   } catch (error) {
     alert('เกิดข้อผิดพลาด: ' + (error instanceof Error ? error.message : 'Unknown error'))
@@ -530,8 +551,8 @@ const handleConfirmClick = async () => {
               แต้มที่ได้รับ{isEditing ? ' (คำนวณอัตโนมัติจากน้ำหนัก)' : ' (คำนวณอัตโนมัติ)'}
             </p>
             <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg cursor-default">
-              {editedRecord.points_earned} แต้ม
-              {isEditing && editedRecord.weight_kg > 0 && (
+              {editedRecord.points_earned ?? '—'} แต้ม
+              {isEditing && editedRecord.weight_kg > 0 && pointsPerKgFor(editedRecord.waste_type, wasteRates) !== null && (
                 <span className="text-xs text-[#888888] font-normal ml-2">
                   ({editedRecord.weight_kg} กก. × {pointsPerKgFor(editedRecord.waste_type, wasteRates)} แต้ม/กก.)
                 </span>
@@ -543,7 +564,10 @@ const handleConfirmClick = async () => {
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">หมายเหตุ</p>
             <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold cursor-default">
-              {(editedRecord.carbon_reduction ?? 0).toFixed(4)} kg CO2
+              {editedRecord.carbon_reduction === null
+                ? '—'
+                : editedRecord.carbon_reduction.toFixed(4)}{' '}
+              kg CO2
             </div>
           </div>
 

@@ -57,13 +57,14 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
   const [showConfirmIncomplete, setShowConfirmIncomplete] = useState(false)
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
 
-  const calculatedCarbon = selectedType
-    ? weight * carbonFactorFor(selectedType, wasteRates)
-    : 0
+  // null, not 0, when the live rates are unknown — the result modal shows "—"
+  // rather than claiming the user saved nothing. The points actually awarded
+  // are computed server-side in app.submit_waste either way.
+  const carbonFactor = selectedType ? carbonFactorFor(selectedType, wasteRates) : null
+  const pointsPerKg = selectedType ? pointsPerKgFor(selectedType, wasteRates) : null
 
-  const calculatedPoints = selectedType
-    ? Math.round(weight * pointsPerKgFor(selectedType, wasteRates))
-    : 0
+  const calculatedCarbon = carbonFactor === null ? null : weight * carbonFactor
+  const calculatedPoints = pointsPerKg === null ? null : Math.round(weight * pointsPerKg)
 
   const handleTypeSelect = (type: WasteType) => {
     setSelectedType(type)

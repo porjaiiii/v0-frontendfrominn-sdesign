@@ -15,8 +15,12 @@ vi.mock('@line/liff', () => ({
   },
 }))
 
+const app = vi.hoisted(() => ({
+  wasteRates: null as Record<string, { carbonFactor: number; pointsPerKg: number }> | null,
+}))
+
 vi.mock('@/lib/app-context', () => ({
-  useApp: () => ({ wasteRates: {} }),
+  useApp: () => ({ wasteRates: app.wasteRates, wasteRatesLoading: false }),
 }))
 
 import { setLiffSdkReady } from '@/lib/api-client'
@@ -72,6 +76,7 @@ describe('WasteDetailModal delete', () => {
     ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     setLiffSdkReady(true)
     onDeleted = vi.fn<(record: typeof pendingRecord) => void>()
+    app.wasteRates = { plastic: { carbonFactor: 1.031, pointsPerKg: 6 } }
     fetchMock = vi.fn(async () => new Response(JSON.stringify({ success: true }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     vi.stubGlobal('alert', vi.fn())
@@ -134,5 +139,53 @@ describe('WasteDetailModal delete', () => {
     await click(buttons('ยืนยันลบ')[0])
 
     expect(onDeleted).not.toHaveBeenCalled()
+  })
+
+  describe('when the live rates have not loaded', () => {
+    // There is no static rate table to fall back on any more. Values the server
+    // already computed are still shown — those are real — but anything this
+    // modal would have to work out for itself becomes "—" rather than a number
+    // the server may not agree with.
+
+    /** Types a weight, which is what triggers a local recalculation. */
+    const typeWeight = async (value: string) => {
+      const input = container.querySelector('input[inputMode="decimal"]') as HTMLInputElement
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype,
+          'value',
+        )!.set!
+        setter.call(input, value)
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+    }
+
+    it('shows — instead of an estimate it cannot stand behind', async () => {
+      app.wasteRates = null
+      await render()
+
+      await typeWeight('3')
+
+      expect(container.textContent).toContain('— แต้ม')
+      expect(container.textContent).toContain('— kg CO2')
+    })
+
+    it('shows the real numbers once the rates are there', async () => {
+      app.wasteRates = { plastic: { carbonFactor: 1.031, pointsPerKg: 6 } }
+      await render()
+
+      await typeWeight('3')
+
+      expect(container.textContent).toContain('18 แต้ม') // 3 × 6
+      expect(container.textContent).toContain('3.0930 kg CO2') // 3 × 1.031
+    })
+
+    it('still lets the record be deleted while the rates are unknown', async () => {
+      app.wasteRates = null
+
+      await render()
+
+      expect(buttons('ลบรายการ')).toHaveLength(1)
+    })
   })
 })

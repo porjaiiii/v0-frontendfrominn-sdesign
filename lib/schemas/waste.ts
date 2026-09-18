@@ -159,3 +159,18 @@ export const updateWasteSchema = z.preprocess(
 )
 
 export type UpdateWasteInput = z.infer<typeof updateWasteSchema>
+
+/**
+ * Deleting a record that never reached `done`.
+ *
+ * Only the timestamp, because there is nothing to change: the record is marked
+ * `cancelled` as it stands. An unknown key here — `user_id`, most likely, since
+ * the older clients put one in every body — is stripped rather than honoured;
+ * the owner comes from the verified token, so a body that names someone else
+ * cancels nothing of theirs.
+ */
+export const cancelWasteSchema = z.object({
+  timestamp: z.string().min(1),
+})
+
+export type CancelWasteInput = z.infer<typeof cancelWasteSchema>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { submitWasteSchema, updateWasteSchema } from '@/lib/schemas/waste'
+import { cancelWasteSchema, submitWasteSchema, updateWasteSchema } from '@/lib/schemas/waste'
 
 // These cover the 400 reported from production:
 //
@@ -92,5 +92,28 @@ describe('submitWasteSchema — Thai label normalisation', () => {
     expect(() =>
       submitWasteSchema.parse({ waste_type: 'glass', waste_subtype: '', weight_kg: 1 }),
     ).toThrow()
+  })
+})
+
+describe('cancelWasteSchema', () => {
+  it('needs only the record timestamp', () => {
+    const parsed = cancelWasteSchema.parse({ timestamp: '2026-09-18T01:39:50.000Z' })
+
+    expect(parsed.timestamp).toBe('2026-09-18T01:39:50.000Z')
+  })
+
+  it('rejects a payload with no timestamp to identify the record', () => {
+    expect(() => cancelWasteSchema.parse({})).toThrow()
+    expect(() => cancelWasteSchema.parse({ timestamp: '' })).toThrow()
+  })
+
+  it('ignores a user_id, so nobody can cancel on behalf of someone else', () => {
+    // The owner comes from the verified LINE token, never from the body.
+    const parsed = cancelWasteSchema.parse({
+      timestamp: '2026-09-18T01:39:50.000Z',
+      user_id: 'U_somebody_else',
+    })
+
+    expect(parsed).not.toHaveProperty('user_id')
   })
 })

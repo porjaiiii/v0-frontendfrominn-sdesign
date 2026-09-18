@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { X, CheckCircle2, Camera, Loader2 } from 'lucide-react'
+import { X, CheckCircle2, Camera, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
 import { apiFetch, displaySrc, uploadWastePhoto, useIdempotencyKey } from '@/lib/api-client'
@@ -28,6 +28,14 @@ interface WasteDetailModalProps {
   isOpen: boolean
   onClose: () => void
   onConfirm: (record: WasteRecord) => void | Promise<void>
+  /**
+   * Drops the deleted record from the list behind the modal.
+   *
+   * Absent means no delete button: that is how staff looking at somebody
+   * else's records (waste-cart's `admin` mode) never see one, matching a route
+   * that authorises with the caller's own LINE identity and would answer 404.
+   */
+  onDeleted?: (record: WasteRecord) => void | Promise<void>
   isConfirming?: boolean
   isEditing?: boolean
 }
@@ -46,11 +54,16 @@ export function WasteDetailModal({
   isOpen,
   onClose,
   onConfirm,
+  onDeleted,
   isConfirming = false,
   isEditing = false,
 }: WasteDetailModalProps) {
   const [editedRecord, setEditedRecord] = useState<WasteRecord | null>(null)
   const [isSavingApi, setIsSavingApi] = useState(false)
+  // Two taps to delete. There is no undo once the record leaves the cart, and
+  // this modal has no dialog of its own to ask in.
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   // Photos whose upload failed. Shown to the user, never sent to the server —
   // see handleFileChange.
   const [localPreviews, setLocalPreviews] = useState<string[]>([])
@@ -72,6 +85,8 @@ export function WasteDetailModal({
       setWeightDisplay(record.weight_kg > 0 ? String(record.weight_kg) : '')
       setUploadError(null)
       setWeightError(null)
+      // Never inherit an armed delete from the record shown before this one.
+      setIsConfirmingDelete(false)
     }
   }, [record])
 
@@ -208,6 +223,49 @@ export function WasteDetailModal({
       image_urls: editedRecord.image_urls.filter((_, imageIndex) => imageIndex !== index),
     })
   }
+
+/**
+ * Deletes the record, on the second tap.
+ *
+ * Only offered for `pending` records: once points are awarded, removing the
+ * record would leave them with nothing behind them, so /api/waste/cancel
+ * answers 409 and the record stays where it is. That can also happen between
+ * opening this modal and pressing delete, which is why the failure is shown
+ * rather than assumed away.
+ */
+const handleDeleteClick = async () => {
+  if (!record || isDeleting) return
+
+  if (!isConfirmingDelete) {
+    setIsConfirmingDelete(true)
+    return
+  }
+
+  try {
+    setIsDeleting(true)
+
+    const response = await apiFetch('/api/waste/cancel', {
+      method: 'POST',
+      body: JSON.stringify({ timestamp: record.timestamp }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      alert('ไม่สามารถลบรายการได้: ' + (error.error || 'Unknown error'))
+      setIsConfirmingDelete(false)
+      return
+    }
+
+    await onDeleted?.(record)
+    onClose()
+  } catch (error) {
+    console.error('[waste-detail-modal] delete failed:', error)
+    alert('ไม่สามารถลบรายการได้ กรุณาลองใหม่')
+    setIsConfirmingDelete(false)
+  } finally {
+    setIsDeleting(false)
+  }
+}
 
 const handleConfirmClick = async () => {
   if (!editedRecord) return
@@ -536,6 +594,26 @@ const handleConfirmClick = async () => {
   )
 )}
           </div>
+
+          {/* Deleting a cart item added by mistake. Gone once confirmed — the
+              record is marked cancelled server-side and leaves this list. */}
+          {onDeleted && record?.status === 'pending' && !isEditing && (
+            <button
+              onClick={handleDeleteClick}
+              disabled={isDeleting || isSavingApi || isConfirming}
+              className={cn(
+                'w-full mt-3 px-4 py-3 font-semibold rounded-full transition-colors flex items-center justify-center gap-2 border-2',
+                isDeleting || isSavingApi || isConfirming
+                  ? 'border-[#e5e5e5] text-[#999999] cursor-not-allowed'
+                  : isConfirmingDelete
+                    ? 'border-[#c0392b] bg-[#c0392b] text-white hover:bg-[#a93226]'
+                    : 'border-[#d4d4d4] text-[#c0392b] hover:bg-[#fdf0ee]',
+              )}
+            >
+              <Trash2 size={20} />
+              {isDeleting ? 'กำลังลบ...' : isConfirmingDelete ? 'ยืนยันลบ' : 'ลบรายการ'}
+            </button>
+          )}
         </div>
       </div>
     </div>

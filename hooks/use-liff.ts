@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import liff from '@line/liff'
 
 import { setLiffSdkReady } from '@/lib/api-client'
+import { isIdTokenExpired } from '@/lib/line-id-token'
 
 export interface LiffProfile {
   userId: string
@@ -48,6 +49,9 @@ export interface UseLiffReturn {
   getIDToken: () => string | null
 }
 
+/** Bounds the ID-token refresh to one redirect per session. */
+const ID_TOKEN_RELOGIN_FLAG = 'liff_id_token_relogin'
+
 export function useLiff(liffId?: string): UseLiffReturn {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isReady, setIsReady] = useState(false)
@@ -78,6 +82,68 @@ export function useLiff(liffId?: string): UseLiffReturn {
   const markReady = useCallback(() => {
     setIsReady(true)
   }, [])
+
+  /**
+   * Mints a fresh ID token when the one LIFF holds has expired, by sending the
+   * user through LINE and back to this same URL.
+   *
+   * LIFF has no silent refresh — liff.login() is the only way to get a new ID
+   * token, and it navigates. That is why this runs at init and on resume rather
+   * than from apiFetch: redirecting mid-action would throw away whatever the
+   * user had typed or photographed. The LINE session cookie is still valid at
+   * this point, so the round trip is normally invisible.
+   *
+   * Bounded by a sessionStorage flag, the same way the stale-profile recovery
+   * above is: if the token is still expired when we come back — a wrong
+   * LINE_CHANNEL_ID, a badly skewed device clock — the user gets a 401 to look
+   * at instead of an endless bounce through LINE. A healthy token clears it.
+   *
+   * @returns true when a redirect has been started and the page is leaving.
+   */
+  const refreshIdTokenIfStale = useCallback((): boolean => {
+    if (!sdkReadyRef.current) return false
+
+    try {
+      if (!liff.isLoggedIn()) return false
+
+      if (!isIdTokenExpired(liff.getIDToken())) {
+        try { sessionStorage.removeItem(ID_TOKEN_RELOGIN_FLAG) } catch {}
+        return false
+      }
+
+      if (sessionStorage.getItem(ID_TOKEN_RELOGIN_FLAG)) {
+        console.warn('[LIFF] ID token still expired after re-login — not redirecting again.')
+        return false
+      }
+
+      console.info('[LIFF] ID token expired while the session is still alive — refreshing.')
+      sessionStorage.setItem(ID_TOKEN_RELOGIN_FLAG, '1')
+      liff.login({ redirectUri: window.location.href })
+      return true
+    } catch (err) {
+      console.error('[LIFF] Failed to refresh the ID token:', err)
+      return false
+    }
+  }, [])
+
+  // A resumed webview is the case that matters: the app sits backgrounded past
+  // the token's hour, the user taps back in, and every request 401s. Both events
+  // fire on resume — visibilitychange in the LINE client, pageshow on a bfcache
+  // restore — and the flag above keeps the pair from redirecting twice.
+  useEffect(() => {
+    const onResume = () => {
+      if (document.visibilityState === 'hidden') return
+      refreshIdTokenIfStale()
+    }
+
+    document.addEventListener('visibilitychange', onResume)
+    window.addEventListener('pageshow', onResume)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onResume)
+      window.removeEventListener('pageshow', onResume)
+    }
+  }, [refreshIdTokenIfStale])
 
   useEffect(() => {
     const initLiff = async () => {
@@ -119,6 +185,13 @@ export function useLiff(liffId?: string): UseLiffReturn {
         if (!liff.isLoggedIn()) {
           setLoadingStep('requesting_permission')
           liff.login({ redirectUri: window.location.href })
+          return
+        }
+
+        // The session can outlive its ID token by eleven hours. Catch that here,
+        // before any page mounts and starts issuing requests with a dead one.
+        if (refreshIdTokenIfStale()) {
+          setLoadingStep('requesting_permission')
           return
         }
 
@@ -166,7 +239,7 @@ export function useLiff(liffId?: string): UseLiffReturn {
     }
 
     initLiff()
-  }, [liffId])
+  }, [liffId, refreshIdTokenIfStale])
 
   const login = useCallback(() => {
     try {
@@ -283,10 +356,19 @@ export function useLiff(liffId?: string): UseLiffReturn {
     }
   }, [])
 
+  /**
+   * An ID token the server will actually accept, or null.
+   *
+   * isLoggedIn() is true for the whole 12-hour session, but the token itself
+   * lives one hour, so this cannot just hand back whatever getIDToken() returns
+   * — that is what put a ten-hour-old token in an Authorization header and got
+   * a 401 back on an upload the user had just started.
+   */
   const getIDToken = useCallback((): string | null => {
     try {
       if (sdkReadyRef.current && liff.isLoggedIn()) {
-        return liff.getIDToken()
+        const token = liff.getIDToken()
+        return isIdTokenExpired(token) ? null : token
       }
       return null
     } catch (err) {

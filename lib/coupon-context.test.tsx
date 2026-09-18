@@ -3,10 +3,18 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { fakeLineIdToken } from '../tests/fake-line-token'
+
+// Minted once per test run and held here, so the assertions below can name the
+// exact token the SDK handed out. It has to be a real, unexpired JWT: apiFetch
+// now drops a token whose `exp` has passed rather than sending a dead one.
+const session = vi.hoisted(() => ({ token: '' }))
+session.token = fakeLineIdToken()
+
 vi.mock('@line/liff', () => ({
   default: {
     isLoggedIn: () => true,
-    getIDToken: () => 'fake-line-id-token',
+    getIDToken: () => session.token,
   },
 }))
 
@@ -72,6 +80,6 @@ describe('redeemRewards', () => {
 
     const [, init] = redeemCall!
     const headers = new Headers(init?.headers as HeadersInit)
-    expect(headers.get('Authorization')).toBe('Bearer fake-line-id-token')
+    expect(headers.get('Authorization')).toBe(`Bearer ${session.token}`)
   })
 })

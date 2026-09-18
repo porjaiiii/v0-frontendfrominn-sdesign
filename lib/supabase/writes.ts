@@ -244,6 +244,57 @@ export async function confirmWaste(
   }
 }
 
+/**
+ * POST /api/waste/cancel — delete a record that never reached `done`.
+ *
+ * A plain UPDATE rather than an RPC, because nothing here moves points: a
+ * `pending` record has no point lot, no transaction and no ledger entry, so
+ * there is no multi-table invariant for a transaction to protect. The RPCs
+ * exist for the paths that do.
+ *
+ * `status = 'pending'` is part of the WHERE clause, not a check performed
+ * first: a confirm landing between the read and the write would otherwise
+ * cancel a record whose points had just been awarded, leaving points with no
+ * record behind them. A confirmed record simply matches no row, and the lookup
+ * afterwards turns that into a 409 the user can act on.
+ *
+ * Idempotent — cancelling an already-cancelled record returns quietly, so a
+ * double tap is not an error anyone has to explain.
+ */
+export async function cancelWaste(lineUserId: string, timestamp: string): Promise<void> {
+  const recordedAt = new Date(timestamp)
+  if (Number.isNaN(recordedAt.getTime())) {
+    throw new WriteError(`Unparseable record timestamp: ${timestamp}`, 400)
+  }
+
+  const db = getServiceClient()
+  const key = { line_user_id: lineUserId, recorded_at: recordedAt.toISOString() }
+
+  const { data, error } = await db
+    .from('waste_records')
+    .update({ status: 'cancelled' })
+    .match({ ...key, status: 'pending' })
+    .select('id')
+
+  if (error) throw asWriteError(error)
+  if (data && data.length > 0) return
+
+  // Nothing matched. Scoping this lookup to the caller as well is what makes
+  // someone else's record indistinguishable from one that does not exist —
+  // a 404 either way, rather than a 409 that would confirm it is theirs.
+  const { data: existing, error: lookupError } = await db
+    .from('waste_records')
+    .select('status')
+    .match(key)
+    .maybeSingle()
+
+  if (lookupError) throw asWriteError(lookupError)
+  if (!existing) throw new WriteError('ไม่พบรายการขยะที่ต้องการลบ', 404)
+  if (existing.status === 'cancelled') return
+
+  throw new WriteError('รายการนี้ได้รับคะแนนแล้ว ไม่สามารถลบได้', 409)
+}
+
 // ---------------------------------------------------------------------------
 // Points and coupons (Phase 5)
 // ---------------------------------------------------------------------------

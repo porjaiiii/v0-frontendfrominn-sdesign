@@ -3,6 +3,8 @@
 import { useCallback, useRef } from 'react'
 import liff from '@line/liff'
 
+import { isIdTokenExpired } from './line-id-token'
+
 // One place that knows how to call our own API, so no call site can forget the
 // two headers that matter.
 //
@@ -45,11 +47,20 @@ export function setLiffSdkReady(ready: boolean): void {
  * Best-effort — returns null outside LINE, before liff.init(), or when the
  * session has expired. Never throws; the route answers 401 and the caller
  * surfaces that, rather than a render-time exception.
+ *
+ * `isLoggedIn()` alone is not enough: it tracks the 12-hour LIFF session, while
+ * the ID token it mints lives one hour, so it keeps returning true long after
+ * getIDToken() has gone stale. Sending that stale token gets the same 401 as
+ * sending nothing, but costs the round trip and hides the reason. Refreshing it
+ * needs a redirect, which would destroy whatever the user was in the middle of,
+ * so that is hooks/use-liff.ts's job at a moment when there is nothing to lose.
  */
 function getIdToken(): string | null {
   if (!sdkReady) return null
   try {
-    return liff.isLoggedIn() ? liff.getIDToken() : null
+    if (!liff.isLoggedIn()) return null
+    const token = liff.getIDToken()
+    return isIdTokenExpired(token) ? null : token
   } catch {
     return null
   }

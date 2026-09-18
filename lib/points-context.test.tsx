@@ -3,10 +3,18 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { fakeLineIdToken } from '../tests/fake-line-token'
+
+// Minted once per test run and held here, so the assertions below can name the
+// exact token the SDK handed out. It has to be a real, unexpired JWT: apiFetch
+// now drops a token whose `exp` has passed rather than sending a dead one.
+const session = vi.hoisted(() => ({ token: '' }))
+session.token = fakeLineIdToken()
+
 vi.mock('@line/liff', () => ({
   default: {
     isLoggedIn: () => true,
-    getIDToken: () => 'fake-line-id-token',
+    getIDToken: () => session.token,
   },
 }))
 
@@ -96,7 +104,7 @@ describe('points-context sends the LINE ID token', () => {
       String(url).startsWith('/api/points?action=get_account_fast'),
     )
     expect(call).toBeDefined()
-    expect(authHeaderOf(call)).toBe('Bearer fake-line-id-token')
+    expect(authHeaderOf(call)).toBe(`Bearer ${session.token}`)
   })
 
   it('authorises spendPoints', async () => {
@@ -110,7 +118,7 @@ describe('points-context sends the LINE ID token', () => {
       ([url], i) => url === '/api/points' && fetchMock.mock.calls[i][1]?.method === 'POST',
     )
     expect(call).toBeDefined()
-    expect(authHeaderOf(call)).toBe('Bearer fake-line-id-token')
+    expect(authHeaderOf(call)).toBe(`Bearer ${session.token}`)
   })
 
   it('shows a real balance rather than an error when the request is authorised', async () => {

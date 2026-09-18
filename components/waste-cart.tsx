@@ -168,6 +168,24 @@ export function WasteCart({
     setIsModalOpen(true)
   }
 
+  /**
+   * The record is already cancelled server-side by the time this runs, so the
+   * list is rebuilt locally rather than refetched — the same reason the confirm
+   * path does not refetch either. The pending total has to move with it, since
+   * that number is what the page above prints as "waiting to be weighed".
+   */
+  const handleRecordDeleted = (deleted: WasteRecord) => {
+    const remaining = records.filter((r) => r.timestamp !== deleted.timestamp)
+    setRecords(remaining)
+
+    const total = remaining
+      .filter((r) => r.status === 'pending' && r.weight_kg !== -1)
+      .reduce((sum, r) => sum + r.weight_kg, 0)
+
+    setTotalWeight(total)
+    onTotalWeightChange?.(total)
+  }
+
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setSelectedRecord(null)
@@ -206,6 +224,10 @@ export function WasteCart({
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onConfirm={handleConfirmRecord}
+        // Owner-only, like every other edit control here: /api/waste/cancel
+        // derives the owner from the LINE token, so staff viewing somebody
+        // else's cart get no button rather than a button that 404s.
+        onDeleted={admin ? undefined : handleRecordDeleted}
         isConfirming={isConfirming}
         isEditing={isEditingMode}
       />

@@ -142,6 +142,10 @@ export async function getWasteRecords(lineUserId: string): Promise<WasteRecordsR
     // and a concatenated expression degrades to GenericStringError.
     .select('line_user_id, waste_type_id, waste_subtype_id, weight_kg, image_urls, carbon_reduction_kg, points_earned, status, notes, recorded_at')
     .eq('line_user_id', lineUserId)
+    // A cancelled record is one the user deleted. The row is kept so the
+    // deletion is auditable and confirm_waste can still refuse it, but it must
+    // not come back to the cart it was deleted from, or count in `stats`.
+    .neq('status', 'cancelled')
     .order('recorded_at', { ascending: false })
 
   if (error) throw error

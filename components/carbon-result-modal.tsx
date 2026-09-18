@@ -62,7 +62,7 @@ export function CarbonResultModal({
   }> = [
     {
       id: 'pickup',
-      label: 'นำรับขยะ',
+      label: 'นัดรับขยะ',
       detail: 'เจ้าหน้าที่จะเข้ารับขยะที่บ้านของคุณ',
       icon: '🏠',
     },
@@ -161,7 +161,7 @@ export function CarbonResultModal({
         {/* หมายเหตุวันที่ */}
         <div className="px-4 pb-2 text-center">
           <p className="text-[12px] text-[#111111] leading-relaxed">
-            เจ้าหน้าที่จะเข้ามารับขยะวันที่ 23 กันยายน 2569<br />
+            เจ้าหน้าที่จะเข้ามารับขยะในสัปดาห์ถัดไปตามตารางเวลาที่ได้แจ้ง<br />
             เวลา 10.00 - 16.00 น.
           </p>
           <p className="mt-1 text-[11px] font-medium text-[#d02b2b]">

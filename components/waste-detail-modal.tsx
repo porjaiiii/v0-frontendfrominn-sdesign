@@ -8,6 +8,7 @@ import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
 import { apiFetch, displaySrc, uploadWastePhoto, useIdempotencyKey } from '@/lib/api-client'
 import { useApp } from '@/lib/app-context'
 import { compressImage } from '@/lib/compress-image'
+import { wasteSubtypeName, wasteTypeName } from '@/lib/waste-records'
 import { carbonFactorFor, pointsPerKgFor, type WasteRate, WASTE_RATES } from '@/lib/rates'
 
 interface WasteRecord {
@@ -86,9 +87,14 @@ export function WasteDetailModal({
   }
 
   // เมื่อเปลี่ยน waste_type ให้ reset subtype เป็นค่าแรกของประเภทใหม่
+  //
+  // `.id`, not `.name`. waste_records stores ids and enforces the pair with a
+  // composite FK (waste_type_id, waste_subtype_id), so sending the Thai label
+  // here was a 400 on every type change:
+  //   violates foreign key constraint "waste_records_subtype_fk"
   const handleTypeChange = (newType: string) => {
     const subtypes = WASTE_SUBTYPES[newType as keyof typeof WASTE_SUBTYPES] ?? []
-    const firstSubtype = subtypes[0]?.name ?? ''
+    const firstSubtype = subtypes[0]?.id ?? ''
     updateField({ waste_type: newType, waste_subtype: firstSubtype })
   }
 
@@ -136,6 +142,9 @@ export function WasteDetailModal({
 
   const shownWeight = isFocused ? weightDisplay : (editedRecord && editedRecord.weight_kg > 0 ? String(editedRecord.weight_kg) : '')
 
+  const subtypeOptions =
+    WASTE_SUBTYPES[editedRecord?.waste_type as keyof typeof WASTE_SUBTYPES] ?? []
+
   // --- image upload handler (copy pattern จาก ImageEvidence ใน weight-input.tsx) ---
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0]
@@ -181,6 +190,16 @@ export function WasteDetailModal({
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 }
+
+  const handleRemoveLocalPreview = (index: number) => {
+    setLocalPreviews((prev) => {
+      const url = prev[index]
+      if (url) URL.revokeObjectURL(url)
+      return prev.filter((_, i) => i !== index)
+    })
+    // The banner refers to the photo that was just discarded, so it goes too.
+    setUploadError(null)
+  }
 
   const handleRemoveImage = (index: number) => {
     if (!editedRecord) return
@@ -287,6 +306,16 @@ const handleConfirmClick = async () => {
     {localPreviews.map((url, i) => (
       <div key={`local-${i}`} className="relative rounded-xl overflow-hidden h-32 border border-red-300">
         <Image src={url} alt="รูปที่ยังไม่ได้อัปโหลด" fill className="object-cover opacity-60" />
+        {/* Without this the failed photo is a dead end: it cannot be saved and
+            cannot be dismissed, so the user is stuck looking at it. */}
+        <button
+          type="button"
+          onClick={() => handleRemoveLocalPreview(i)}
+          aria-label={`ลบรูปที่อัปโหลดไม่สำเร็จที่ ${i + 1}`}
+          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+        >
+          ×
+        </button>
         <div className="absolute inset-x-0 bottom-0 bg-red-500/90 text-white text-[10px] text-center py-1">
           ยังไม่ได้อัปโหลด
         </div>
@@ -308,6 +337,9 @@ const handleConfirmClick = async () => {
   </div>
   
   {isUploading && <p className="text-xs text-[#154212]">กำลังอัปโหลด...</p>}
+  {/* Was set on every failed upload and never rendered, so the photo simply
+      turned red with no explanation. */}
+  {uploadError && <p className="text-xs text-[#c06161] font-medium">{uploadError}</p>}
 </div>
           ) : (
             /* View mode: แสดงรูปอย่างเดียว */
@@ -340,6 +372,14 @@ const handleConfirmClick = async () => {
                 onChange={(e) => handleTypeChange(e.target.value)}
                 className="w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold bg-white appearance-none"
               >
+                {/* 'oil' is in app.waste_types but retired (is_active false)
+                    and absent from WASTE_TYPES, so an older record would show
+                    as พลาสติก while state still held 'oil'. */}
+                {!WASTE_TYPES.some((wt) => wt.id === editedRecord.waste_type) && (
+                  <option value={editedRecord.waste_type}>
+                    {wasteTypeName(editedRecord.waste_type)}
+                  </option>
+                )}
                 {WASTE_TYPES.map((wt) => (
                   <option key={wt.id} value={wt.id}>
                     {wt.name}
@@ -362,15 +402,25 @@ const handleConfirmClick = async () => {
                 onChange={(e) => updateField({ waste_subtype: e.target.value })}
                 className="w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold bg-white appearance-none"
               >
-                {(WASTE_SUBTYPES[editedRecord.waste_type as keyof typeof WASTE_SUBTYPES] ?? []).map((sub) => (
-                  <option key={sub.id} value={sub.name}>
+                {/* A record with no subtype, or one this bundle predates, would
+                    otherwise render as the first option while state held
+                    something else — the select would lie about what it saves. */}
+                {!subtypeOptions.some((sub) => sub.id === editedRecord.waste_subtype) && (
+                  <option value={editedRecord.waste_subtype}>
+                    {editedRecord.waste_subtype
+                      ? wasteSubtypeName(editedRecord.waste_type, editedRecord.waste_subtype)
+                      : 'เลือกประเภทย่อย'}
+                  </option>
+                )}
+                {subtypeOptions.map((sub) => (
+                  <option key={sub.id} value={sub.id}>
                     {sub.name.replace(/\n/g, ' ')}
                   </option>
                 ))}
               </select>
             ) : (
               <div className="w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold bg-white">
-                {editedRecord.waste_subtype}
+                {wasteSubtypeName(editedRecord.waste_type, editedRecord.waste_subtype)}
               </div>
             )}
           </div>

@@ -47,6 +47,10 @@ export default function HomePage() {
 const [imageEvidence, setImageEvidence] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Only ever true while the user actually has a photo uploading. A submission
+  // with no photo is unaffected — it still goes through the incomplete-data
+  // confirmation and saves.
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   // `disabled={isSubmitting}` does not survive a network retry or a second tab;
   // this does. See lib/api-client.ts.
   const submitKey = useIdempotencyKey()
@@ -322,6 +326,7 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
   referenceLabel="ตัวอย่างการชั่ง"
   wasteType={selectedType || ''}
   weight={weight}
+  onUploadingChange={setIsUploadingImage}
 />
 
             {/* Bottom navigation buttons */}
@@ -335,15 +340,19 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
 
               <button
                 onClick={handleSaveClick}
-                disabled={isSubmitting || !isDataReady}
+                disabled={isSubmitting || !isDataReady || isUploadingImage}
                 className={cn(
                   'px-8 py-2.5 rounded-full font-semibold text-sm transition-colors',
-                  !isDataReady
+                  !isDataReady || isUploadingImage
                     ? 'bg-[#e5e5e5] text-[#999999] cursor-not-allowed'
                     : 'bg-[#154212] text-white hover:bg-[#0d3308]'
                 )}
               >
-                {isSubmitting ? 'กำลังบันทึก...' : 'บันทึก'}
+                {isSubmitting
+                  ? 'กำลังบันทึก...'
+                  : isUploadingImage
+                    ? 'กำลังอัปโหลดรูป...'
+                    : 'บันทึก'}
               </button>
             </div>
           </div>

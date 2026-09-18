@@ -178,19 +178,31 @@ interface ImageEvidenceProps {
   referenceLabel?: string
   wasteType?: string
   weight?: number
+  /**
+   * Reported so the page owning the save button can block it while a photo is
+   * still in flight. Without it the upload was invisible from outside: tapping
+   * บันทึก mid-upload submitted the record with image_url empty, and the photo
+   * landed in storage attached to nothing.
+   */
+  onUploadingChange?: (isUploading: boolean) => void
 }
 
-export function ImageEvidence({ imageUrls = [], onImagesChange, referenceImage, referenceLabel, wasteType, weight }: ImageEvidenceProps) {
+export function ImageEvidence({ imageUrls = [], onImagesChange, referenceImage, referenceLabel, wasteType, weight, onUploadingChange }: ImageEvidenceProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { profile } = useLiffContext()
+
+  const startUploading = (uploading: boolean) => {
+    setIsUploading(uploading)
+    onUploadingChange?.(uploading)
+  }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     try {
-      setIsUploading(true)
+      startUploading(true)
       setError(null)
 
       // The Blob, not the data URL — it goes straight to storage now.
@@ -208,7 +220,9 @@ export function ImageEvidence({ imageUrls = [], onImagesChange, referenceImage, 
     } catch (err) {
       setError('เกิดข้อผิดพลาดในการบีบอัดรูป')
     } finally {
-      setIsUploading(false)
+      startUploading(false)
+      // Same file picked again after a failure must re-fire onChange.
+      e.target.value = ''
     }
   }
 

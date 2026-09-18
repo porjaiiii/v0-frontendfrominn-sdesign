@@ -31,11 +31,15 @@ interface WasteDetailModalProps {
   /**
    * Drops the deleted record from the list behind the modal.
    *
-   * Absent means no delete button: that is how staff looking at somebody
-   * else's records (waste-cart's `admin` mode) never see one, matching a route
-   * that authorises with the caller's own LINE identity and would answer 404.
+   * Absent means no delete button.
    */
   onDeleted?: (record: WasteRecord) => void | Promise<void>
+  /**
+   * Staff deleting from somebody else's cart. /api/waste/cancel takes the
+   * owner from the caller's LINE token and would answer 404, so this goes
+   * through /api/admin/waste/cancel with the owner named in the body.
+   */
+  admin?: boolean
   isConfirming?: boolean
   isEditing?: boolean
 }
@@ -70,6 +74,7 @@ export function WasteDetailModal({
   onClose,
   onConfirm,
   onDeleted,
+  admin = false,
   isConfirming = false,
   isEditing = false,
 }: WasteDetailModalProps) {
@@ -259,10 +264,15 @@ const handleDeleteClick = async () => {
   try {
     setIsDeleting(true)
 
-    const response = await apiFetch('/api/waste/cancel', {
-      method: 'POST',
-      body: JSON.stringify({ timestamp: record.timestamp }),
-    })
+    const response = admin
+      ? await apiFetch('/api/admin/waste/cancel', {
+          method: 'POST',
+          body: JSON.stringify({ user_id: record.user_id, timestamp: record.timestamp }),
+        })
+      : await apiFetch('/api/waste/cancel', {
+          method: 'POST',
+          body: JSON.stringify({ timestamp: record.timestamp }),
+        })
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))

@@ -224,10 +224,10 @@ export function WasteCart({
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onConfirm={handleConfirmRecord}
-        // Owner-only, like every other edit control here: /api/waste/cancel
-        // derives the owner from the LINE token, so staff viewing somebody
-        // else's cart get no button rather than a button that 404s.
-        onDeleted={admin ? undefined : handleRecordDeleted}
+        // Staff delete through /api/admin/waste/cancel; the modal picks the
+        // route from `admin`.
+        onDeleted={handleRecordDeleted}
+        admin={admin}
         isConfirming={isConfirming}
         isEditing={isEditingMode}
       />

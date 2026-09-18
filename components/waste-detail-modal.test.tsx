@@ -58,7 +58,7 @@ describe('WasteDetailModal delete', () => {
     })
   }
 
-  async function render(record = pendingRecord) {
+  async function render(record = pendingRecord, admin = false) {
     await act(async () => {
       root.render(
         <WasteDetailModal
@@ -67,6 +67,7 @@ describe('WasteDetailModal delete', () => {
           onClose={() => {}}
           onConfirm={() => {}}
           onDeleted={onDeleted}
+          admin={admin}
         />,
       )
     })
@@ -123,6 +124,21 @@ describe('WasteDetailModal delete', () => {
     expect(path).toBe('/api/waste/cancel')
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body as string)).toEqual({ timestamp: pendingRecord.timestamp })
+    expect(onDeleted).toHaveBeenCalledWith(pendingRecord)
+  })
+
+  it('lets staff delete from somebody else\'s cart through the admin route', async () => {
+    await render(pendingRecord, true)
+
+    await click(buttons('ลบรายการ')[0])
+    await click(buttons('ยืนยันลบ')[0])
+
+    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(path).toBe('/api/admin/waste/cancel')
+    expect(JSON.parse(init.body as string)).toEqual({
+      user_id: pendingRecord.user_id,
+      timestamp: pendingRecord.timestamp,
+    })
     expect(onDeleted).toHaveBeenCalledWith(pendingRecord)
   })
 

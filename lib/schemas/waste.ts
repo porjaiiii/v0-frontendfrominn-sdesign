@@ -174,3 +174,13 @@ export const cancelWasteSchema = z.object({
 })
 
 export type CancelWasteInput = z.infer<typeof cancelWasteSchema>
+
+/**
+ * POST /api/admin/waste/cancel — staff name the owner explicitly, because the
+ * owner cannot come from a LINE token that belongs to the staff member.
+ */
+export const adminCancelWasteSchema = cancelWasteSchema.extend({
+  user_id: lineUserIdSchema,
+})
+
+export type AdminCancelWasteInput = z.infer<typeof adminCancelWasteSchema>

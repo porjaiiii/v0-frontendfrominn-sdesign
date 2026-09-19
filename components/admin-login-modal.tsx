@@ -16,6 +16,7 @@ interface AdminLoginModalProps {
 const ERROR_MESSAGES: Record<string, string> = {
   KEY_INVALID: 'Admin Key ไม่ถูกต้อง หรือไม่มีในระบบ',
   KEY_TAKEN: 'Key นี้ถูกผูกกับบัญชีอื่นแล้ว ไม่สามารถใช้ได้',
+  FRESH_LOGIN_REQUIRED: 'กำลังพาไปยืนยันตัวตนกับ LINE — กลับมาแล้วกรุณาใส่ Admin Key อีกครั้ง',
   NETWORK_ERROR: 'ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่อีกครั้ง',
   UNKNOWN_ERROR: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
 }

@@ -36,9 +36,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ADMIN_SESSION_NOT_CONFIGURED' }, { status: 503 })
     }
 
-    const identity = await getLineIdentity(request)
+    // A fresh LINE ID token, not the session cookie: binding a single-use key
+    // to an account deserves proof that is minutes old, not days.
+    //
+    // The caller may well be signed in — their session cookie still works for
+    // everything else — but requireBearer refuses that cookie here, and with
+    // sessions the client no longer forces a re-login just because the ID
+    // token in hand has expired. FRESH_LOGIN_REQUIRED tells it to send the
+    // user through LINE for one, rather than a generic Unauthorized the UI
+    // has no useful way to act on.
+    const identity = await getLineIdentity(request, { requireBearer: true })
     if (!identity) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'FRESH_LOGIN_REQUIRED' }, { status: 401 })
     }
 
     try {

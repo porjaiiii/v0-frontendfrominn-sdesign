@@ -5,10 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { fakeLineIdToken } from '../tests/fake-line-token'
 
-// The LIFF session lives 12 hours; the ID token it mints lives one. Refreshing
-// that token means a redirect through LINE, so it has to happen while the user
-// has nothing in progress to lose — at init, and when the webview is resumed.
-// Reopening a LIFF app hours later is exactly the reported 401.
+// The server session can outlive the one-hour ID token LIFF mints by up to
+// eleven hours. Login only has to go through LINE when GET /api/session says
+// there is no usable session — never merely because the token in hand has
+// expired.
 
 const sdk = vi.hoisted(() => ({
   token: null as string | null,
@@ -25,6 +25,7 @@ vi.mock('@line/liff', () => ({
     getProfile: sdk.getProfile,
     isLoggedIn: () => sdk.loggedIn,
     getIDToken: () => sdk.token,
+    getDecodedIDToken: () => (sdk.token ? { sub: 'U_test_user' } : null),
     isInClient: () => true,
     getOS: () => 'ios',
     getLanguage: () => 'th',
@@ -34,9 +35,16 @@ vi.mock('@line/liff', () => ({
 
 import { useLiff, type UseLiffReturn } from './use-liff'
 
-describe('useLiff keeps the ID token fresh', () => {
+const activeSessionResponse = (lineUserId = 'U_test_user') =>
+  new Response(JSON.stringify({ lineUserId, expiresAt: null }), { status: 200 })
+const noSessionResponse = () => new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+
+describe('useLiff keeps the session alive', () => {
   let container: HTMLDivElement
   let root: Root
+  let fetchMock: ReturnType<typeof vi.fn>
+  /** What GET /api/session answers the next time it is called. */
+  let sessionAnswer: () => Response
 
   /** Mounts the hook and hands back its latest value. */
   async function renderHook(): Promise<() => UseLiffReturn> {
@@ -62,12 +70,16 @@ describe('useLiff keeps the ID token fresh', () => {
     sdk.login.mockClear()
     sdk.init.mockClear()
     sdk.getProfile.mockClear()
+    sessionAnswer = () => activeSessionResponse()
+    fetchMock = vi.fn(async () => sessionAnswer())
+    vi.stubGlobal('fetch', fetchMock)
     container = document.createElement('div')
     root = createRoot(container)
   })
 
   afterEach(() => {
     act(() => root.unmount())
+    vi.unstubAllGlobals()
   })
 
   it('leaves a healthy session alone', async () => {
@@ -76,42 +88,78 @@ describe('useLiff keeps the ID token fresh', () => {
     expect(sdk.login).not.toHaveBeenCalled()
   })
 
-  it('re-logs in when the session outlived its ID token', async () => {
-    sdk.token = fakeLineIdToken(-36_000)
+  it('re-logs in at startup when the server has no session', async () => {
+    sessionAnswer = noSessionResponse
 
     await renderHook()
 
     expect(sdk.login).toHaveBeenCalledWith({ redirectUri: window.location.href })
   })
 
-  it('re-logs in when a backgrounded webview is resumed with a dead token', async () => {
+  it('re-logs in when a backgrounded webview is resumed with a dead token and no session', async () => {
     await renderHook()
     sdk.token = fakeLineIdToken(-36_000)
+    sessionAnswer = noSessionResponse
 
     await act(async () => {
       document.dispatchEvent(new Event('visibilitychange'))
+      // The resume handler fires ensureSession() without awaiting it, so the
+      // event dispatch above resolves before the mocked fetch chain does.
+      // Flushing a macrotask lets every pending microtask — the fetch mock,
+      // res.json(), checkSession's parsing — settle first.
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     expect(sdk.login).toHaveBeenCalledWith({ redirectUri: window.location.href })
   })
 
-  it('re-logs in when iOS restores the page from the back/forward cache', async () => {
+  it('checks but does not re-login when a backgrounded webview is resumed with a dead token and a live session', async () => {
+    await renderHook()
+    sdk.token = fakeLineIdToken(-36_000)
+    // sessionAnswer is left as the default (active) — the server still
+    // vouches for this login, so the dead token in hand is not a reason to
+    // redirect.
+
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/session', expect.anything())
+    expect(sdk.login).not.toHaveBeenCalled()
+  })
+
+  it('re-logs in when the session belongs to a different LINE account', async () => {
+    // A fresh token for U_test_user (the default), but the server's session is
+    // someone else's — could only happen if the session outlived a device or
+    // browser-profile switch. Trusting the cookie here would sign the caller
+    // in as the wrong account, so this is treated the same as no session.
+    sessionAnswer = () => activeSessionResponse('U_other')
+
+    await renderHook()
+
+    expect(sdk.login).toHaveBeenCalledWith({ redirectUri: window.location.href })
+  })
+
+  it('re-logs in when iOS restores the page from the back/forward cache with no session', async () => {
     // Safari serves a bfcache restore without re-running init, and on iOS the
     // LINE webview is where this session sat for ten hours.
     await renderHook()
     sdk.token = fakeLineIdToken(-36_000)
+    sessionAnswer = noSessionResponse
 
     await act(async () => {
       window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     expect(sdk.login).toHaveBeenCalledWith({ redirectUri: window.location.href })
   })
 
-  it('does not redirect twice when login comes back still stale', async () => {
-    // A wrong LINE_CHANNEL_ID or a broken clock would otherwise bounce the user
-    // through LINE forever instead of letting the 401 surface.
-    sdk.token = fakeLineIdToken(-36_000)
+  it('does not redirect twice when the server still has no session', async () => {
+    // A wrong LINE_CHANNEL_ID or a broken clock would otherwise bounce the
+    // user through LINE forever instead of letting the 401 surface.
+    sessionAnswer = noSessionResponse
 
     await renderHook()
     act(() => root.unmount())
@@ -127,5 +175,8 @@ describe('useLiff keeps the ID token fresh', () => {
     const hook = await renderHook()
 
     expect(hook().getIDToken()).toBeNull()
+    // The default session answer is active, so startup with a dead token must
+    // not redirect — that is the entire point of the session cookie.
+    expect(sdk.login).not.toHaveBeenCalled()
   })
 })

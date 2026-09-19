@@ -105,9 +105,10 @@ export function PointsProvider({ children }: { children: ReactNode }) {
     setError(null)
     try {
       // apiFetch, not fetch: GET /api/points derives the caller from the LINE
-      // ID token. Without the header the route answers 401, which falls through
-      // to the generic error below and tells a signed-in user their points
-      // could not be loaded.
+      // ID token. apiFetch attaches it while it is fresh; after that the
+      // session cookie carries the request. A caller with neither falls
+      // through to the generic error below and tells a signed-in user their
+      // points could not be loaded.
       const res = await apiFetch(
         `/api/points?action=get_account_fast&user_id=${encodeURIComponent(uid)}`,
         { cache: 'no-store' }

@@ -178,6 +178,15 @@ describe('with only the session cookie', () => {
     await setCookie(startSession(ALICE))
     expect(await getLineIdentity(request(), { requireBearer: true })).toBeNull()
   })
+
+  it('requireBearer refuses an expired token even with a live cookie', async () => {
+    await setCookie(startSession(ALICE))
+    const identity = await getLineIdentity(
+      request({ token: await expiredIdToken(ALICE) }),
+      { requireBearer: true },
+    )
+    expect(identity).toBeNull()
+  })
 })
 
 describe('without USER_SESSION_SECRET', () => {

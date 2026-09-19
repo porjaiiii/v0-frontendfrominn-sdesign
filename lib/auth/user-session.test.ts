@@ -43,10 +43,17 @@ const T0 = 1_800_000_000
 beforeEach(() => {
   jar.clear()
   vi.stubEnv('USER_SESSION_SECRET', SECRET)
+  // secret() logs when USER_SESSION_SECRET is short or (in production) unset.
+  // Several tests below stub exactly that, so every test spies on these —
+  // otherwise which tests happen to run first decides whether the module's
+  // once-per-process flag has already fired, and output stops being pristine.
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
 
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.restoreAllMocks()
 })
 
 describe('session lifetimes', () => {
@@ -148,6 +155,20 @@ describe('without a usable secret', () => {
     await writeSession(startSession('U1'))
     expect(jar.has(USER_SESSION_COOKIE)).toBe(false)
   })
+
+  it('logs the short secret exactly once, however many times it is read', async () => {
+    // The flag that bounds the log to once is module-level state, so a fresh
+    // module instance is the only way to see it unset.
+    vi.resetModules()
+    vi.stubEnv('USER_SESSION_SECRET', 'too-short')
+    const fresh = await import('./user-session')
+
+    fresh.userSessionsEnabled()
+    fresh.userSessionsEnabled()
+    await fresh.encodeSession(fresh.startSession('U1'))
+
+    expect(console.error).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('the cookie', () => {
@@ -170,5 +191,12 @@ describe('the cookie', () => {
     await writeSession(startSession('U1'))
     await clearSession()
     expect(jar.has(USER_SESSION_COOKIE)).toBe(false)
+  })
+
+  it('marks the cookie Secure in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    await writeSession(startSession('U1'))
+    const { options } = jar.get(USER_SESSION_COOKIE)!
+    expect(options!.secure).toBe(true)
   })
 })

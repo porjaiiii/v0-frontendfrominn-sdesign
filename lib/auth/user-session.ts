@@ -41,8 +41,32 @@ export interface UserSession {
   auth: number
 }
 
+/**
+ * Set once this process has logged the secret's status, so a value read on
+ * every request logs at most once rather than on every one of them.
+ */
+let loggedSecretStatus = false
+
 function secret(): string | null {
   const value = process.env.USER_SESSION_SECRET?.trim()
+
+  if (!loggedSecretStatus) {
+    loggedSecretStatus = true
+    if (value && value.length < 32) {
+      console.error(
+        '[user-session] USER_SESSION_SECRET is set but under 32 characters — ' +
+          'sessions are OFF; every request needs a fresh LINE ID token.',
+      )
+    } else if (!value && process.env.NODE_ENV === 'production') {
+      // Not an error outside production: tests and local dev routinely run
+      // with no secret at all, and that is the supported Bearer-only mode.
+      console.warn(
+        '[user-session] USER_SESSION_SECRET is not set — ' +
+          'sessions are OFF; every request needs a fresh LINE ID token.',
+      )
+    }
+  }
+
   return value && value.length >= 32 ? value : null
 }
 

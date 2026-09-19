@@ -47,6 +47,17 @@ function secret(): string | null {
 }
 
 /**
+ * The HMAC key user sessions are signed with. Labelled, so a session token can
+ * never verify as an admin token (lib/auth/admin-session.ts) — not even if
+ * USER_SESSION_SECRET and ADMIN_SESSION_SECRET are set to the same value, when
+ * a user could otherwise replay their own dwa_session cookie as dwa_admin.
+ */
+function signingKey(): string | null {
+  const key = secret()
+  return key ? `dwa_session:${key}` : null
+}
+
+/**
  * Whether sessions are switched on. Without a usable USER_SESSION_SECRET no
  * cookie is issued or accepted and getLineIdentity() falls back to the ID
  * token alone — how the app behaved before sessions existed — rather than
@@ -94,7 +105,7 @@ export function isDueForReauth(session: UserSession, at: number = nowSeconds()):
 }
 
 export async function encodeSession(session: UserSession): Promise<string | null> {
-  const key = secret()
+  const key = signingKey()
   return key ? signToken(key, session) : null
 }
 
@@ -103,7 +114,7 @@ export async function decodeSession(
   token: string | undefined,
   at: number = nowSeconds(),
 ): Promise<UserSession | null> {
-  const key = secret()
+  const key = signingKey()
   if (!key || !token) return null
 
   const claims = await verifyToken(key, token)

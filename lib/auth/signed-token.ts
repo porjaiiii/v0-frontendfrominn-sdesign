@@ -7,8 +7,11 @@ import 'server-only'
 // secret in the claims.
 //
 // Shared by the admin session (lib/auth/admin-session.ts) and the user session
-// (lib/auth/user-session.ts). They sign with DIFFERENT secrets, which is what
-// stops one being presented as the other.
+// (lib/auth/user-session.ts). They sign with different secrets, but that alone
+// is not what stops one being presented as the other: the user session also
+// labels its key (lib/auth/user-session.ts's signingKey()), so the separation
+// no longer depends on operators choosing different values for
+// USER_SESSION_SECRET and ADMIN_SESSION_SECRET.
 
 const VERSION = 'v1'
 

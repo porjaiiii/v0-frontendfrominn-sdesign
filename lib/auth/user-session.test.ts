@@ -18,6 +18,7 @@ vi.mock('next/headers', () => ({
   }),
 }))
 
+import { verifyAdminToken } from './admin-session'
 import { signToken } from './signed-token'
 import {
   ABSOLUTE_TTL_SECONDS,
@@ -117,8 +118,17 @@ describe('encoding', () => {
   })
 
   it('rejects a correctly signed token of the wrong shape', async () => {
-    const adminShaped = await signToken(SECRET, { sub: 'U1', exp: T0 + 60 })
+    // Signed with the labelled key (`dwa_session:${SECRET}`), matching what
+    // encodeSession actually signs with — otherwise this would pass because
+    // the key does not match, not because the shape check runs.
+    const adminShaped = await signToken(`dwa_session:${SECRET}`, { sub: 'U1', exp: T0 + 60 })
     expect(await decodeSession(adminShaped, T0)).toBeNull()
+  })
+
+  it('a session token never verifies as an admin token, even under the same secret', async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', SECRET)
+    const token = await encodeSession(startSession('U1', 'sid-1', T0))
+    expect(await verifyAdminToken(token ?? undefined)).toBeNull()
   })
 })
 

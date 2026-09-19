@@ -3,42 +3,49 @@
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface CarbonResultModalProps {
   isOpen: boolean
   onClose: () => void
-  carbonAmount: number
+  /** null when the live rates never loaded, so no estimate can be shown. */
+  carbonAmount: number | null
   noWeight?: boolean
-  pointsEarned?: number
+  pointsEarned?: number | null
   showQR?: boolean
   qrData?: string
   onSubmit?: () => void
   onNext?: () => void
 }
 
+type CollectionMethod = 'pickup' | 'dropoff'
+
 export function CarbonResultModal({
   isOpen,
   onClose,
   carbonAmount,
   noWeight = false,
-  pointsEarned = 100,
+  pointsEarned,
   showQR = false,
   qrData,
   onSubmit,
   onNext,
 }: CarbonResultModalProps) {
   const router = useRouter()
-  const [collectionMethod, setCollectionMethod] = useState<string | null>(null)
+  const [collectionMethod, setCollectionMethod] = useState<CollectionMethod | null>(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      setCollectionMethod(null)
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
-  const treesEquivalent = Math.floor(carbonAmount / 9.5)
-
-  const handleHistory = () => {
-    onClose()
-    router.push('/history')
-  }
+  // "—" rather than 0: a carbon figure of zero reads as "you saved nothing",
+  // which is a different claim from "the rate could not be loaded".
+  const carbonText = carbonAmount === null ? '—' : carbonAmount.toFixed(0)
+  const treesEquivalent = carbonAmount === null ? null : Math.floor(carbonAmount / 9.5)
 
   const handleDone = () => {
     if (!collectionMethod) return
@@ -47,129 +54,133 @@ export function CarbonResultModal({
     else onClose()
   }
 
+  const methodOptions: Array<{
+    id: CollectionMethod
+    label: string
+    detail: string
+    icon: string
+  }> = [
+    {
+      id: 'pickup',
+      label: 'นัดรับขยะ',
+      detail: 'เจ้าหน้าที่จะเข้ารับขยะที่บ้านของคุณ',
+      icon: '🏠',
+    },
+    {
+      id: 'dropoff',
+      label: 'ส่งขยะเลย',
+      detail: 'นำขยะมาส่งที่จุดรับขยะตามเวลาที่กำหนด',
+      icon: '📍',
+    },
+  ]
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 sm:items-center sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm overflow-hidden">
-        {/* Success header with seedling icon on top */}
-        <div className="px-6 pt-6 pb-4 border-b border-[#e5e5e5] flex flex-col items-center gap-2">
-          <div className="text-4xl">&#127807;</div>
-          <h2 className="text-lg font-semibold text-[#154212]">บันทึกข้อมูลสำเร็จ</h2>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-[#f7f7f7] rounded-[24px] sm:rounded-[30px] w-full max-w-[380px] max-h-[90vh] overflow-y-auto border-[2px] border-[#1f8f47]/40 shadow-[0_20px_60px_rgba(0,0,0,0.12)]">
+        {/* หัวข้อ */}
+        <div className="px-4 pt-4 pb-1 bg-[#f7f7f7] mx-3 mt-2 rounded-[16px] flex flex-col items-center gap-1 text-center">
+          <div className="text-[32px] leading-none">&#127807;</div>
+          <h2 className="text-[20px] font-bold text-[#154212] leading-tight tracking-tight">
+            บันทึกข้อมูลสำเร็จ
+          </h2>
         </div>
 
-        {noWeight ? (
-          /* Simple popup when weight is unknown */
-          <div className="px-6 py-8 flex flex-col items-center text-center gap-4">
-            <p className="text-sm text-[#555555] leading-relaxed">
-              ระบบได้บันทึกข้อมูลเรียบร้อยแล้ว<br />
-              ขอบคุณที่ส่งข้อมูลเข้ามา<br />
-              เจ้าหน้าที่จะเข้าดำเนินการเก็บและรับขยะในภายหลัง
-            </p>
-          </div>
-        ) : (
-          /* Full carbon summary when weight is known */
-          <div className="px-6 py-6 space-y-6">
-            {/* Success message */}
-            <div className="flex flex-col items-center text-center gap-3">
-              <p className="text-sm text-[#555555] leading-relaxed">
-                ระบบได้บันทึกข้อมูลเรียบร้อยแล้ว<br />
-                ขอบคุณที่ส่งข้อมูลเข้ามา<br />
-                เจ้าหน้าที่จะเข้าดำเนินการเก็บและรับขยะในภายหลัง
+        {/* รายละเอียด */}
+        <div className="px-4 py-2">
+          <p className="text-center text-[13px] leading-relaxed text-[#333333]">
+            ระบบได้บันทึกข้อมูลเรียบร้อยแล้ว<br />
+            ขอบคุณที่ส่งข้อมูลเข้ามา<br />
+            เจ้าหน้าที่จะเข้าดำเนินการเก็บและรับขยะในภายหลัง
+          </p>
+        </div>
+
+        {/* สรุปผลคาร์บอน */}
+        {!noWeight && (
+          <div className="px-4 pb-2">
+            <div className="rounded-[16px] bg-[#f7f7f7] px-3 py-3 border border-gray-100">
+              <h3 className="text-center text-[18px] font-bold text-[#111111] leading-tight">
+                สรุปผลคาร์บอน
+              </h3>
+              <p className="mt-0.5 text-center text-[12px] text-[#444444]">
+                คุณช่วยลดการปล่อยก๊าซเรือนกระจกได้
               </p>
-            </div>
 
-            {/* Collection method selector (visual placeholder for the next flow) */}
-            <div className="space-y-3">
-              <div className="text-center">
-                <h3 className="text-2xl font-bold text-[#111111]">ต้องการส่งขยะแบบไหน?</h3>
-                <p className="mt-1 text-sm text-[#d00000]">*โปรดระบุ</p>
-              </div>
-
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  aria-pressed={collectionMethod === 'walk-in'}
-                  onClick={() => setCollectionMethod('walk-in')}
-                  className={cn(
-                    'w-full rounded-2xl border-2 px-4 py-2.5 text-center transition-colors',
-                    collectionMethod === 'walk-in'
-                      ? 'border-[#16851a] bg-[#c5e2c2]'
-                      : 'border-[#16851a] bg-[#d5ead2] hover:bg-[#c5e2c2]'
-                  )}
-                >
-                  <span className="block text-lg font-semibold text-[#111111]">
-                    📍 นำมาส่งด้วยตนเอง (Walk-in)
-                  </span>
-                  <span className="block text-sm font-medium text-[#111111]">
-                    นำขยะมาส่งที่จุดรับขยะตามเวลาที่กำหนด
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  aria-pressed={collectionMethod === 'pickup'}
-                  onClick={() => setCollectionMethod('pickup')}
-                  className={cn(
-                    'w-full rounded-2xl border-2 px-4 py-2.5 text-center transition-colors',
-                    collectionMethod === 'pickup'
-                      ? 'border-[#16851a] bg-[#c5e2c2]'
-                      : 'border-[#16851a] bg-[#d5ead2] hover:bg-[#c5e2c2]'
-                  )}
-                >
-                  <span className="block text-lg font-semibold text-[#111111]">
-                    🏠 ให้เจ้าหน้าที่เข้ารับ
-                  </span>
-                  <span className="block text-sm font-medium text-[#111111]">
-                    เลือกวันและเวลาที่สะดวก
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Carbon summary */}
-            <div className="space-y-2">
-              <h3 className="text-2xl font-bold text-[#154212]">สรุปผลคาร์บอน</h3>
-              <p className="text-sm text-[#555555]">คุณช่วยลดการปล่อยก๊าซเรือนกระจกได้</p>
-
-              {/* Big number */}
-              <div className="text-center py-4">
-                <span className="text-7xl font-bold text-[#154212] leading-none">
-                  {Number(carbonAmount || 0).toFixed(2)}
+              <div className="mt-1 text-center">
+                <span className="block text-[44px] font-black leading-[0.9] tracking-[-0.06em] text-[#111111]">
+                  {carbonText}
                 </span>
+                <span className="mt-1 block text-[16px] font-semibold text-[#111111]">kgCO2e</span>
               </div>
 
-              <p className="text-center text-2xl font-semibold text-[#444444]">kgCO2e</p>
-            </div>
-
-            {/* Tree comparison box with 3D tree image */}
-            <div className="bg-[#f5f5f5] rounded-2xl p-4 flex items-center gap-3">
-              <div className="relative w-14 h-14 shrink-0">
-                <Image src="/images/trees-3d.png" alt="ต้นไม้" fill className="object-contain" />
+              <div className="mt-2 flex items-center justify-center gap-2 rounded-[12px] bg-[#f1f4f1] p-2 text-center">
+                <div className="relative h-8 w-8 shrink-0">
+                  <Image src="/images/trees-3d.png" alt="ต้นไม้" fill className="object-contain" />
+                </div>
+                <p className="text-[12px] leading-snug text-[#2b2b2b]">
+                  เทียบเท่ากับคุณช่วยบำรุง<br />
+                  ปลูกต้นไม้เพิ่ม {treesEquivalent ?? '—'} ต้นแล้ว!
+                </p>
               </div>
-              <p className="text-sm text-[#444444] leading-snug">
-                เทียบเท่ากับคุณช่วยบางเจ้า<br />
-                ปลูกต้นไม้เพิ่ม {treesEquivalent} ต้นแล้ว!
-              </p>
             </div>
           </div>
         )}
 
-        {/* Footer buttons */}
-        <div className="px-6 pb-8 flex gap-3">
-      
-          <button
-            type="button"
-            onClick={handleDone}
-            disabled={!collectionMethod}
-            className={cn(
-              'flex-1 py-3 rounded-full font-semibold text-sm transition-colors',
-              !noWeight && !collectionMethod
-                ? 'cursor-not-allowed bg-[#d1d5db] text-[#6b7280]'
-                : 'bg-[#154212] text-white hover:bg-[#0d3308]'
-            )}
-          >
-            เสร็จสิ้น
-          </button>
+        {/* ปุ่มตัวเลือก (ไอคอนซ้าย, เตี้ยลง, สดสีเขียวเมื่อเลือก) */}
+        <div className="px-4 py-2">
+          <div className="grid grid-cols-2 gap-2">
+            {methodOptions.map((option) => {
+              const selected = collectionMethod === option.id
+
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setCollectionMethod(option.id)}
+                  className={cn(
+                    'flex items-center justify-center gap-2 rounded-[14px] border-[2px] px-3 py-2 transition-all duration-200',
+                    selected
+                      ? 'border-[#1d7f36] bg-[#1d7f36] text-white shadow-[0_4px_12px_rgba(29,127,54,0.22)]'
+                      : 'border-[#d5d5d5] bg-[#f5f5f5] text-[#111111] hover:border-[#86bde3] hover:bg-[#eef7ff]'
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-base',
+                      selected ? 'bg-white/20' : 'bg-white'
+                    )}
+                  >
+                    {option.icon}
+                  </span>
+                  <span className="text-[14px] font-bold leading-tight">{option.label}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
+
+        {/* หมายเหตุวันที่ */}
+        <div className="px-4 pb-2 text-center">
+          <p className="text-[12px] text-[#111111] leading-relaxed">
+            เจ้าหน้าที่จะเข้ามารับขยะในสัปดาห์ถัดไปตามตารางเวลาที่ได้แจ้ง<br />
+            เวลา 10.00 - 16.00 น.
+          </p>
+          <p className="mt-1 text-[11px] font-medium text-[#d02b2b]">
+            * หมายเหตุ : หากไม่สะดวกวันเวลาดังกล่าว โปรดแจ้งผ่านไลน์ *
+          </p>
+        </div>
+
+        {/* ปุ่มเสร็จสิ้น */}
+        {collectionMethod && (
+          <div className="px-4 pb-4 pt-1">
+            <button
+              type="button"
+              onClick={handleDone}
+              className="w-full rounded-[14px] bg-[#1d7f36] py-2.5 text-[18px] font-bold text-white shadow-[0_8px_16px_rgba(29,127,54,0.25)] transition-all hover:bg-[#186b2d]"
+            >
+              เสร็จสิ้น
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -111,6 +111,14 @@ export async function isRegistered(lineUserId: string): Promise<boolean> {
   return data !== null
 }
 
+// listRegisteredLineUserIds() lived here: it paged out EVERY registered LINE
+// user id for GAS #3's syncRegisteredUsersToMenuB(). Removed along with
+// GET /api/registered, because a LINE user id is the key the rest of this API
+// is addressed by, and a bulk source of them is worth more to an attacker than
+// the repair tool it served was worth to us — that tool has not worked since
+// the Supabase migration anyway. The per-user check, isRegistered() above,
+// stays: GAS #3 calls it on every follow to pick the right rich menu.
+
 // ---------------------------------------------------------------------------
 // Waste records
 // ---------------------------------------------------------------------------
@@ -134,6 +142,10 @@ export async function getWasteRecords(lineUserId: string): Promise<WasteRecordsR
     // and a concatenated expression degrades to GenericStringError.
     .select('line_user_id, waste_type_id, waste_subtype_id, weight_kg, image_urls, carbon_reduction_kg, points_earned, status, notes, recorded_at')
     .eq('line_user_id', lineUserId)
+    // A cancelled record is one the user deleted. The row is kept so the
+    // deletion is auditable and confirm_waste can still refuse it, but it must
+    // not come back to the cart it was deleted from, or count in `stats`.
+    .neq('status', 'cancelled')
     .order('recorded_at', { ascending: false })
 
   if (error) throw error
@@ -372,8 +384,15 @@ export async function getCo2Collection(lineUserId: string): Promise<Co2EntryResp
 // Leaderboard
 // ---------------------------------------------------------------------------
 
+/**
+ * Server-internal row: a wire entry plus the LINE id it is keyed on. The id
+ * backs the caller lookup and must be stripped before the rows reach a
+ * browser — see app/api/points/ranking/route.ts.
+ */
+export type LeaderboardRow = RankingEntry & { lineUserId: string }
+
 export interface LeaderboardResult {
-  ranking: RankingEntry[]
+  ranking: LeaderboardRow[]
   byUser: Record<string, { location: string; isTourist: boolean }>
 }
 
@@ -394,7 +413,7 @@ export async function getLeaderboard(limit = 200): Promise<LeaderboardResult> {
   if (error) throw error
 
   const byUser: LeaderboardResult['byUser'] = {}
-  const ranking: RankingEntry[] = (data ?? []).map((row, index) => {
+  const ranking: LeaderboardRow[] = (data ?? []).map((row, index) => {
     const lineUserId = str(row.line_user_id)
     byUser[lineUserId] = {
       location: str(row.subdistrict),
@@ -409,6 +428,8 @@ export async function getLeaderboard(limit = 200): Promise<LeaderboardResult> {
       avatar: FALLBACK_AVATAR,
       location: str(row.subdistrict),
       isTourist: row.is_tourist ?? false,
+      // Set per viewer in the route; the cached rows are viewer-independent.
+      isYou: false,
     }
   })
 

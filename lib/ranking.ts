@@ -4,9 +4,17 @@
 // app/api/points/ranking/route.ts both imported a type from while neither ever
 // fetched it. That route is deleted; this module is its only surviving part.
 
+/**
+ * What the leaderboard sends to the browser.
+ *
+ * Deliberately has NO lineUserId. This endpoint is public and uncached per
+ * viewer, so every field here is readable by anyone: it used to ship the real
+ * LINE user id of the top 200 users, which is the one identifier the rest of
+ * the API is keyed on. The page only ever used that id to answer "is this row
+ * me?", so the server answers that question directly with `isYou` instead.
+ */
 export type RankingEntry = {
   rank: number
-  lineUserId: string
   name: string
   carbon: number
   /**
@@ -20,7 +28,17 @@ export type RankingEntry = {
   // นักท่องเที่ยว (tourist). Tourists are grouped together regardless of any
   // (possibly stale) ตำบล value on their profile.
   isTourist?: boolean
+  /** True on the caller's own row, derived server-side from their LINE token. */
+  isYou: boolean
 }
+
+/**
+ * Server-internal row: the wire entry plus the id it is keyed on.
+ *
+ * Stays inside the process — it backs the shared cache and the caller lookup.
+ * Anything returned to a browser must be a RankingEntry.
+ */
+export type LeaderboardRow = RankingEntry & { lineUserId: string }
 
 export const FALLBACK_AVATAR = '/placeholder.svg?height=40&width=40'
 
@@ -32,13 +50,13 @@ export const TOURIST_USER_TYPE = 'นักท่องเที่ยว'
 
 /** Shown when the backing store is empty or unreachable. */
 export const SAMPLE_RANKING: Omit<RankingEntry, 'rank'>[] = [
-  { lineUserId: 'Usample001', name: 'สมชาย ใจดี',      carbon: 256.5, points: 2565, avatar: FALLBACK_AVATAR, location: 'ตำบลบางกะเจ้า' },
-  { lineUserId: 'Usample002', name: 'สมหญิง รักษ์โลก', carbon: 234.3, points: 2343, avatar: FALLBACK_AVATAR, location: 'ตำบลบางน้ำผึ้ง' },
-  { lineUserId: 'Usample003', name: 'มนัส เกื้อกูล',   carbon: 112.4, points: 1124, avatar: FALLBACK_AVATAR, location: 'ตำบลบางกอบัว' },
-  { lineUserId: 'Usample004', name: 'กมลา ตาวุดีมี',   carbon: 89.0,  points: 890,  avatar: FALLBACK_AVATAR, location: '' },
-  { lineUserId: 'Usample005', name: 'ณัฐพล สิริมงคล',  carbon: 78.0,  points: 780,  avatar: FALLBACK_AVATAR, location: 'ตำบลบางกระสอบ' },
-  { lineUserId: 'Usample006', name: 'วรรณา เจริญสุข',  carbon: 76.0,  points: 760,  avatar: FALLBACK_AVATAR, location: 'ตำบลบางยอ' },
-  { lineUserId: 'Usample007', name: 'ประยุทธ รุ่งเรือง', carbon: 74.0, points: 740, avatar: FALLBACK_AVATAR, location: 'ตำบลทรงคะนอง' },
+  { name: 'สมชาย ใจดี',      carbon: 256.5, points: 2565, avatar: FALLBACK_AVATAR, location: 'ตำบลบางกะเจ้า', isYou: false },
+  { name: 'สมหญิง รักษ์โลก', carbon: 234.3, points: 2343, avatar: FALLBACK_AVATAR, location: 'ตำบลบางน้ำผึ้ง', isYou: false },
+  { name: 'มนัส เกื้อกูล',   carbon: 112.4, points: 1124, avatar: FALLBACK_AVATAR, location: 'ตำบลบางกอบัว', isYou: false },
+  { name: 'กมลา ตาวุดีมี',   carbon: 89.0,  points: 890,  avatar: FALLBACK_AVATAR, location: '', isYou: false },
+  { name: 'ณัฐพล สิริมงคล',  carbon: 78.0,  points: 780,  avatar: FALLBACK_AVATAR, location: 'ตำบลบางกระสอบ', isYou: false },
+  { name: 'วรรณา เจริญสุข',  carbon: 76.0,  points: 760,  avatar: FALLBACK_AVATAR, location: 'ตำบลบางยอ', isYou: false },
+  { name: 'ประยุทธ รุ่งเรือง', carbon: 74.0, points: 740, avatar: FALLBACK_AVATAR, location: 'ตำบลทรงคะนอง', isYou: false },
 ]
 
 /** The caller's own grouping info, so the ตำบล tab works before they have points. */

@@ -66,8 +66,10 @@ describe('transformRegistration', () => {
   })
 
   it('maps an EMPTY reference value to null, never to an empty string', () => {
-    // '' would violate the FK to app.ref_gender etc.; null is what the column
-    // is nullable FOR. Four real rows have a blank ตำบล.
+    // '' used to violate the FK to app.ref_gender etc. (dropped in 0011);
+    // null is still what the column is nullable FOR, and what
+    // lib/schemas/register.ts now normalises '' to. Four real rows have a
+    // blank ตำบล.
     const { users, quarantined } = transformRegistration([
       REG_HEADER,
       regRow({ 'เพศ': '', 'ตำบล': '', 'อาชีพ': '' }),

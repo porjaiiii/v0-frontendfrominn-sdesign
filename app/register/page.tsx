@@ -9,31 +9,18 @@ import { PageHeader } from '@/components/page-header'
 import { useLiffContext } from '@/lib/liff-context'
 import { generateUserIdFromLineId } from '@/lib/user-id-generator'
 import { setCachedRegisteredLineId } from '@/lib/registration-cookie'
+import { apiFetch } from '@/lib/api-client'
+// One list, shared with lib/schemas/register.ts — the API rejects anything not
+// on it, so a value offered here that the schema does not know would be a 400
+// the user cannot do anything about.
+import {
+  AGE_RANGES,
+  GENDERS,
+  OCCUPATIONS,
+  SUBDISTRICTS,
+  USER_TYPES,
+} from '@/lib/registration-options'
 
-const OCCUPATIONS = [
-  'ผู้ประกอบการ (ร้านค้า/โฮมสเตย์)',
-  'เกษตรกร',
-  'ข้าราชการ/พนักงานของรัฐ',
-  'พนักงานบริษัทเอกชน',
-  'รับจ้างทั่วไป',
-  'นักเรียน/นักศึกษา',
-  'ผู้เกษียณอายุ/ว่างงาน',
-  'อื่นๆ',
-]
-
-const SUBDISTRICTS = [
-  'ทรงคนอง',
-  'บางกระสอบ',
-  'บางน้ำผึ้ง',
-  'บางยอ',
-  'บางกอบัว',
-  'บางกะเจ้า',
-  'อื่น ๆ',
-]
-
-const GENDERS = ['ชาย', 'หญิง', 'LGBTQ+', 'ไม่ระบุ']
-const AGE_RANGES = ['ต่ำกว่า 25', '26-45', '46-60', '61 ปีขึ้นไป']
-const USER_TYPES = ['คนในชุมชนคุ้งบางกะเจ้า', 'นักท่องเที่ยว']
 
 // Tour steps — fieldId matches the id attribute on each form field
 const TOUR_STEPS = [
@@ -103,7 +90,7 @@ function SelectField({
   placeholder,
   highlighted = false,
 }: {
-  options: string[]
+  options: readonly string[]
   value: string
   onChange: (val: string) => void
   placeholder: string
@@ -136,7 +123,7 @@ function ChoiceGroup({
   multi = false,
   highlighted = false,
 }: {
-  options: string[]
+  options: readonly string[]
   value: string | string[]
   onChange: (val: string) => void
   multi?: boolean
@@ -237,7 +224,7 @@ function RegisterPageContent() {
   // In edit mode: fetch existing profile data and pre-fill the form
   useEffect(() => {
     if (!isEditMode || !profile?.userId) return
-    fetch(`/api/profile/${encodeURIComponent(profile.userId)}`, { cache: 'no-store' })
+    apiFetch(`/api/profile/${encodeURIComponent(profile.userId)}`, { cache: 'no-store' })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (!data) return

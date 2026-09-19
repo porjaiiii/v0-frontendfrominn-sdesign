@@ -32,7 +32,11 @@ supabase/.branches/
 CLAUDE.md
 
 # ── Sensitive: Apps Script export ─────────────────────────────────────────
-# GAS #3's source carries the live REGISTRATION_WEBHOOK_SECRET, the admin's
-# LINE userId and spreadsheet ids. Kept locally as a reference for the one
-# script still in the request path (lib/notify-registration.ts); not tracked.
-google-apps-script/GAS3/
+# The Apps Script sources carry the live REGISTRATION_WEBHOOK_SECRET, the
+# admin's LINE userId and spreadsheet ids (GAS #3 especially). Kept locally as
+# a reference for the one script still in the request path
+# (lib/notify-registration.ts); not tracked. Code comments still cite paths
+# under here as documentation pointers.
+google-apps-script/
+
+architecture.drawio

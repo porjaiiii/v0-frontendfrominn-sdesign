@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   mapWasteRecords,
   parseImageUrls,
+  resolveWasteSubtypeId,
+  resolveWasteTypeId,
   wasteSubtypeName,
   wasteTypeName,
 } from '@/lib/waste-records'
@@ -94,5 +96,65 @@ describe('waste label lookups', () => {
   it('falls back to the raw id for unknown type or subtype', () => {
     expect(wasteSubtypeName('plastic', 'nope')).toBe('nope')
     expect(wasteSubtypeName('nope', 'pet')).toBe('pet')
+  })
+})
+
+// The inverse direction, and the reason it exists: components/waste-detail-modal.tsx
+// used to put `sub.name` in the subtype <option value>, so an edit sent
+// 'ขวดน้ำพลาสติกใส' where waste_records.waste_subtype_id expects 'pet' — a 400
+// from the composite FK waste_records_subtype_fk on every type/subtype change.
+describe('resolveWasteTypeId', () => {
+  it('passes a catalog id through untouched', () => {
+    expect(resolveWasteTypeId('plastic')).toBe('plastic')
+  })
+
+  it('maps a Thai label back to its id', () => {
+    expect(resolveWasteTypeId('พลาสติก')).toBe('plastic')
+    expect(resolveWasteTypeId('กระดาษ')).toBe('paper')
+    expect(resolveWasteTypeId('แก้ว')).toBe('glass')
+    expect(resolveWasteTypeId('อลูมิเนียม')).toBe('aluminum')
+  })
+
+  it('ignores surrounding whitespace', () => {
+    expect(resolveWasteTypeId('  พลาสติก  ')).toBe('plastic')
+  })
+
+  // Deliberate: app.waste_types is the real catalog and can gain rows this
+  // bundle has never heard of. Rejecting here would break them.
+  it('passes an unknown value through so the database decides', () => {
+    expect(resolveWasteTypeId('titanium')).toBe('titanium')
+  })
+})
+
+describe('resolveWasteSubtypeId', () => {
+  it('passes a catalog id through untouched', () => {
+    expect(resolveWasteSubtypeId('plastic', 'pet')).toBe('pet')
+  })
+
+  it('maps a Thai label back to its id within the type', () => {
+    expect(resolveWasteSubtypeId('plastic', 'ขวดน้ำพลาสติกใส')).toBe('pet')
+    expect(resolveWasteSubtypeId('glass', 'ขวดแก้วรวม')).toBe('colored')
+  })
+
+  // The <option> rendered the name with newlines collapsed but submitted the
+  // raw value, so both spellings have to resolve.
+  it('matches a multi-line label in either spelling', () => {
+    expect(resolveWasteSubtypeId('paper', 'กระดาษนิตยสาร\nหนังสือพิมพ์')).toBe('mixed')
+    expect(resolveWasteSubtypeId('paper', 'กระดาษนิตยสาร หนังสือพิมพ์')).toBe('mixed')
+  })
+
+  it('finds the label across every type when the type is unknown or absent', () => {
+    expect(resolveWasteSubtypeId(undefined, 'กระป๋องอลูมิเนียม')).toBe('can')
+    expect(resolveWasteSubtypeId('nope', 'ขวดน้ำพลาสติกใส')).toBe('pet')
+  })
+
+  // 'pet' is not a paper subtype, but inventing one would be worse than letting
+  // the FK speak: the pair is genuinely wrong.
+  it('passes an id that belongs to another type through unchanged', () => {
+    expect(resolveWasteSubtypeId('paper', 'pet')).toBe('pet')
+  })
+
+  it('passes an unknown value through so the database decides', () => {
+    expect(resolveWasteSubtypeId('plastic', 'nope')).toBe('nope')
   })
 })

@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/page-header'
 import { ChevronLeft, Calendar, AlertCircle } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import { useLiffContext } from '@/lib/liff-context'
+import { apiFetch } from '@/lib/api-client'
 import { usePoints } from '@/lib/points-context'
 import {
   wasteTypeName,
@@ -43,7 +44,7 @@ export default function HistoryDetailPage() {
     if (!userId || !id) return
     const controller = new AbortController()
     setLoading(true)
-    fetch(`/api/waste/records?user_id=${encodeURIComponent(userId)}`, { signal: controller.signal })
+    apiFetch(`/api/waste/records?user_id=${encodeURIComponent(userId)}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         const records = (data?.records ?? []) as WasteRecord[]

@@ -22,6 +22,16 @@ interface WasteCardProps {
   onSave: (record: WasteRecord) => void
   isSaving?: boolean
   isAnySaving?: boolean
+  /**
+   * Hides แก้ไข / ยืนยันข้อมูล, leaving the record visible but not actionable.
+   *
+   * For staff viewing someone else's records. Confirming goes through
+   * /api/waste/update, which awards the points to whoever's LINE token signed
+   * the request — so a staff member pressing it would credit THEIR OWN
+   * account, not the user they are looking at. The buttons never worked here;
+   * they only looked as though they did.
+   */
+  readOnly?: boolean
 }
 
 const WASTE_TYPE_THAI: Record<string, string> = {
@@ -37,7 +47,8 @@ export function WasteCard({
   onEdit, 
   onSave, 
   isSaving = false,
-  isAnySaving = false
+  isAnySaving = false,
+  readOnly = false
 }: WasteCardProps) {
   const wasteTypeThai = WASTE_TYPE_THAI[record.waste_type] || record.waste_type
 
@@ -105,7 +116,7 @@ export function WasteCard({
         </div>
       </div>
 
-      {/* Action Buttons */}
+   {/* Action Buttons */}
       <div className="flex gap-2 px-3 pb-3">
         <button
           onClick={() => onEdit(record, true)}

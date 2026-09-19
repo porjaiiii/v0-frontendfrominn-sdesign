@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { X, CheckCircle2, Camera, Loader2 } from 'lucide-react'
+import { X, CheckCircle2, Camera, Loader2, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WASTE_TYPES, WASTE_SUBTYPES } from '@/lib/waste-data'
 import { apiFetch, displaySrc, uploadWastePhoto, useIdempotencyKey } from '@/lib/api-client'
 import { useApp } from '@/lib/app-context'
 import { compressImage } from '@/lib/compress-image'
-import { carbonFactorFor, pointsPerKgFor, type WasteRate, WASTE_RATES } from '@/lib/rates'
+import { wasteSubtypeName, wasteTypeName } from '@/lib/waste-records'
+import { carbonFactorFor, pointsPerKgFor, type WasteRates } from '@/lib/rates'
 
 interface WasteRecord {
   timestamp: string
@@ -27,17 +28,44 @@ interface WasteDetailModalProps {
   isOpen: boolean
   onClose: () => void
   onConfirm: (record: WasteRecord) => void | Promise<void>
+  /**
+   * Drops the deleted record from the list behind the modal.
+   *
+   * Absent means no delete button.
+   */
+  onDeleted?: (record: WasteRecord) => void | Promise<void>
+  /**
+   * Staff deleting from somebody else's cart. /api/waste/cancel takes the
+   * owner from the caller's LINE token and would answer 404, so this goes
+   * through /api/admin/waste/cancel with the owner named in the body.
+   */
+  admin?: boolean
   isConfirming?: boolean
   isEditing?: boolean
 }
 
-function recalculate(
-  record: WasteRecord,
-  rates: Record<string, WasteRate> = WASTE_RATES,
-): WasteRecord {
-  const carbonReduction = record.weight_kg * carbonFactorFor(record.waste_type, rates)
-  const pointsEarned = Math.round(record.weight_kg * pointsPerKgFor(record.waste_type, rates))
-  return { ...record, carbon_reduction: carbonReduction, points_earned: pointsEarned }
+/**
+ * The on-screen estimate, or nulls while the live rates are unknown.
+ *
+ * There is no static rate table to fall back on any more — showing a number
+ * from one would mean showing an estimate the server may not agree with. The
+ * record still saves: app.confirm_waste prices it from app.waste_types.
+ */
+type RecordEstimate = Omit<WasteRecord, 'carbon_reduction' | 'points_earned'> & {
+  /** null while the live rates are unknown — rendered as "—". */
+  carbon_reduction: number | null
+  points_earned: number | null
+}
+
+function recalculate(record: WasteRecord | RecordEstimate, rates: WasteRates): RecordEstimate {
+  const carbonFactor = carbonFactorFor(record.waste_type, rates)
+  const pointsPerKg = pointsPerKgFor(record.waste_type, rates)
+
+  return {
+    ...record,
+    carbon_reduction: carbonFactor === null ? null : record.weight_kg * carbonFactor,
+    points_earned: pointsPerKg === null ? null : Math.round(record.weight_kg * pointsPerKg),
+  }
 }
 
 export function WasteDetailModal({
@@ -45,11 +73,17 @@ export function WasteDetailModal({
   isOpen,
   onClose,
   onConfirm,
+  onDeleted,
+  admin = false,
   isConfirming = false,
   isEditing = false,
 }: WasteDetailModalProps) {
-  const [editedRecord, setEditedRecord] = useState<WasteRecord | null>(null)
+  const [editedRecord, setEditedRecord] = useState<RecordEstimate | null>(null)
   const [isSavingApi, setIsSavingApi] = useState(false)
+  // Two taps to delete. There is no undo once the record leaves the cart, and
+  // this modal has no dialog of its own to ask in.
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   // Photos whose upload failed. Shown to the user, never sent to the server —
   // see handleFileChange.
   const [localPreviews, setLocalPreviews] = useState<string[]>([])
@@ -71,6 +105,8 @@ export function WasteDetailModal({
       setWeightDisplay(record.weight_kg > 0 ? String(record.weight_kg) : '')
       setUploadError(null)
       setWeightError(null)
+      // Never inherit an armed delete from the record shown before this one.
+      setIsConfirmingDelete(false)
     }
   }, [record])
 
@@ -86,9 +122,14 @@ export function WasteDetailModal({
   }
 
   // เมื่อเปลี่ยน waste_type ให้ reset subtype เป็นค่าแรกของประเภทใหม่
+  //
+  // `.id`, not `.name`. waste_records stores ids and enforces the pair with a
+  // composite FK (waste_type_id, waste_subtype_id), so sending the Thai label
+  // here was a 400 on every type change:
+  //   violates foreign key constraint "waste_records_subtype_fk"
   const handleTypeChange = (newType: string) => {
     const subtypes = WASTE_SUBTYPES[newType as keyof typeof WASTE_SUBTYPES] ?? []
-    const firstSubtype = subtypes[0]?.name ?? ''
+    const firstSubtype = subtypes[0]?.id ?? ''
     updateField({ waste_type: newType, waste_subtype: firstSubtype })
   }
 
@@ -136,6 +177,9 @@ export function WasteDetailModal({
 
   const shownWeight = isFocused ? weightDisplay : (editedRecord && editedRecord.weight_kg > 0 ? String(editedRecord.weight_kg) : '')
 
+  const subtypeOptions =
+    WASTE_SUBTYPES[editedRecord?.waste_type as keyof typeof WASTE_SUBTYPES] ?? []
+
   // --- image upload handler (copy pattern จาก ImageEvidence ใน weight-input.tsx) ---
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0]
@@ -182,6 +226,16 @@ export function WasteDetailModal({
   }
 }
 
+  const handleRemoveLocalPreview = (index: number) => {
+    setLocalPreviews((prev) => {
+      const url = prev[index]
+      if (url) URL.revokeObjectURL(url)
+      return prev.filter((_, i) => i !== index)
+    })
+    // The banner refers to the photo that was just discarded, so it goes too.
+    setUploadError(null)
+  }
+
   const handleRemoveImage = (index: number) => {
     if (!editedRecord) return
 
@@ -189,6 +243,54 @@ export function WasteDetailModal({
       image_urls: editedRecord.image_urls.filter((_, imageIndex) => imageIndex !== index),
     })
   }
+
+/**
+ * Deletes the record, on the second tap.
+ *
+ * Only offered for `pending` records: once points are awarded, removing the
+ * record would leave them with nothing behind them, so /api/waste/cancel
+ * answers 409 and the record stays where it is. That can also happen between
+ * opening this modal and pressing delete, which is why the failure is shown
+ * rather than assumed away.
+ */
+const handleDeleteClick = async () => {
+  if (!record || isDeleting) return
+
+  if (!isConfirmingDelete) {
+    setIsConfirmingDelete(true)
+    return
+  }
+
+  try {
+    setIsDeleting(true)
+
+    const response = admin
+      ? await apiFetch('/api/admin/waste/cancel', {
+          method: 'POST',
+          body: JSON.stringify({ user_id: record.user_id, timestamp: record.timestamp }),
+        })
+      : await apiFetch('/api/waste/cancel', {
+          method: 'POST',
+          body: JSON.stringify({ timestamp: record.timestamp }),
+        })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      alert('ไม่สามารถลบรายการได้: ' + (error.error || 'Unknown error'))
+      setIsConfirmingDelete(false)
+      return
+    }
+
+    await onDeleted?.(record)
+    onClose()
+  } catch (error) {
+    console.error('[waste-detail-modal] delete failed:', error)
+    alert('ไม่สามารถลบรายการได้ กรุณาลองใหม่')
+    setIsConfirmingDelete(false)
+  } finally {
+    setIsDeleting(false)
+  }
+}
 
 const handleConfirmClick = async () => {
   if (!editedRecord) return
@@ -221,8 +323,14 @@ const handleConfirmClick = async () => {
       confirmKey.reset()
     }
 
-    // อาจจะต้องปรับ type ของ onConfirm ถ้ารับค่าต่างกัน
-    await onConfirm(editedRecord)
+    // The estimate is the caller's concern only for display. An unknown rate
+    // becomes 0 here rather than travelling further: the server reprices the
+    // record from app.waste_types and ignores both of these fields.
+    await onConfirm({
+      ...editedRecord,
+      carbon_reduction: editedRecord.carbon_reduction ?? 0,
+      points_earned: editedRecord.points_earned ?? 0,
+    })
     onClose()
   } catch (error) {
     alert('เกิดข้อผิดพลาด: ' + (error instanceof Error ? error.message : 'Unknown error'))
@@ -287,6 +395,16 @@ const handleConfirmClick = async () => {
     {localPreviews.map((url, i) => (
       <div key={`local-${i}`} className="relative rounded-xl overflow-hidden h-32 border border-red-300">
         <Image src={url} alt="รูปที่ยังไม่ได้อัปโหลด" fill className="object-cover opacity-60" />
+        {/* Without this the failed photo is a dead end: it cannot be saved and
+            cannot be dismissed, so the user is stuck looking at it. */}
+        <button
+          type="button"
+          onClick={() => handleRemoveLocalPreview(i)}
+          aria-label={`ลบรูปที่อัปโหลดไม่สำเร็จที่ ${i + 1}`}
+          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+        >
+          ×
+        </button>
         <div className="absolute inset-x-0 bottom-0 bg-red-500/90 text-white text-[10px] text-center py-1">
           ยังไม่ได้อัปโหลด
         </div>
@@ -308,6 +426,9 @@ const handleConfirmClick = async () => {
   </div>
   
   {isUploading && <p className="text-xs text-[#154212]">กำลังอัปโหลด...</p>}
+  {/* Was set on every failed upload and never rendered, so the photo simply
+      turned red with no explanation. */}
+  {uploadError && <p className="text-xs text-[#c06161] font-medium">{uploadError}</p>}
 </div>
           ) : (
             /* View mode: แสดงรูปอย่างเดียว */
@@ -340,6 +461,14 @@ const handleConfirmClick = async () => {
                 onChange={(e) => handleTypeChange(e.target.value)}
                 className="w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold bg-white appearance-none"
               >
+                {/* 'oil' is in app.waste_types but retired (is_active false)
+                    and absent from WASTE_TYPES, so an older record would show
+                    as พลาสติก while state still held 'oil'. */}
+                {!WASTE_TYPES.some((wt) => wt.id === editedRecord.waste_type) && (
+                  <option value={editedRecord.waste_type}>
+                    {wasteTypeName(editedRecord.waste_type)}
+                  </option>
+                )}
                 {WASTE_TYPES.map((wt) => (
                   <option key={wt.id} value={wt.id}>
                     {wt.name}
@@ -362,15 +491,25 @@ const handleConfirmClick = async () => {
                 onChange={(e) => updateField({ waste_subtype: e.target.value })}
                 className="w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold bg-white appearance-none"
               >
-                {(WASTE_SUBTYPES[editedRecord.waste_type as keyof typeof WASTE_SUBTYPES] ?? []).map((sub) => (
-                  <option key={sub.id} value={sub.name}>
+                {/* A record with no subtype, or one this bundle predates, would
+                    otherwise render as the first option while state held
+                    something else — the select would lie about what it saves. */}
+                {!subtypeOptions.some((sub) => sub.id === editedRecord.waste_subtype) && (
+                  <option value={editedRecord.waste_subtype}>
+                    {editedRecord.waste_subtype
+                      ? wasteSubtypeName(editedRecord.waste_type, editedRecord.waste_subtype)
+                      : 'เลือกประเภทย่อย'}
+                  </option>
+                )}
+                {subtypeOptions.map((sub) => (
+                  <option key={sub.id} value={sub.id}>
                     {sub.name.replace(/\n/g, ' ')}
                   </option>
                 ))}
               </select>
             ) : (
               <div className="w-full border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold bg-white">
-                {editedRecord.waste_subtype}
+                {wasteSubtypeName(editedRecord.waste_type, editedRecord.waste_subtype)}
               </div>
             )}
           </div>
@@ -422,8 +561,8 @@ const handleConfirmClick = async () => {
               แต้มที่ได้รับ{isEditing ? ' (คำนวณอัตโนมัติจากน้ำหนัก)' : ' (คำนวณอัตโนมัติ)'}
             </p>
             <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg cursor-default">
-              {editedRecord.points_earned} แต้ม
-              {isEditing && editedRecord.weight_kg > 0 && (
+              {editedRecord.points_earned ?? '—'} แต้ม
+              {isEditing && editedRecord.weight_kg > 0 && pointsPerKgFor(editedRecord.waste_type, wasteRates) !== null && (
                 <span className="text-xs text-[#888888] font-normal ml-2">
                   ({editedRecord.weight_kg} กก. × {pointsPerKgFor(editedRecord.waste_type, wasteRates)} แต้ม/กก.)
                 </span>
@@ -435,7 +574,10 @@ const handleConfirmClick = async () => {
           <div>
             <p className="text-xs text-[#666666] font-medium mb-2">หมายเหตุ</p>
             <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold cursor-default">
-              {(editedRecord.carbon_reduction ?? 0).toFixed(4)} kg CO2
+              {editedRecord.carbon_reduction === null
+                ? '—'
+                : editedRecord.carbon_reduction.toFixed(4)}{' '}
+              kg CO2
             </div>
           </div>
 
@@ -486,6 +628,28 @@ const handleConfirmClick = async () => {
   )
 )}
           </div>
+
+          {/* Deleting a cart item added by mistake. Gone once confirmed — the
+              record is marked cancelled server-side and leaves this list.
+              Shown in edit mode too: แก้ไข on the card is the only way this
+              modal opens, so hiding it there hid it everywhere. */}
+          {onDeleted && record?.status === 'pending' && (
+            <button
+              onClick={handleDeleteClick}
+              disabled={isDeleting || isSavingApi || isConfirming}
+              className={cn(
+                'w-full mt-3 px-4 py-3 font-semibold rounded-full transition-colors flex items-center justify-center gap-2 border-2',
+                isDeleting || isSavingApi || isConfirming
+                  ? 'border-[#e5e5e5] text-[#999999] cursor-not-allowed'
+                  : isConfirmingDelete
+                    ? 'border-[#c0392b] bg-[#c0392b] text-white hover:bg-[#a93226]'
+                    : 'border-[#d4d4d4] text-[#c0392b] hover:bg-[#fdf0ee]',
+              )}
+            >
+              <Trash2 size={20} />
+              {isDeleting ? 'กำลังลบ...' : isConfirmingDelete ? 'ยืนยันลบ' : 'ลบรายการ'}
+            </button>
+          )}
         </div>
       </div>
     </div>

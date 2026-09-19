@@ -7,18 +7,23 @@ import { cn } from '@/lib/utils'
 import { MapPin } from 'lucide-react'
 import Link from 'next/link'
 import type { RankingEntry } from '@/lib/ranking'
+import { apiFetch } from '@/lib/api-client'
 import { useLiffContext } from '@/lib/liff-context'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 
 type LeaderboardEntry = {
   rank: number
-  lineUserId?: string
   name: string
   carbon: number
   location: string
   avatar: string
   isTourist: boolean
+  /**
+   * Set by the server from the caller's LINE token. The API no longer returns
+   * anyone's lineUserId, so this is how a row is recognised as the viewer's.
+   */
+  isYou: boolean
 }
 
 // Strip the ตำบล / ต. prefix so the same sub-district written different ways
@@ -137,11 +142,9 @@ export default function RankingPage() {
     const controller = new AbortController()
     setIsLoading(true)
     setFetchError(null)
-    const params = new URLSearchParams()
-    if (liffProfile?.userId) params.set('userId', liffProfile.userId)
-    if (liffProfile?.displayName) params.set('name', liffProfile.displayName)
-    const url = `/api/points/ranking${params.toString() ? `?${params}` : ''}`
-    fetch(url, { signal: controller.signal })
+    // apiFetch: the route identifies the caller from the LINE ID token, which
+    // is what marks their own row. It used to take ?userId= on trust.
+    apiFetch('/api/points/ranking', { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         if (data.error) {
@@ -151,12 +154,12 @@ export default function RankingPage() {
         setRealLeaderboard(
           (data.ranking as RankingEntry[]).map(e => ({
             rank: e.rank,
-            lineUserId: e.lineUserId,
             name: e.name,
             carbon: e.carbon,
             location: e.location,
             avatar: e.avatar,
             isTourist: e.isTourist ?? false,
+            isYou: e.isYou,
           }))
         )
         setIsSampleData(data.isSample)
@@ -174,15 +177,13 @@ export default function RankingPage() {
   // Patch the logged-in user's name/avatar from LIFF (API falls back to ผู้ใช้ X when profile sheet lacks the entry)
   const leaderboard = liffProfile
     ? baseLeaderboard.map(e =>
-        e.lineUserId === liffProfile.userId
+        e.isYou
           ? { ...e, name: liffProfile.displayName, avatar: liffProfile.pictureUrl ?? e.avatar }
           : e
       )
     : baseLeaderboard
 
-  const currentUserEntry = liffProfile
-    ? baseLeaderboard.find(u => u.lineUserId === liffProfile.userId)
-    : undefined
+  const currentUserEntry = baseLeaderboard.find(u => u.isYou)
 
   const currentUser = {
     rank: currentUserEntry?.rank ?? 0,
@@ -215,9 +216,7 @@ export default function RankingPage() {
   // rank in the ตำบล tab, the overall rank in the ทั้งหมด tab. It's read straight
   // from displayLeaderboard (which is filtered per tab), so switching tabs keeps
   // the sticky in sync. If the user isn't in the active list, hide it (rank 0).
-  const currentUserDisplayEntry = displayLeaderboard.find(e =>
-    liffProfile != null && e.lineUserId === liffProfile.userId
-  )
+  const currentUserDisplayEntry = displayLeaderboard.find(e => e.isYou)
   const stickyRank = currentUserDisplayEntry?.rank ?? 0
 
   const getRankBadge = (rank: number) => {
@@ -380,7 +379,7 @@ export default function RankingPage() {
                     : u.rank === 2
                     ? 'brightness(0) saturate(100%) invert(70%)'                                                                                // silver
                     : 'brightness(0) saturate(100%) invert(44%) sepia(72%) saturate(1600%) hue-rotate(-12deg) brightness(85%)'                 // bronze/red
-                  const isPodiumCurrent = liffProfile != null && u.lineUserId === liffProfile.userId
+                  const isPodiumCurrent = u.isYou
                   const avatarMissing = isMissingAvatar(u.avatar)
                   return (
                     <div key={u.rank} ref={isPodiumCurrent ? currentUserRowRef : undefined} className="flex flex-col items-center relative">
@@ -392,7 +391,7 @@ export default function RankingPage() {
                         )}
                       </div>
                       <div className="text-sm font-medium text-[#154212] mb-2 text-center">
-                        {obfuscateName(u.name, u.rank === currentUser.rank || u.name === currentUser.name || u.lineUserId === liffProfile?.userId)}
+                        {obfuscateName(u.name, u.rank === currentUser.rank || u.name === currentUser.name || u.isYou)}
                       </div>
                       <div
                         className="w-28 rounded-t-lg flex flex-col items-center justify-start gap-1 shadow-inner"
@@ -448,7 +447,7 @@ export default function RankingPage() {
                   ) : (
                     <div className="space-y-2">
                       {listEntries.map((user) => {
-                        const isCurrent = liffProfile != null && user.lineUserId === liffProfile.userId
+                        const isCurrent = user.isYou
                         const displayUser = isCurrent
                           ? { ...user, name: currentUser.name, avatar: currentUser.avatar }
                           : user

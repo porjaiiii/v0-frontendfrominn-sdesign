@@ -1,3 +1,7 @@
+// NOTE: hand-edited after 0011_drop_ref_tables.sql removed app.ref_gender,
+// ref_age_range, ref_subdistrict and ref_occupation. Regenerate with
+// `pnpm db:types` (needs a local Supabase) to confirm this matches the real
+// schema — that command could not be run when the tables were dropped.
 export type Json =
   | string
   | number
@@ -424,78 +428,6 @@ export type Database = {
           },
         ]
       }
-      ref_age_range: {
-        Row: {
-          is_active: boolean
-          sort_order: number
-          value: string
-        }
-        Insert: {
-          is_active?: boolean
-          sort_order?: number
-          value: string
-        }
-        Update: {
-          is_active?: boolean
-          sort_order?: number
-          value?: string
-        }
-        Relationships: []
-      }
-      ref_gender: {
-        Row: {
-          is_active: boolean
-          sort_order: number
-          value: string
-        }
-        Insert: {
-          is_active?: boolean
-          sort_order?: number
-          value: string
-        }
-        Update: {
-          is_active?: boolean
-          sort_order?: number
-          value?: string
-        }
-        Relationships: []
-      }
-      ref_occupation: {
-        Row: {
-          is_active: boolean
-          sort_order: number
-          value: string
-        }
-        Insert: {
-          is_active?: boolean
-          sort_order?: number
-          value: string
-        }
-        Update: {
-          is_active?: boolean
-          sort_order?: number
-          value?: string
-        }
-        Relationships: []
-      }
-      ref_subdistrict: {
-        Row: {
-          is_active: boolean
-          sort_order: number
-          value: string
-        }
-        Insert: {
-          is_active?: boolean
-          sort_order?: number
-          value: string
-        }
-        Update: {
-          is_active?: boolean
-          sort_order?: number
-          value?: string
-        }
-        Relationships: []
-      }
       ref_user_type: {
         Row: {
           is_active: boolean
@@ -686,34 +618,6 @@ export type Database = {
           user_type?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "users_age_range_fkey"
-            columns: ["age_range"]
-            isOneToOne: false
-            referencedRelation: "ref_age_range"
-            referencedColumns: ["value"]
-          },
-          {
-            foreignKeyName: "users_gender_fkey"
-            columns: ["gender"]
-            isOneToOne: false
-            referencedRelation: "ref_gender"
-            referencedColumns: ["value"]
-          },
-          {
-            foreignKeyName: "users_occupation_fkey"
-            columns: ["occupation"]
-            isOneToOne: false
-            referencedRelation: "ref_occupation"
-            referencedColumns: ["value"]
-          },
-          {
-            foreignKeyName: "users_subdistrict_fkey"
-            columns: ["subdistrict"]
-            isOneToOne: false
-            referencedRelation: "ref_subdistrict"
-            referencedColumns: ["value"]
-          },
           {
             foreignKeyName: "users_user_type_fkey"
             columns: ["user_type"]

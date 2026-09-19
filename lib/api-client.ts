@@ -8,9 +8,12 @@ import { isIdTokenExpired } from './line-id-token'
 // One place that knows how to call our own API, so no call site can forget the
 // two headers that matter.
 //
-//   Authorization: Bearer <LINE ID token>  — the routes derive
-//     it. Every route derives the caller's identity from this token and
-//     ignores any user id in the body.
+//   Authorization: Bearer <LINE ID token>  — every route derives the caller's
+//     identity from getLineIdentity() and ignores any user id in the body. A
+//     fresh token also starts or refreshes the session cookie
+//     (lib/auth/user-session.ts), which the browser attaches to same-origin
+//     requests by itself and which keeps requests working once the token's
+//     hour is up.
 //
 //   Idempotency-Key — held in a useRef for the lifetime of one submit press, so
 //     a network retry, a double-tap or a second tab replays the SAME key and
@@ -50,10 +53,10 @@ export function setLiffSdkReady(ready: boolean): void {
  *
  * `isLoggedIn()` alone is not enough: it tracks the 12-hour LIFF session, while
  * the ID token it mints lives one hour, so it keeps returning true long after
- * getIDToken() has gone stale. Sending that stale token gets the same 401 as
- * sending nothing, but costs the round trip and hides the reason. Refreshing it
- * needs a redirect, which would destroy whatever the user was in the middle of,
- * so that is hooks/use-liff.ts's job at a moment when there is nothing to lose.
+ * getIDToken() has gone stale. A stale token proves nothing, so it is not sent;
+ * the session cookie carries the request instead. Getting a new token needs a
+ * redirect, which would destroy whatever the user was in the middle of, so
+ * that is hooks/use-liff.ts's job — and only when the session has lapsed too.
  */
 function getIdToken(): string | null {
   if (!sdkReady) return null

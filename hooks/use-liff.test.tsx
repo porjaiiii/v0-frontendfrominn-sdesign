@@ -113,6 +113,34 @@ describe('useLiff keeps the session alive', () => {
     expect(sdk.login).toHaveBeenCalledWith({ redirectUri: window.location.href })
   })
 
+  it('checks but does not re-login when a backgrounded webview is resumed with a dead token and a live session', async () => {
+    await renderHook()
+    sdk.token = fakeLineIdToken(-36_000)
+    // sessionAnswer is left as the default (active) — the server still
+    // vouches for this login, so the dead token in hand is not a reason to
+    // redirect.
+
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/session', expect.anything())
+    expect(sdk.login).not.toHaveBeenCalled()
+  })
+
+  it('re-logs in when the session belongs to a different LINE account', async () => {
+    // A fresh token for U_test_user (the default), but the server's session is
+    // someone else's — could only happen if the session outlived a device or
+    // browser-profile switch. Trusting the cookie here would sign the caller
+    // in as the wrong account, so this is treated the same as no session.
+    sessionAnswer = () => activeSessionResponse('U_other')
+
+    await renderHook()
+
+    expect(sdk.login).toHaveBeenCalledWith({ redirectUri: window.location.href })
+  })
+
   it('re-logs in when iOS restores the page from the back/forward cache with no session', async () => {
     // Safari serves a bfcache restore without re-running init, and on iOS the
     // LINE webview is where this session sat for ten hours.
@@ -147,5 +175,8 @@ describe('useLiff keeps the session alive', () => {
     const hook = await renderHook()
 
     expect(hook().getIDToken()).toBeNull()
+    // The default session answer is active, so startup with a dead token must
+    // not redirect — that is the entire point of the session cookie.
+    expect(sdk.login).not.toHaveBeenCalled()
   })
 })

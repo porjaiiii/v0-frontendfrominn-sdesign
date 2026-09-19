@@ -88,7 +88,8 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
     }
   }
 
-  const isDataComplete = (weight > 0 || noWeight) && imageEvidence.length > 0
+  // const isDataComplete = (weight > 0 || noWeight) && imageEvidence.length > 0
+  const isDataComplete = (weight > 0) && imageEvidence.length > 0 // change condition
    const isDataReady= (weight > 0 || noWeight) 
 
   // Called when "บันทึก" button is pressed

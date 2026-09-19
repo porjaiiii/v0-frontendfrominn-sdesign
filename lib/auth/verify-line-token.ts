@@ -33,6 +33,11 @@ const LINE_JWKS_URL = new URL('https://api.line.me/oauth2/v2.1/certs')
 export interface LineIdentity {
   /** The LINE user id — `sub`. This is app.users.line_user_id. */
   lineUserId: string
+  /**
+   * Only present when this identity came from a verified ID token — the
+   * session cookie carries nothing but `sub`, so an identity read from it
+   * alone has none of these.
+   */
   displayName?: string
   pictureUrl?: string
   email?: string

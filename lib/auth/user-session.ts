@@ -16,8 +16,9 @@ import { signToken, verifyToken } from './signed-token'
 // here, in a cookie whose lifetime is ours to choose.
 //
 // Stateless on purpose: the cookie carries everything and nothing is stored.
-// `sid` exists so a sessions table can be added later without logging anyone
-// out — see docs/superpowers/specs/2026-09-19-user-session-cookie-design.md.
+// `sid` exists so a sessions table — for revocation, or listing a user's
+// active logins — can be added later without logging anyone out: give it a
+// row keyed by sid instead of reissuing every outstanding cookie.
 
 export const USER_SESSION_COOKIE = 'dwa_session'
 

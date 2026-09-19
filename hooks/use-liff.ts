@@ -232,12 +232,13 @@ export function useLiff(liffId?: string): UseLiffReturn {
         setLoadingStep('fetching_profile')
 
         // The session check runs alongside the profile fetch — neither needs
-        // the other, so it adds no time to startup. It must finish before any
-        // page mounts (markReady below): with a fresh ID token it is what
+        // the other, so startup waits only for the slower of the two. It
+        // settles before markReady() below: with a fresh ID token it is what
         // creates the session cookie, and with a dead one it decides whether
-        // the cookie can carry on or LINE has to mint a new token. Pages
-        // opened straight from a URL — like /profile-view/[id] from a staff
-        // QR scan — go through this too; LiffProvider wraps every page.
+        // the cookie can carry on or LINE has to mint a new token. Data
+        // fetches wait for isReady, so pages opened straight from a URL — like
+        // /profile-view/[id] from a staff QR scan — go through this too;
+        // LiffProvider wraps every page.
         type ProfileAttempt = { ok: true; profile: LiffProfile } | { ok: false; error: unknown }
         const profileAttempt: Promise<ProfileAttempt> = liff.getProfile().then(
           (profile) => ({ ok: true as const, profile }),

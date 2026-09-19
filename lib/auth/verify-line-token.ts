@@ -2,13 +2,27 @@ import 'server-only'
 
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose'
 
+import { checkSameOrigin } from './same-origin'
+import {
+  isDueForReauth,
+  isDueForRenewal,
+  readSession,
+  renewSession,
+  startSession,
+  userSessionsEnabled,
+  writeSession,
+  type UserSession,
+} from './user-session'
+
 // Server-side verification of the LINE ID token that hooks/use-liff.ts obtains
 // via liff.getIDToken().
 //
-// This is the ONLY place line_user_id becomes trustworthy. Routes must derive
-// the id from here and never read it from a request body or query string —
-// every write path in the GAS era took the caller's word for who they were,
-// which is what made /api/points an open minting endpoint.
+// This is the ONLY place line_user_id becomes trustworthy — directly from a
+// verified token, or from the session cookie (lib/auth/user-session.ts) that
+// getLineIdentity() below issues only after verifying one. Routes must derive
+// the id from getLineIdentity() and never read it from a request body or query
+// string — every write path in the GAS era took the caller's word for who they
+// were, which is what made /api/points an open minting endpoint.
 //
 // Built before any route migrates, so every migrated route is born
 // authenticated.
@@ -22,6 +36,8 @@ export interface LineIdentity {
   displayName?: string
   pictureUrl?: string
   email?: string
+  /** The session cookie behind this identity, when sessions are enabled. */
+  session?: { sid: string; expiresAt: number }
 }
 
 export type VerifyResult =
@@ -131,17 +147,83 @@ export function getBearerToken(request: Request): string | null {
   return match ? match[1].trim() : null
 }
 
+export interface GetLineIdentityOptions {
+  /**
+   * Accept only a fresh LINE ID token, never the session cookie — for actions
+   * that must not ride on an old login, like activating an admin key.
+   */
+  requireBearer?: boolean
+}
+
 /**
  * Route helper: the verified LINE identity, or null.
  *
- * Always verifies a real ID token against LINE's JWKS — there is no bypass.
- * Local development authenticates through a real LIFF session, same as
- * production, so nothing in the auth path is environment-dependent.
+ * Two credentials, in this order:
+ *
+ *   1. A LINE ID token (`Authorization: Bearer`). Fresh proof from LINE always
+ *      wins, and tops up the session cookie while it is at it — creating it,
+ *      replacing one that belongs to another LINE account, or restarting one
+ *      LINE vouched for six or more hours ago.
+ *   2. The session cookie, which is what keeps the app working after the ID
+ *      token's hour is up. A write authenticated this way must also pass the
+ *      same-origin check (lib/auth/same-origin.ts), and a session past half
+ *      its life is slid forward.
+ *
+ * An expired or invalid token falls through to the cookie instead of failing
+ * the request: LINE webviews keep old bundles running, and those still send
+ * the dead token.
+ *
+ * There is no bypass. Local development authenticates through a real LIFF
+ * session, same as production.
  */
-export async function getLineIdentity(request: Request): Promise<LineIdentity | null> {
+export async function getLineIdentity(
+  request: Request,
+  options: GetLineIdentityOptions = {},
+): Promise<LineIdentity | null> {
   const token = getBearerToken(request)
-  if (!token) return null
+  const verified = token ? await verifyLineIdToken(token) : null
 
-  const result = await verifyLineIdToken(token)
-  return result.ok ? result.identity : null
+  if (verified && verified.ok) {
+    const session = await sessionVouchedFor(verified.identity.lineUserId)
+    return withSession(verified.identity, session)
+  }
+
+  if (options.requireBearer) return null
+
+  const session = await readSession()
+  if (!session) return null
+
+  const origin = checkSameOrigin(request)
+  if (!origin.ok) {
+    console.warn(`[auth] refused cookie-authenticated ${request.method}: ${origin.reason}`)
+    return null
+  }
+
+  if (isDueForRenewal(session)) {
+    const renewed = renewSession(session)
+    await writeSession(renewed)
+    return withSession({ lineUserId: renewed.sub }, renewed)
+  }
+
+  return withSession({ lineUserId: session.sub }, session)
+}
+
+/**
+ * The session once LINE has just vouched for `lineUserId`. Written only when
+ * it changes, so a steady stream of requests does not set a cookie on each.
+ */
+async function sessionVouchedFor(lineUserId: string): Promise<UserSession | null> {
+  if (!userSessionsEnabled()) return null
+
+  const existing = await readSession()
+  if (existing && existing.sub === lineUserId && !isDueForReauth(existing)) return existing
+
+  const sameLogin = existing?.sub === lineUserId
+  const fresh = startSession(lineUserId, sameLogin && existing ? existing.sid : undefined)
+  await writeSession(fresh)
+  return fresh
+}
+
+function withSession(identity: LineIdentity, session: UserSession | null): LineIdentity {
+  return session ? { ...identity, session: { sid: session.sid, expiresAt: session.exp } } : identity
 }

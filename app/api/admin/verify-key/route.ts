@@ -36,7 +36,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ADMIN_SESSION_NOT_CONFIGURED' }, { status: 503 })
     }
 
-    const identity = await getLineIdentity(request)
+    // A fresh LINE ID token, not the session cookie: binding a single-use key
+    // to an account deserves proof that is minutes old, not days.
+    const identity = await getLineIdentity(request, { requireBearer: true })
     if (!identity) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

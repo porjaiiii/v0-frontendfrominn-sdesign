@@ -730,6 +730,7 @@ export type Database = {
           image_path: string | null
           is_active: boolean
           name_th: string
+          points_per_kg: number | null
           sort_order: number
           waste_type_id: string
         }
@@ -739,6 +740,7 @@ export type Database = {
           image_path?: string | null
           is_active?: boolean
           name_th: string
+          points_per_kg?: number | null
           sort_order?: number
           waste_type_id: string
         }
@@ -748,6 +750,7 @@ export type Database = {
           image_path?: string | null
           is_active?: boolean
           name_th?: string
+          points_per_kg?: number | null
           sort_order?: number
           waste_type_id?: string
         }

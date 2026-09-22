@@ -59,7 +59,7 @@ type RecordEstimate = Omit<WasteRecord, 'carbon_reduction' | 'points_earned'> & 
 
 function recalculate(record: WasteRecord | RecordEstimate, rates: WasteRates): RecordEstimate {
   const carbonFactor = carbonFactorFor(record.waste_type, rates)
-  const pointsPerKg = pointsPerKgFor(record.waste_type, rates)
+  const pointsPerKg = pointsPerKgFor(record.waste_type, record.waste_subtype, rates)
 
   return {
     ...record,
@@ -562,9 +562,12 @@ const handleConfirmClick = async () => {
             </p>
             <div className="w-full bg-gray-100 border-2 border-[#d4d4d4] rounded-lg px-4 py-3 text-[#154212] font-semibold text-lg cursor-default">
               {editedRecord.points_earned ?? '—'} แต้ม
-              {isEditing && editedRecord.weight_kg > 0 && pointsPerKgFor(editedRecord.waste_type, wasteRates) !== null && (
+              {isEditing &&
+                editedRecord.weight_kg > 0 &&
+                pointsPerKgFor(editedRecord.waste_type, editedRecord.waste_subtype, wasteRates) !== null && (
                 <span className="text-xs text-[#888888] font-normal ml-2">
-                  ({editedRecord.weight_kg} กก. × {pointsPerKgFor(editedRecord.waste_type, wasteRates)} แต้ม/กก.)
+                  ({editedRecord.weight_kg} กก. ×{' '}
+                  {pointsPerKgFor(editedRecord.waste_type, editedRecord.waste_subtype, wasteRates)} แต้ม/กก.)
                 </span>
               )}
             </div>

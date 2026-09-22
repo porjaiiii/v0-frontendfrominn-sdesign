@@ -772,7 +772,6 @@ export type Database = {
           id: string
           is_active: boolean
           name_th: string
-          points_per_kg: number
           sort_order: number
           updated_at: string
         }
@@ -783,7 +782,6 @@ export type Database = {
           id: string
           is_active?: boolean
           name_th: string
-          points_per_kg: number
           sort_order?: number
           updated_at?: string
         }
@@ -794,7 +792,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           name_th?: string
-          points_per_kg?: number
           sort_order?: number
           updated_at?: string
         }

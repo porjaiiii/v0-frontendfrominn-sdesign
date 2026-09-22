@@ -44,7 +44,7 @@ export function CarbonResultModal({
 
   // "—" rather than 0: a carbon figure of zero reads as "you saved nothing",
   // which is a different claim from "the rate could not be loaded".
-  const carbonText = carbonAmount === null ? '—' : carbonAmount.toFixed(0)
+  const carbonText = carbonAmount === null ? '—' : carbonAmount.toFixed(2)
   const treesEquivalent = carbonAmount === null ? null : Math.floor(carbonAmount / 9.5)
 
   const handleDone = () => {

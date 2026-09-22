@@ -60,7 +60,7 @@ export function WasteCard({
 
   // ปุ่มยืนยันจะกดไม่ได้ ถ้า: ไม่มีรูปภาพ OR กำลังบันทึกการทำงานอยู่
   const isSubmitDisabled = !hasValidImages || isSaving || isAnySaving
-
+  console.log(hasValidImages, isSaving, isAnySaving, isSubmitDisabled)
  
   const handleSaveWithBonus = () => {
     const updatedRecord: WasteRecord = {

@@ -197,7 +197,10 @@ export interface ConfirmWasteResult {
 }
 
 /**
- * PUT /api/waste/update — weigh a cart item, mark it done, award the points.
+ * PUT /api/admin/waste/update — weigh a cart item, mark it done, award the
+ * points to `lineUserId`, the record's owner. Staff-only: the owner route
+ * /api/waste/update is retired, since owners confirming their own records
+ * could award themselves points at any weight.
  *
  * Exactly-once: a second call for the same record awards nothing and returns
  * the same body. This is the duplicated-transaction bug that prompted the
@@ -245,7 +248,8 @@ export async function confirmWaste(
 }
 
 /**
- * POST /api/waste/cancel — delete a record that never reached `done`.
+ * POST /api/admin/waste/cancel — delete a record that never reached `done`.
+ * Staff-only: the owner route /api/waste/cancel is retired.
  *
  * A plain UPDATE rather than an RPC, because nothing here moves points: a
  * `pending` record has no point lot, no transaction and no ledger entry, so

@@ -6,7 +6,9 @@ import { GET as adminRecordsGet } from '@/app/api/admin/waste/records/route'
 import { GET as couponsGet } from '@/app/api/coupons/route'
 import { GET as pointsGet } from '@/app/api/points/route'
 import { GET as profileGet } from '@/app/api/profile/[id]/route'
+import { DELETE as wasteCancelDelete, POST as wasteCancelPost } from '@/app/api/waste/cancel/route'
 import { GET as recordsGet } from '@/app/api/waste/records/route'
+import { POST as wasteUpdatePost, PUT as wasteUpdatePut } from '@/app/api/waste/update/route'
 
 // The authorisation rules for every route keyed by a LINE user id.
 //
@@ -29,6 +31,8 @@ const mocks = vi.hoisted(() => ({
   getTransactions: vi.fn(),
   getSpendDetails: vi.fn(),
   getCo2Collection: vi.fn(),
+  confirmWaste: vi.fn(),
+  cancelWaste: vi.fn(),
 }))
 
 vi.mock('@/lib/auth/verify-line-token', () => ({ getLineIdentity: mocks.getLineIdentity }))
@@ -48,6 +52,8 @@ vi.mock('@/lib/supabase/reads', () => ({
 }))
 vi.mock('@/lib/supabase/writes', () => ({
   spendPoints: vi.fn(),
+  confirmWaste: mocks.confirmWaste,
+  cancelWaste: mocks.cancelWaste,
   WriteError: class WriteError extends Error {},
 }))
 
@@ -246,5 +252,56 @@ describe('GET /api/admin/waste/records', () => {
 
     expect(res.status).toBe(400)
     expect(mocks.getWasteRecords).not.toHaveBeenCalled()
+  })
+})
+
+describe('PUT /api/waste/update', () => {
+  // Confirming weighs the record and awards its points, so it is staff-only
+  // (/api/admin/waste/update). Owners used to be able to confirm their own
+  // cart at any weight they typed, which is awarding yourself points.
+  const update = (method: 'PUT' | 'POST') =>
+    new NextRequest(new URL('/api/waste/update', 'http://localhost:3000'), {
+      method,
+      headers: { authorization: 'Bearer a-valid-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ timestamp: '2026-09-22T03:00:00.000Z', weight_kg: 5, status: 'done' }),
+    })
+
+  it('403s the owner confirming their own record, and never writes', async () => {
+    const res = await wasteUpdatePut(update('PUT'))
+
+    expect(res.status).toBe(403)
+    expect(mocks.confirmWaste).not.toHaveBeenCalled()
+  })
+
+  it('403s the legacy POST form the same way', async () => {
+    const res = await wasteUpdatePost(update('POST'))
+
+    expect(res.status).toBe(403)
+    expect(mocks.confirmWaste).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/waste/cancel', () => {
+  // Deleting from a cart is staff-only too (/api/admin/waste/cancel): users
+  // cannot change their own records in any way once submitted.
+  const cancel = (method: 'POST' | 'DELETE') =>
+    new NextRequest(new URL('/api/waste/cancel', 'http://localhost:3000'), {
+      method,
+      headers: { authorization: 'Bearer a-valid-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ timestamp: '2026-09-22T03:00:00.000Z' }),
+    })
+
+  it('403s the owner deleting their own record, and never writes', async () => {
+    const res = await wasteCancelPost(cancel('POST'))
+
+    expect(res.status).toBe(403)
+    expect(mocks.cancelWaste).not.toHaveBeenCalled()
+  })
+
+  it('403s the DELETE form the same way', async () => {
+    const res = await wasteCancelDelete(cancel('DELETE'))
+
+    expect(res.status).toBe(403)
+    expect(mocks.cancelWaste).not.toHaveBeenCalled()
   })
 })

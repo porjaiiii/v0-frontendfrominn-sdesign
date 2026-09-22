@@ -27,8 +27,10 @@ import { setLiffSdkReady } from '@/lib/api-client'
 
 import { WasteDetailModal } from './waste-detail-modal'
 
-// Deleting a cart item the user added by mistake. Only `pending` records can go
+// Staff deleting a cart item added by mistake. Only `pending` records can go
 // — a confirmed one has already moved points, and the server answers 409.
+// Every write goes through a staff route: users cannot change their own
+// records once submitted.
 
 const pendingRecord = {
   timestamp: '2026-09-18T01:39:50.000Z',
@@ -58,7 +60,7 @@ describe('WasteDetailModal delete', () => {
     })
   }
 
-  async function render(record = pendingRecord, admin = false, isEditing = false) {
+  async function render(record = pendingRecord, isEditing = false) {
     await act(async () => {
       root.render(
         <WasteDetailModal
@@ -67,7 +69,6 @@ describe('WasteDetailModal delete', () => {
           onClose={() => {}}
           onConfirm={() => {}}
           onDeleted={onDeleted}
-          admin={admin}
           isEditing={isEditing}
         />,
       )
@@ -101,7 +102,7 @@ describe('WasteDetailModal delete', () => {
   })
 
   it('offers to delete from edit mode, the only way the cart opens this modal', async () => {
-    await render(pendingRecord, false, true)
+    await render(pendingRecord, true)
 
     expect(buttons('ลบรายการ')).toHaveLength(1)
   })
@@ -121,27 +122,16 @@ describe('WasteDetailModal delete', () => {
     expect(buttons('ยืนยันลบ')).toHaveLength(1)
   })
 
-  it('cancels the record and tells the cart once confirmed', async () => {
+  it("cancels through the staff route, naming the owner, and tells the cart", async () => {
+    // /api/waste/cancel answers 403: users cannot delete their own records.
     await render()
 
     await click(buttons('ลบรายการ')[0])
     await click(buttons('ยืนยันลบ')[0])
 
     const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(path).toBe('/api/waste/cancel')
-    expect(init.method).toBe('POST')
-    expect(JSON.parse(init.body as string)).toEqual({ timestamp: pendingRecord.timestamp })
-    expect(onDeleted).toHaveBeenCalledWith(pendingRecord)
-  })
-
-  it('lets staff delete from somebody else\'s cart through the admin route', async () => {
-    await render(pendingRecord, true)
-
-    await click(buttons('ลบรายการ')[0])
-    await click(buttons('ยืนยันลบ')[0])
-
-    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(path).toBe('/api/admin/waste/cancel')
+    expect(init.method).toBe('POST')
     expect(JSON.parse(init.body as string)).toEqual({
       user_id: pendingRecord.user_id,
       timestamp: pendingRecord.timestamp,
@@ -162,6 +152,22 @@ describe('WasteDetailModal delete', () => {
     await click(buttons('ยืนยันลบ')[0])
 
     expect(onDeleted).not.toHaveBeenCalled()
+  })
+
+  it("saves an edit through the staff route, naming the record's owner", async () => {
+    // /api/waste/update answers 403: users cannot confirm their own records.
+    // The points go to the owner in the body, not the staff member's LINE token.
+    await render(pendingRecord, true)
+
+    await click(buttons('บันทึกการแก้ไข')[0])
+
+    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(path).toBe('/api/admin/waste/update')
+    expect(init.method).toBe('PUT')
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      user_id: pendingRecord.user_id,
+      timestamp: pendingRecord.timestamp,
+    })
   })
 
   describe('when the live rates have not loaded', () => {

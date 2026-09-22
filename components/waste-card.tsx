@@ -22,16 +22,6 @@ interface WasteCardProps {
   onSave: (record: WasteRecord) => void
   isSaving?: boolean
   isAnySaving?: boolean
-  /**
-   * Hides แก้ไข / ยืนยันข้อมูล, leaving the record visible but not actionable.
-   *
-   * For staff viewing someone else's records. Confirming goes through
-   * /api/waste/update, which awards the points to whoever's LINE token signed
-   * the request — so a staff member pressing it would credit THEIR OWN
-   * account, not the user they are looking at. The buttons never worked here;
-   * they only looked as though they did.
-   */
-  readOnly?: boolean
 }
 
 const WASTE_TYPE_THAI: Record<string, string> = {
@@ -48,7 +38,6 @@ export function WasteCard({
   onSave, 
   isSaving = false,
   isAnySaving = false,
-  readOnly = false
 }: WasteCardProps) {
   const wasteTypeThai = WASTE_TYPE_THAI[record.waste_type] || record.waste_type
 
@@ -60,7 +49,6 @@ export function WasteCard({
 
   // ปุ่มยืนยันจะกดไม่ได้ ถ้า: ไม่มีรูปภาพ OR กำลังบันทึกการทำงานอยู่
   const isSubmitDisabled = !hasValidImages || isSaving || isAnySaving
-  console.log(hasValidImages, isSaving, isAnySaving, isSubmitDisabled)
  
   const handleSaveWithBonus = () => {
     const updatedRecord: WasteRecord = {

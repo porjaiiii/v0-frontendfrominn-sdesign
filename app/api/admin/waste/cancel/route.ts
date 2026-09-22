@@ -9,11 +9,10 @@ import { cancelWaste, WriteError } from '@/lib/supabase/writes'
 // POST /api/admin/waste/cancel — staff delete a pending record from somebody
 // else's cart.
 //
-// The staff counterpart to /api/waste/cancel, split rather than widened for
-// the same reason as /api/admin/waste/records: that route takes the owner
-// from the caller's LINE token, this one takes it from the body and is gated
-// on an admin session instead. Same write underneath, so the same rules hold —
-// only `pending` records, a confirmed one answers 409.
+// The ONLY way to delete a record. Users cannot delete their own —
+// /api/waste/cancel is retired and answers 403. This takes the owner from the
+// body and is gated on an admin session. Only `pending` records go; a
+// confirmed one answers 409.
 //
 // Callers: <WasteCart admin /> via WasteDetailModal.
 export async function POST(request: NextRequest) {

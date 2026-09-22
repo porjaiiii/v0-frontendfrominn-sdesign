@@ -138,36 +138,47 @@ export const submitWasteSchema = z.preprocess(
 export type SubmitWasteInput = z.infer<typeof submitWasteSchema>
 
 /**
- * Confirming (or editing) a record already in the cart.
+ * Confirming (or editing) a record already in the cart — the fields
+ * confirmWaste() takes. Only staff confirm, through adminUpdateWasteSchema
+ * below; the owner route that parsed this directly is retired.
  *
  * `status` is accepted and ignored — the clients all send `'done'`, which is
  * the only transition this path performs. Naming it here documents that it
  * cannot be used to force a record back to `pending`.
  */
-export const updateWasteSchema = z.preprocess(
-  fromLegacyClient,
-  z.object({
-    /** Identifies the record: today's de-facto key is (line_user_id, recorded_at). */
-    timestamp: z.string().min(1),
-    waste_type: z.string().min(1).max(64).optional(),
-    waste_subtype: z.string().min(1).max(64).optional(),
-    weight_kg: z.number().positive().max(10_000).nullish(),
-    image_urls: imageUrlsSchema.optional(),
-    notes: z.string().max(2000).optional(),
-    status: z.enum(['pending', 'done', 'cancelled']).optional(),
-  }),
-)
+const updateWasteFields = z.object({
+  /** Identifies the record: today's de-facto key is (line_user_id, recorded_at). */
+  timestamp: z.string().min(1),
+  waste_type: z.string().min(1).max(64).optional(),
+  waste_subtype: z.string().min(1).max(64).optional(),
+  weight_kg: z.number().positive().max(10_000).nullish(),
+  image_urls: imageUrlsSchema.optional(),
+  notes: z.string().max(2000).optional(),
+  status: z.enum(['pending', 'done', 'cancelled']).optional(),
+})
+
+export const updateWasteSchema = z.preprocess(fromLegacyClient, updateWasteFields)
 
 export type UpdateWasteInput = z.infer<typeof updateWasteSchema>
+
+/**
+ * PUT /api/admin/waste/update — staff confirm a record in somebody else's
+ * cart, so the owner is named in the body. The points go to that owner: the
+ * staff member's own LINE token is not consulted at all.
+ */
+export const adminUpdateWasteSchema = z.preprocess(
+  fromLegacyClient,
+  updateWasteFields.extend({ user_id: lineUserIdSchema }),
+)
+
+export type AdminUpdateWasteInput = z.infer<typeof adminUpdateWasteSchema>
 
 /**
  * Deleting a record that never reached `done`.
  *
  * Only the timestamp, because there is nothing to change: the record is marked
- * `cancelled` as it stands. An unknown key here — `user_id`, most likely, since
- * the older clients put one in every body — is stripped rather than honoured;
- * the owner comes from the verified token, so a body that names someone else
- * cancels nothing of theirs.
+ * `cancelled` as it stands. Only staff delete, through adminCancelWasteSchema
+ * below; the owner route that parsed this directly is retired.
  */
 export const cancelWasteSchema = z.object({
   timestamp: z.string().min(1),

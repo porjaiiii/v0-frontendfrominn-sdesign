@@ -1,55 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getLineIdentity } from '@/lib/auth/verify-line-token'
-import { isMaintenance, MAINTENANCE_MESSAGE } from '@/lib/maintenance'
-import { parseJsonBody } from '@/lib/schemas/common'
-import { cancelWasteSchema } from '@/lib/schemas/waste'
-import { cancelWaste, WriteError } from '@/lib/supabase/writes'
-
 /**
- * POST /api/waste/cancel — remove a cart item the user added by mistake.
+ * Retired: users can no longer delete their own waste records.
  *
- * Scoped to records still `pending`. A record that has been confirmed has
- * already moved points, carbon and account aggregates, and undoing that is a
- * ledger reversal rather than a delete — this answers 409 and leaves it alone.
+ * Once submitted, a record is changed only by staff — confirmed through
+ * /api/admin/waste/update, deleted through /api/admin/waste/cancel, both of
+ * which name the owner in the body and are gated on an admin session.
  *
- * The owner comes from the verified token, so the body cannot name a victim:
- * somebody else's record is a 404 here, the same as one that does not exist.
- *
- * No Idempotency-Key, unlike its neighbours: cancelling twice is not a
- * duplicate to suppress, it is the same single outcome.
+ * Kept as a 403 rather than deleted because the LINE webview caches old
+ * bundles: a missing route answers with an HTML 404 that those clients fail to
+ * parse, where this gives them a message they can show.
  */
-export async function POST(request: NextRequest) {
-  if (isMaintenance()) {
-    return NextResponse.json({ error: MAINTENANCE_MESSAGE }, { status: 503 })
-  }
-
-  const identity = await getLineIdentity(request)
-  if (!identity) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const parsed = await parseJsonBody(request, cancelWasteSchema)
-  if (!parsed.ok) {
-    return NextResponse.json(parsed.body, { status: parsed.status })
-  }
-
-  try {
-    await cancelWaste(identity.lineUserId, parsed.data.timestamp)
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    if (error instanceof WriteError) {
-      return NextResponse.json({ error: error.message }, { status: error.status })
-    }
-
-    console.error('[waste/cancel] supabase write failed:', error)
-    return NextResponse.json(
-      { error: 'ไม่สามารถลบรายการได้ กรุณาลองใหม่' },
-      { status: 500 },
-    )
-  }
+function refuse() {
+  return NextResponse.json(
+    { error: 'ลบรายการได้เฉพาะเจ้าหน้าที่เท่านั้น' },
+    { status: 403 },
+  )
 }
 
-export async function DELETE(request: NextRequest) {
-  return POST(request)
+// The request is ignored: nobody may delete here, signed in or not.
+export async function POST(_request: NextRequest) {
+  return refuse()
+}
+
+export async function DELETE(_request: NextRequest) {
+  return refuse()
 }

@@ -34,12 +34,6 @@ interface WasteDetailModalProps {
    * Absent means no delete button.
    */
   onDeleted?: (record: WasteRecord) => void | Promise<void>
-  /**
-   * Staff deleting from somebody else's cart. /api/waste/cancel takes the
-   * owner from the caller's LINE token and would answer 404, so this goes
-   * through /api/admin/waste/cancel with the owner named in the body.
-   */
-  admin?: boolean
   isConfirming?: boolean
   isEditing?: boolean
 }
@@ -74,7 +68,6 @@ export function WasteDetailModal({
   onClose,
   onConfirm,
   onDeleted,
-  admin = false,
   isConfirming = false,
   isEditing = false,
 }: WasteDetailModalProps) {
@@ -248,10 +241,13 @@ export function WasteDetailModal({
  * Deletes the record, on the second tap.
  *
  * Only offered for `pending` records: once points are awarded, removing the
- * record would leave them with nothing behind them, so /api/waste/cancel
+ * record would leave them with nothing behind them, so /api/admin/waste/cancel
  * answers 409 and the record stays where it is. That can also happen between
  * opening this modal and pressing delete, which is why the failure is shown
  * rather than assumed away.
+ *
+ * Staff-only: users cannot delete their own records (/api/waste/cancel
+ * answers 403), so the owner is always named in the body.
  */
 const handleDeleteClick = async () => {
   if (!record || isDeleting) return
@@ -264,15 +260,10 @@ const handleDeleteClick = async () => {
   try {
     setIsDeleting(true)
 
-    const response = admin
-      ? await apiFetch('/api/admin/waste/cancel', {
-          method: 'POST',
-          body: JSON.stringify({ user_id: record.user_id, timestamp: record.timestamp }),
-        })
-      : await apiFetch('/api/waste/cancel', {
-          method: 'POST',
-          body: JSON.stringify({ timestamp: record.timestamp }),
-        })
+    const response = await apiFetch('/api/admin/waste/cancel', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: record.user_id, timestamp: record.timestamp }),
+    })
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
@@ -308,7 +299,10 @@ const handleConfirmClick = async () => {
     }
 
     if (isEditing) {
-      const response = await apiFetch('/api/waste/update', {
+      // Staff-only: users cannot confirm or edit their own records, so there
+      // is no owner route (/api/waste/update answers 403). `payload` carries
+      // user_id, which names the owner the points go to.
+      const response = await apiFetch('/api/admin/waste/update', {
         method: 'PUT',
         idempotencyKey: confirmKey.current(),
         body: JSON.stringify(payload), // 👈 ส่ง payload ตัวที่ปรับชื่อ key แล้ว

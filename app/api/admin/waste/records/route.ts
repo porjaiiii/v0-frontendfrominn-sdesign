@@ -14,11 +14,8 @@ import type { WasteRecord } from '@/lib/waste-records'
 // claims, and a handler that answers both is one edit away from answering the
 // second to everybody.
 //
-// READ ONLY, and that is not an oversight: /api/waste/update authorises with
-// the LINE identity and writes against identity.lineUserId, so staff cannot
-// edit another user's records through it and never could. WasteCart's edit
-// controls therefore do nothing useful in admin mode — worth hiding, but that
-// is a UI change rather than an authorisation one.
+// READ ONLY. Staff write through the sibling routes that name the owner in
+// the body: /api/admin/waste/update (confirm) and /api/admin/waste/cancel.
 //
 // Callers: app/profile-view/[lineUserId] and app/profile-scanner, via
 // <WasteCart admin />.

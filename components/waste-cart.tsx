@@ -15,8 +15,9 @@ interface WasteCartProps {
    *
    * Reads through /api/admin/waste/records, which asks for an admin session;
    * the default route serves only the caller's own id and would answer 403.
-   * Editing stays owner-only either way — /api/waste/update authorises with
-   * the LINE identity — so the edit controls below do nothing in this mode.
+   * Writes are staff-only whatever this says: confirming and deleting always
+   * go through /api/admin/waste/{update,cancel}, because users cannot change
+   * their own records once submitted.
    */
   admin?: boolean
 }
@@ -113,18 +114,15 @@ export function WasteCart({
   }
 
   const handleSaveRecord = async (record: WasteRecord) => {
-    // Belt and braces: readOnly already hides the control that calls this, but
-    // the write must not depend on the button being absent. /api/waste/update
-    // credits the caller's own LINE identity, so an admin-mode save would award
-    // the staff member the points for someone else's recycling.
-    if (admin) return
-
     console.log('ข้อมูลที่ส่งไป API:', record)
     try {
       const recordId = `${record.timestamp}-${record.user_id}`
       setSavingRecordId(recordId)
-      
-      const response = await apiFetch('/api/waste/update', {
+
+      // Staff-only: users cannot confirm their own records, so there is no
+      // owner route (/api/waste/update answers 403). The points go to the
+      // owner named in the body (record.user_id), never to the staff member.
+      const response = await apiFetch('/api/admin/waste/update', {
         method: 'PUT',
         idempotencyKey: saveKey.current(),
         body: JSON.stringify(record),
@@ -224,10 +222,8 @@ export function WasteCart({
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onConfirm={handleConfirmRecord}
-        // Staff delete through /api/admin/waste/cancel; the modal picks the
-        // route from `admin`.
+        // Staff delete through /api/admin/waste/cancel.
         onDeleted={handleRecordDeleted}
-        admin={admin}
         isConfirming={isConfirming}
         isEditing={isEditingMode}
       />
@@ -245,10 +241,6 @@ export function WasteCart({
             onSave={handleSaveRecord}
             isSaving={savingRecordId === `${record.timestamp}-${record.user_id}`}
             isAnySaving={savingRecordId !== null}
-            // Staff are looking at someone else's records: confirming would
-            // credit the staff member's own account, so the controls are hidden
-            // rather than offered and silently ignored.
-            readOnly={admin}
           />
         ))
       )}

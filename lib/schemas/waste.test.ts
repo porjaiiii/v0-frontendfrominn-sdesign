@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { cancelWasteSchema, submitWasteSchema, updateWasteSchema } from '@/lib/schemas/waste'
+import {
+  adminUpdateWasteSchema,
+  cancelWasteSchema,
+  submitWasteSchema,
+  updateWasteSchema,
+} from '@/lib/schemas/waste'
 
 // These cover the 400 reported from production:
 //
@@ -113,6 +118,39 @@ describe('cancelWasteSchema', () => {
       timestamp: '2026-09-18T01:39:50.000Z',
       user_id: 'U_somebody_else',
     })
+
+    expect(parsed).not.toHaveProperty('user_id')
+  })
+})
+
+describe('adminUpdateWasteSchema', () => {
+  const base = { timestamp: '2026-09-22T03:00:00.000Z', weight_kg: 2 }
+
+  it('keeps the owner, which the staff route cannot take from a token', () => {
+    const parsed = adminUpdateWasteSchema.parse({ ...base, user_id: 'Uowner' })
+
+    expect(parsed.user_id).toBe('Uowner')
+  })
+
+  it('rejects a payload that does not name the owner', () => {
+    expect(() => adminUpdateWasteSchema.parse(base)).toThrow()
+    expect(() => adminUpdateWasteSchema.parse({ ...base, user_id: '' })).toThrow()
+  })
+
+  it('normalises Thai labels the same way the owner schema does', () => {
+    const parsed = adminUpdateWasteSchema.parse({
+      ...base,
+      user_id: 'Uowner',
+      waste_type: 'พลาสติก',
+      waste_subtype: 'ขวดน้ำพลาสติกใส',
+    })
+
+    expect(parsed.waste_type).toBe('plastic')
+    expect(parsed.waste_subtype).toBe('pet')
+  })
+
+  it('leaves the owner schema unchanged: it still strips user_id', () => {
+    const parsed = updateWasteSchema.parse({ ...base, user_id: 'U_somebody_else' })
 
     expect(parsed).not.toHaveProperty('user_id')
   })

@@ -60,7 +60,9 @@ describe('getWasteTypes', () => {
 
     const plastic = types.find((t) => t.id === 'plastic')!
     expect(plastic.carbonFactor).toBeCloseTo(1.031, 4)
-    expect(plastic.pointsPerKg).toBe(6)
+    expect(plastic.subtypes).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'pet', pointsPerKg: 6 })]),
+    )
   })
 })
 

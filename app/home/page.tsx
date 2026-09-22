@@ -19,9 +19,8 @@ import { apiFetch, useIdempotencyKey } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
 // Carbon/points rates now come from useApp().wasteRates (lib/app-context.tsx) —
-// live from GET /api/catalog/waste-types, falling back to lib/rates.ts. This
-// used to be its own hardcoded copy; see that module's header for the other
-// four places the same numbers were duplicated.
+// live from GET /api/catalog/waste-types. Carbon is priced by type and points
+// by the selected subtype; see lib/rates.ts for the lookup helpers.
 
 // Waste type images
 const WASTE_IMAGES: Record<WasteType, string> = {
@@ -61,7 +60,10 @@ const [imageEvidence, setImageEvidence] = useState<string[]>([]);
   // rather than claiming the user saved nothing. The points actually awarded
   // are computed server-side in app.submit_waste either way.
   const carbonFactor = selectedType ? carbonFactorFor(selectedType, wasteRates) : null
-  const pointsPerKg = selectedType ? pointsPerKgFor(selectedType, wasteRates) : null
+  const pointsPerKg =
+    selectedType && selectedSubType
+      ? pointsPerKgFor(selectedType, selectedSubType.id, wasteRates)
+      : null
 
   const calculatedCarbon = carbonFactor === null ? null : weight * carbonFactor
   const calculatedPoints = pointsPerKg === null ? null : Math.round(weight * pointsPerKg)

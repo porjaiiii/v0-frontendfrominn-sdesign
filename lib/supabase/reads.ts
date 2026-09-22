@@ -445,15 +445,19 @@ export interface WasteTypeCatalogEntry {
   name: string
   icon: string
   carbonFactor: number
-  pointsPerKg: number
+  subtypes: {
+    id: string
+    pointsPerKg: number
+  }[]
 }
 
 /** GET /api/catalog/waste-types — replaces the hardcoded rate tables. */
 export async function getWasteTypes(): Promise<WasteTypeCatalogEntry[]> {
   const { data, error } = await getServiceClient()
     .from('waste_types')
-    .select('id, name_th, icon_path, carbon_factor, points_per_kg')
+    .select('id, name_th, icon_path, carbon_factor, waste_subtypes!inner(id, points_per_kg)')
     .eq('is_active', true)
+    .eq('waste_subtypes.is_active', true)
     .order('sort_order')
 
   if (error) throw error
@@ -463,7 +467,10 @@ export async function getWasteTypes(): Promise<WasteTypeCatalogEntry[]> {
     name: row.name_th,
     icon: row.icon_path ?? '',
     carbonFactor: num(row.carbon_factor),
-    pointsPerKg: num(row.points_per_kg),
+    subtypes: (row.waste_subtypes ?? []).map((subtype) => ({
+      id: subtype.id,
+      pointsPerKg: num(subtype.points_per_kg),
+    })),
   }))
 }
 

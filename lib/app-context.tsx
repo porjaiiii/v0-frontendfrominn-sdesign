@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { MOCK_USER } from '@/lib/mock-user'
-import type { WasteRate, WasteRates, WasteType } from '@/lib/rates'
+import { rateKey, type WasteRate, type WasteRates, type WasteType } from '@/lib/rates'
 
 export type { WasteType }
 
@@ -31,11 +31,8 @@ interface AppContextType {
   // table that used to be copy-pasted into app/home/page.tsx,
   // components/waste-detail-modal.tsx and both waste API routes.
   //
-  // Fetched once per session from GET /api/catalog/waste-types. Starts as
-  // lib/rates.ts's offline fallback, which stays in place if the fetch never
-  // resolves — a slow or failed catalog fetch must never block the submission
-  // flow, since these numbers are only an estimate (the real price is set
-  // server-side, inside submit_waste/confirm_waste).
+  // Fetched once per session from GET /api/catalog/waste-types. Carbon rates
+  // are keyed by type; points rates are keyed by type and subtype.
   /** null until GET /api/catalog/waste-types answers, and if it never does. */
   wasteRates: WasteRates
   wasteRatesLoading: boolean
@@ -70,12 +67,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         for (const entry of data.wasteTypes) {
           if (typeof entry?.id !== 'string') continue
           const carbonFactor = Number(entry.carbonFactor)
-          const pointsPerKg = Number(entry.pointsPerKg)
-          // A row we cannot read is skipped, not substituted: carbonFactorFor()
-          // reports the missing rate as null and the screen shows "—".
-          if (!Number.isFinite(carbonFactor) || !Number.isFinite(pointsPerKg)) continue
-
-          next[entry.id] = { carbonFactor, pointsPerKg }
+          if (!Number.isFinite(carbonFactor)) continue
+          next[entry.id] = { carbonFactor }
+          if (!Array.isArray(entry.subtypes)) continue
+          for (const subtype of entry.subtypes) {
+            const pointsPerKg = Number(subtype?.pointsPerKg)
+            if (typeof subtype?.id !== 'string' || !Number.isFinite(pointsPerKg)) continue
+            next[rateKey(entry.id, subtype.id)] = { pointsPerKg }
+          }
         }
         // Merged over what this session already has, so a partial response
         // cannot blank out a rate that was already known.

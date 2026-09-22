@@ -5,9 +5,9 @@ import { getWasteTypes } from '@/lib/supabase/reads'
 /**
  * GET /api/catalog/waste-types
  *
- * Live rates from app.waste_types, replacing the CARBON_FACTORS/POINTS_PER_KG
- * table that used to be copy-pasted into app/home/page.tsx,
- * components/waste-detail-modal.tsx and both waste API routes.
+ * Live carbon rates from app.waste_types and points rates from
+ * app.waste_subtypes, replacing the CARBON_FACTORS/POINTS_PER_KG table that
+ * used to be copy-pasted into app/home/page.tsx and components/waste-detail-modal.tsx.
  *
  * This used to answer 200 with a static copy of those rates from lib/rates.ts
  * whenever the read failed, flagged `isFallback: true` — which nothing checked.
@@ -18,7 +18,7 @@ import { getWasteTypes } from '@/lib/supabase/reads'
  *
  * Submitting still works regardless. The client shows "—" instead of an
  * estimate, and the real pricing happens server-side inside
- * submit_waste/confirm_waste, which read app.waste_types directly.
+ * submit_waste/confirm_waste, which read the catalog tables directly.
  */
 export async function GET() {
   try {

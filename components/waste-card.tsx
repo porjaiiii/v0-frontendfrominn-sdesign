@@ -47,7 +47,7 @@ export function WasteCard({
     record.image_urls.length > 0 && 
     record.image_urls.some(url => url && url.trim() !== '')
 
-  const hasValidWeight = record.weight_kg >= 0
+  const hasValidWeight = record.weight_kg > 0
   // ปุ่มยืนยันจะกดไม่ได้ ถ้า: ไม่มีรูปภาพ OR กำลังบันทึกการทำงานอยู่
   const isSubmitDisabled = !hasValidImages || isSaving || isAnySaving || !hasValidWeight
  

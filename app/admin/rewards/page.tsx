@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Plus, ArrowLeft } from 'lucide-react'
-import { CATALOG_REWARDS } from '@/lib/rewards-catalog'
 import { useAdmin } from '@/lib/admin-context'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -23,28 +22,42 @@ export default function AdminRewardsPage() {
   const { isAdmin } = useAdmin()
   const router = useRouter()
 
-  // Live catalog (Phase 7) — GET /api/catalog/rewards, replacing the static
-  // REWARDS array. `enabled`/toggleEnabled below stay client-only state (there
-  // is no PATCH endpoint yet to persist an is_active flip) — real stock now
-  // comes from the API instead of a hardcoded 75 for every item.
-  const [items, setItems] = useState<RewardItem[]>(
-    CATALOG_REWARDS.map((r) => ({ ...r, enabled: true }))
-  )
+  // Live catalog including switched-off rewards — GET /api/catalog/rewards
+  // ?includeInactive=1 (admin only). `enabled` mirrors app.rewards.is_active and
+  // toggleEnabled below persists it via PATCH /api/catalog/rewards/[id].
+  const [items, setItems] = useState<RewardItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [pendingIds, setPendingIds] = useState<Set<number>>(new Set())
+  const [toggleError, setToggleError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!isAdmin) return
     let cancelled = false
-    fetch('/api/catalog/rewards')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.success && Array.isArray(data.rewards) && data.rewards.length > 0) {
-          setItems(data.rewards.map((r: Omit<RewardItem, 'enabled'>) => ({ ...r, enabled: true })))
+    fetch('/api/catalog/rewards?includeInactive=1')
+      .then(async (res) => {
+        const data = await res.json().catch(() => null)
+        if (!res.ok || !data?.success || !Array.isArray(data.rewards)) {
+          throw new Error(data?.error ?? 'ไม่สามารถโหลดของรางวัลได้')
         }
+        return data.rewards as (Omit<RewardItem, 'enabled'> & { isActive: boolean })[]
       })
-      .catch((err) => console.error('[admin/rewards] catalog fetch failed:', err))
+      .then((rewards) => {
+        if (cancelled) return
+        setItems(rewards.map(({ isActive, ...r }) => ({ ...r, enabled: isActive })))
+        setLoadError(null)
+      })
+      .catch((err) => {
+        console.error('[admin/rewards] catalog fetch failed:', err)
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : 'ไม่สามารถโหลดของรางวัลได้')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isAdmin])
 
   // Redirect non-admin
   if (!isAdmin) {
@@ -61,12 +74,40 @@ export default function AdminRewardsPage() {
     )
   }
 
-  const toggleEnabled = (id: number) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, enabled: !item.enabled } : item
-      )
-    )
+  const setEnabled = (id: number, enabled: boolean) =>
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, enabled } : item)))
+
+  const setPending = (id: number, pending: boolean) =>
+    setPendingIds((prev) => {
+      const next = new Set(prev)
+      if (pending) next.add(id)
+      else next.delete(id)
+      return next
+    })
+
+  // Optimistic: flip the switch now, roll it back if the PATCH fails.
+  const toggleEnabled = async (item: RewardItem) => {
+    if (pendingIds.has(item.id)) return
+    const next = !item.enabled
+    setToggleError(null)
+    setEnabled(item.id, next)
+    setPending(item.id, true)
+    try {
+      const res = await fetch(`/api/catalog/rewards/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: next }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error ?? 'ไม่สามารถเปลี่ยนสถานะของรางวัลได้')
+      }
+    } catch (err) {
+      setEnabled(item.id, item.enabled)
+      setToggleError(err instanceof Error ? err.message : 'ไม่สามารถเปลี่ยนสถานะของรางวัลได้')
+    } finally {
+      setPending(item.id, false)
+    }
   }
 
   return (
@@ -82,6 +123,13 @@ export default function AdminRewardsPage() {
       </header>
 
       <main className="max-w-md mx-auto px-4 py-4 pb-24 space-y-3">
+        {loading && <p className="text-sm text-[#666] text-center py-6">กำลังโหลด...</p>}
+        {loadError && <p className="text-sm text-red-600 text-center py-6">{loadError}</p>}
+        {toggleError && (
+          <p role="alert" className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">
+            {toggleError}
+          </p>
+        )}
         {items.map((item) => (
           <div
             key={item.id}
@@ -112,10 +160,13 @@ export default function AdminRewardsPage() {
 
             {/* Toggle */}
             <button
-              onClick={() => toggleEnabled(item.id)}
+              onClick={() => toggleEnabled(item)}
+              disabled={pendingIds.has(item.id)}
+              role="switch"
+              aria-checked={item.enabled}
               aria-label={item.enabled ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน'}
               className={cn(
-                'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
+                'relative w-11 h-6 rounded-full transition-colors flex-shrink-0 disabled:opacity-60',
                 item.enabled ? 'bg-[#154212]' : 'bg-[#d1d5db]'
               )}
             >

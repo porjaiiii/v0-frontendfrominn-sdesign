@@ -19,6 +19,11 @@ export const createRewardSchema = z.object({
 
 export type CreateRewardInput = z.infer<typeof createRewardSchema>
 
+/** PATCH /api/catalog/rewards/[id] body — the admin rewards page's toggle. */
+export const setRewardActiveSchema = z.object({
+  isActive: z.boolean(),
+})
+
 export const createDonationCampaignSchema = z.object({
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().max(2000).optional().default(''),

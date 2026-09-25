@@ -44,6 +44,28 @@ export interface CatalogReward {
  */
 export const CASH_REWARD_ID = 100
 
+/**
+ * Every id a cash-back row has ever used (99 = the original floor-20 row,
+ * 100 = CASH_REWARD_ID). Admin-created rewards never land on these, even if
+ * the row itself has been deleted.
+ */
+export const CASH_REWARD_IDS: readonly number[] = [99, CASH_REWARD_ID]
+
+/**
+ * The id POST /api/catalog/rewards gives a new reward: one past the highest
+ * ORDINARY reward, so the cash-back rows (99/100) don't push admin rewards up
+ * to 101+. When the sequence reaches 99 it jumps over the cash ids to 101.
+ * Any id already in the table is skipped too, so this can never collide.
+ */
+export function nextRewardId(rows: { id: number; isVariable: boolean }[]): number {
+  const taken = new Set([...CASH_REWARD_IDS, ...rows.map((row) => row.id)])
+  const ordinary = rows.filter((row) => !row.isVariable && !CASH_REWARD_IDS.includes(row.id))
+
+  let id = Math.max(0, ...ordinary.map((row) => row.id)) + 1
+  while (taken.has(id)) id++
+  return id
+}
+
 const VARIABLE: Record<number, number> = {
   [CASH_REWARD_ID]: 1,
 }

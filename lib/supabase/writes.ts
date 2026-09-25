@@ -5,6 +5,7 @@ import type { RegisterUserInput } from '@/lib/schemas/register'
 import type { CreateDonationCampaignInput, CreateRewardInput } from '@/lib/schemas/catalog'
 import type { DonatePointsInput, RedeemRewardsInput, UseCouponInput } from '@/lib/schemas/points'
 import type { SubmitWasteInput, UpdateWasteInput } from '@/lib/schemas/waste'
+import { nextRewardId } from '@/lib/rewards-catalog'
 import { generateUserIdFromLineId } from '@/lib/user-id-generator'
 import type { WasteRecord } from '@/lib/waste-records'
 
@@ -458,16 +459,14 @@ export async function activateAdminKey(key: string, lineUserId: string): Promise
 export async function createReward(input: CreateRewardInput): Promise<RewardCatalogEntry> {
   // `id` is a small integer PK seeded manually in 0003 (legacy REWARDS ids);
   // pick the next free one rather than requiring the admin to know the scheme.
+  // nextRewardId skips the cash-back ids (99/100) — see lib/rewards-catalog.ts.
   const db = getServiceClient()
-  const { data: maxRow, error: maxError } = await db
-    .from('rewards')
-    .select('id')
-    .order('id', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (maxError) throw maxError
+  const { data: rows, error: idsError } = await db.from('rewards').select('id, is_variable')
+  if (idsError) throw idsError
 
-  const nextId = (maxRow?.id ?? 0) + 1
+  const nextId = nextRewardId(
+    (rows ?? []).map((row) => ({ id: row.id, isVariable: row.is_variable })),
+  )
 
   const { data, error } = await db
     .from('rewards')
@@ -495,6 +494,24 @@ export async function createReward(input: CreateRewardInput): Promise<RewardCata
     minPoints: data.min_points,
     stock: data.stock,
   }
+}
+
+/**
+ * PATCH /api/catalog/rewards/[id] — the admin rewards page's on/off switch.
+ * An inactive reward drops out of GET /api/catalog/rewards, and
+ * redeem_rewards already refuses it (0009), so this is the whole switch.
+ * Returns false when no reward has that id.
+ */
+export async function setRewardActive(id: number, isActive: boolean): Promise<boolean> {
+  const { data, error } = await getServiceClient()
+    .from('rewards')
+    .update({ is_active: isActive })
+    .eq('id', id)
+    .select('id')
+    .maybeSingle()
+
+  if (error) throw asWriteError(error)
+  return data !== null
 }
 
 /** POST /api/catalog/donations — the write side of app/admin/donations/new/page.tsx. */

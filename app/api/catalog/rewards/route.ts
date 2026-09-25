@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/auth/admin-session'
 import { CATALOG_REWARDS } from '@/lib/rewards-catalog'
 import { createRewardSchema } from '@/lib/schemas/catalog'
 import { parseJsonBody } from '@/lib/schemas/common'
-import { getRewardsCatalog } from '@/lib/supabase/reads'
+import { getAllRewardsForAdmin, getRewardsCatalog } from '@/lib/supabase/reads'
 import { createReward } from '@/lib/supabase/writes'
 
 /**
@@ -18,8 +18,25 @@ import { createReward } from '@/lib/supabase/writes'
  *
  * Falls back to lib/rewards-catalog.ts, the offline copy of the same list, on
  * any DB error.
+ *
+ * `?includeInactive=1` (admin only) returns every row with `isActive`, for the
+ * admin page's on/off switches. No fallback there — a static list would show
+ * every switch as "on" whatever the DB says.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (request.nextUrl.searchParams.get('includeInactive') === '1') {
+    if (!(await requireAdmin())) {
+      return NextResponse.json({ error: 'ต้องเข้าสู่ระบบเจ้าหน้าที่ก่อน' }, { status: 403 })
+    }
+    try {
+      const rewards = await getAllRewardsForAdmin()
+      return NextResponse.json({ success: true, rewards, isFallback: false })
+    } catch (error) {
+      console.error('[catalog/rewards] admin list failed:', error)
+      return NextResponse.json({ error: 'ไม่สามารถโหลดของรางวัลได้' }, { status: 500 })
+    }
+  }
+
   try {
     const rewards = await getRewardsCatalog()
     if (rewards.length > 0) {

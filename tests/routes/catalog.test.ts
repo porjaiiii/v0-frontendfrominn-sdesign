@@ -1,11 +1,17 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { getServiceClient } from '@/lib/supabase/server'
-import { getDonationCampaigns, getRewardsCatalog, getWasteTypes } from '@/lib/supabase/reads'
+import {
+  getAllRewardsForAdmin,
+  getDonationCampaigns,
+  getRewardsCatalog,
+  getWasteTypes,
+} from '@/lib/supabase/reads'
 import {
   createDonationCampaign,
   createReward,
   redeemRewards,
+  setRewardActive,
   WriteError,
 } from '@/lib/supabase/writes'
 import { createRewardSchema, createDonationCampaignSchema } from '@/lib/schemas/catalog'
@@ -98,12 +104,30 @@ describe('getRewardsCatalog / createReward', () => {
     expect(rewards.some((r) => r.id === created.id)).toBe(true)
   })
 
-  it('assigns ids above the current maximum, never colliding with a seeded row', async () => {
+  it('continues the ordinary id sequence, never landing on a cash-back id', async () => {
     const input = createRewardSchema.parse({ name: 'ของรางวัลที่สอง', points: 10 })
     const created = await createReward(input)
     createdRewardIds.push(created.id)
 
-    expect(created.id).toBeGreaterThan(99) // 99 is the highest seeded id (cash-back)
+    // 1–7 are seeded; 99/100 are the cash-back rows and don't push this up.
+    expect(created.id).toBe(8)
+  })
+
+  it('switches a reward off and back on', async () => {
+    const created = await createReward(createRewardSchema.parse({ name: 'ปิดได้', points: 10 }))
+    createdRewardIds.push(created.id)
+
+    expect(await setRewardActive(created.id, false)).toBe(true)
+    expect((await getRewardsCatalog()).some((r) => r.id === created.id)).toBe(false)
+    const hidden = (await getAllRewardsForAdmin()).find((r) => r.id === created.id)
+    expect(hidden?.isActive).toBe(false)
+
+    expect(await setRewardActive(created.id, true)).toBe(true)
+    expect((await getRewardsCatalog()).some((r) => r.id === created.id)).toBe(true)
+  })
+
+  it('reports a missing reward instead of silently succeeding', async () => {
+    expect(await setRewardActive(987654, false)).toBe(false)
   })
 })
 

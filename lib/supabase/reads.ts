@@ -508,6 +508,36 @@ export async function getRewardsCatalog(): Promise<RewardCatalogEntry[]> {
   }))
 }
 
+export interface AdminRewardEntry extends RewardCatalogEntry {
+  isActive: boolean
+}
+
+/**
+ * GET /api/catalog/rewards?includeInactive=1 (admin only) — the whole table,
+ * so app/admin/rewards/page.tsx can show a switched-off reward and switch it
+ * back on. getRewardsCatalog above hides those from users.
+ */
+export async function getAllRewardsForAdmin(): Promise<AdminRewardEntry[]> {
+  const { data, error } = await getServiceClient()
+    .from('rewards')
+    .select('id, name, description, points, image_path, is_variable, min_points, stock, is_active')
+    .order('sort_order')
+
+  if (error) throw error
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    description: str(row.description),
+    points: row.points,
+    image: catalogImageUrl(row.image_path ?? ''),
+    isVariable: row.is_variable,
+    minPoints: row.min_points,
+    stock: row.stock,
+    isActive: row.is_active,
+  }))
+}
+
 export interface DonationCampaignEntry {
   id: number
   name: string

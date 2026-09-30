@@ -33,6 +33,7 @@ export default defineConfig({
             'lib/**/*.test.tsx',
             'hooks/**/*.test.tsx',
             'components/**/*.test.tsx',
+            'app/**/*.test.tsx',
             'scripts/**/*.test.ts',
           ],
           exclude: ['node_modules', '.next'],

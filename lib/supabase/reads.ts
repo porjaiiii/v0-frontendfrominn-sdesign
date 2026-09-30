@@ -512,20 +512,21 @@ export interface AdminRewardEntry extends RewardCatalogEntry {
   isActive: boolean
 }
 
-/**
- * GET /api/catalog/rewards?includeInactive=1 (admin only) — the whole table,
- * so app/admin/rewards/page.tsx can show a switched-off reward and switch it
- * back on. getRewardsCatalog above hides those from users.
- */
-export async function getAllRewardsForAdmin(): Promise<AdminRewardEntry[]> {
-  const { data, error } = await getServiceClient()
-    .from('rewards')
-    .select('id, name, description, points, image_path, is_variable, min_points, stock, is_active')
-    .order('sort_order')
+const ADMIN_REWARD_COLUMNS =
+  'id, name, description, points, image_path, is_variable, min_points, stock, is_active'
 
-  if (error) throw error
-
-  return (data ?? []).map((row) => ({
+function toAdminRewardEntry(row: {
+  id: number
+  name: string
+  description: string | null
+  points: number
+  image_path: string | null
+  is_variable: boolean
+  min_points: number | null
+  stock: number | null
+  is_active: boolean
+}): AdminRewardEntry {
+  return {
     id: row.id,
     name: row.name,
     description: str(row.description),
@@ -535,7 +536,38 @@ export async function getAllRewardsForAdmin(): Promise<AdminRewardEntry[]> {
     minPoints: row.min_points,
     stock: row.stock,
     isActive: row.is_active,
-  }))
+  }
+}
+
+/**
+ * GET /api/catalog/rewards?includeInactive=1 (admin only) — the whole table,
+ * so app/admin/rewards/page.tsx can show a switched-off reward and switch it
+ * back on. getRewardsCatalog above hides those from users.
+ */
+export async function getAllRewardsForAdmin(): Promise<AdminRewardEntry[]> {
+  const { data, error } = await getServiceClient()
+    .from('rewards')
+    .select(ADMIN_REWARD_COLUMNS)
+    .order('sort_order')
+
+  if (error) throw error
+
+  return (data ?? []).map(toAdminRewardEntry)
+}
+
+/**
+ * GET /api/catalog/rewards/[id] (admin only) — one row for the reward editor,
+ * active or not. null when no reward has that id.
+ */
+export async function getRewardForAdmin(id: number): Promise<AdminRewardEntry | null> {
+  const { data, error } = await getServiceClient()
+    .from('rewards')
+    .select(ADMIN_REWARD_COLUMNS)
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) throw error
+  return data ? toAdminRewardEntry(data) : null
 }
 
 export interface DonationCampaignEntry {

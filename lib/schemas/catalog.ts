@@ -19,10 +19,29 @@ export const createRewardSchema = z.object({
 
 export type CreateRewardInput = z.infer<typeof createRewardSchema>
 
-/** PATCH /api/catalog/rewards/[id] body — the admin rewards page's toggle. */
-export const setRewardActiveSchema = z.object({
-  isActive: z.boolean(),
-})
+/**
+ * PATCH /api/catalog/rewards/[id] body — the admin rewards page's toggle
+ * (`{ isActive }`) and the reward editor (the createRewardSchema fields).
+ *
+ * Every field is optional and, unlike createRewardSchema, nothing defaults: an
+ * omitted field is left as stored. `stock: null` means unlimited; an omitted
+ * `stock` means unchanged.
+ */
+export const updateRewardSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(1000),
+    points: z.coerce.number().int().positive().max(1_000_000),
+    imagePath: z.string().trim().max(500),
+    stock: z.coerce.number().int().min(0).max(1_000_000).nullable(),
+    isActive: z.boolean(),
+  })
+  .partial()
+  .refine((input) => Object.values(input).some((value) => value !== undefined), {
+    message: 'ไม่มีข้อมูลที่ต้องการแก้ไข',
+  })
+
+export type UpdateRewardInput = z.infer<typeof updateRewardSchema>
 
 export const createDonationCampaignSchema = z.object({
   name: z.string().trim().min(1).max(200),

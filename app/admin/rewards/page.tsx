@@ -135,28 +135,32 @@ export default function AdminRewardsPage() {
             key={item.id}
             className="bg-white rounded-2xl border border-[#e5e5e5] flex items-center gap-3 px-4 py-3"
           >
-            {/* Image */}
-            <div className="relative w-[68px] h-[68px] rounded-xl overflow-hidden bg-[#f5f5f5] flex-shrink-0">
-              <Image src={item.image} alt={item.name} fill className="object-cover" />
-            </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#154212] truncate">{item.name}</p>
-              <p className="text-xs text-[#666] mt-0.5">{item.description}</p>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="text-xs text-[#154212]">{item.points} คะแนน</span>
-                {item.enabled ? (
-                  <span className="text-xs text-[#154212]">
-                    &bull; จำนวนคงเหลือ {item.stock ?? '–'}
-                  </span>
-                ) : (
-                  <span className="text-xs text-white bg-[#999] px-2 py-0.5 rounded-full">
-                    ของหมด
-                  </span>
-                )}
+            {/* Image + info open the editor; the switch stays its own tap target */}
+            <Link
+              href={`/admin/rewards/${item.id}/edit`}
+              className="flex flex-1 min-w-0 items-center gap-3"
+            >
+              <div className="relative w-[68px] h-[68px] rounded-xl overflow-hidden bg-[#f5f5f5] flex-shrink-0">
+                {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
               </div>
-            </div>
+
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[#154212] truncate">{item.name}</p>
+                <p className="text-xs text-[#666] mt-0.5">{item.description}</p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="text-xs text-[#154212]">{item.points} คะแนน</span>
+                  {item.enabled ? (
+                    <span className="text-xs text-[#154212]">
+                      &bull; จำนวนคงเหลือ {item.stock ?? '–'}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-white bg-[#999] px-2 py-0.5 rounded-full">
+                      ของหมด
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Link>
 
             {/* Toggle */}
             <button
@@ -172,8 +176,11 @@ export default function AdminRewardsPage() {
             >
               <span
                 className={cn(
-                  'absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform',
-                  item.enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+                  // left-0.5 pins the knob to the track — without it, an
+                  // absolute child of a <button> starts wherever the button's
+                  // centered text would, and slides off the right edge.
+                  'absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform',
+                  item.enabled ? 'translate-x-5' : 'translate-x-0'
                 )}
               />
             </button>

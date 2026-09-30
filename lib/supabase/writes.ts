@@ -2,7 +2,11 @@ import 'server-only'
 
 import type { CouponRecord } from '@/lib/coupon-config'
 import type { RegisterUserInput } from '@/lib/schemas/register'
-import type { CreateDonationCampaignInput, CreateRewardInput } from '@/lib/schemas/catalog'
+import type {
+  CreateDonationCampaignInput,
+  CreateRewardInput,
+  UpdateRewardInput,
+} from '@/lib/schemas/catalog'
 import type { DonatePointsInput, RedeemRewardsInput, UseCouponInput } from '@/lib/schemas/points'
 import type { SubmitWasteInput, UpdateWasteInput } from '@/lib/schemas/waste'
 import { nextRewardId } from '@/lib/rewards-catalog'
@@ -17,6 +21,7 @@ import {
 } from './reads'
 import { catalogImageUrl, signWastePhotoUrls, toStoragePath } from './storage'
 import { getServiceClient } from './server'
+import type { Database } from './types'
 
 // First Supabase write path in the migration. Follows the same identity rule
 // the read/write schemas already commit to (lib/schemas/common.ts):
@@ -497,15 +502,27 @@ export async function createReward(input: CreateRewardInput): Promise<RewardCata
 }
 
 /**
- * PATCH /api/catalog/rewards/[id] — the admin rewards page's on/off switch.
+ * PATCH /api/catalog/rewards/[id] — the admin rewards page's on/off switch and
+ * the reward editor. Only the fields present in `input` are written.
+ *
  * An inactive reward drops out of GET /api/catalog/rewards, and
- * redeem_rewards already refuses it (0009), so this is the whole switch.
+ * redeem_rewards already refuses it (0009), so `isActive` is the whole switch.
+ * A new `points` is what redeem_rewards charges from then on; coupons already
+ * issued keep the points_used they were issued with.
  * Returns false when no reward has that id.
  */
-export async function setRewardActive(id: number, isActive: boolean): Promise<boolean> {
+export async function updateReward(id: number, input: UpdateRewardInput): Promise<boolean> {
+  const row: Database['app']['Tables']['rewards']['Update'] = {}
+  if (input.name !== undefined) row.name = input.name
+  if (input.description !== undefined) row.description = input.description
+  if (input.points !== undefined) row.points = input.points
+  if (input.imagePath !== undefined) row.image_path = input.imagePath
+  if (input.stock !== undefined) row.stock = input.stock
+  if (input.isActive !== undefined) row.is_active = input.isActive
+
   const { data, error } = await getServiceClient()
     .from('rewards')
-    .update({ is_active: isActive })
+    .update(row)
     .eq('id', id)
     .select('id')
     .maybeSingle()

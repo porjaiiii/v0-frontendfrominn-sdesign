@@ -4,6 +4,7 @@ import { getServiceClient } from '@/lib/supabase/server'
 import {
   getAllRewardsForAdmin,
   getDonationCampaigns,
+  getRewardForAdmin,
   getRewardsCatalog,
   getWasteTypes,
 } from '@/lib/supabase/reads'
@@ -11,7 +12,7 @@ import {
   createDonationCampaign,
   createReward,
   redeemRewards,
-  setRewardActive,
+  updateReward,
   WriteError,
 } from '@/lib/supabase/writes'
 import { createRewardSchema, createDonationCampaignSchema } from '@/lib/schemas/catalog'
@@ -117,17 +118,48 @@ describe('getRewardsCatalog / createReward', () => {
     const created = await createReward(createRewardSchema.parse({ name: 'ปิดได้', points: 10 }))
     createdRewardIds.push(created.id)
 
-    expect(await setRewardActive(created.id, false)).toBe(true)
+    expect(await updateReward(created.id, { isActive: false })).toBe(true)
     expect((await getRewardsCatalog()).some((r) => r.id === created.id)).toBe(false)
     const hidden = (await getAllRewardsForAdmin()).find((r) => r.id === created.id)
     expect(hidden?.isActive).toBe(false)
 
-    expect(await setRewardActive(created.id, true)).toBe(true)
+    expect(await updateReward(created.id, { isActive: true })).toBe(true)
     expect((await getRewardsCatalog()).some((r) => r.id === created.id)).toBe(true)
   })
 
+  it('edits only the fields it is given', async () => {
+    const created = await createReward(
+      createRewardSchema.parse({
+        name: 'ก่อนแก้',
+        description: 'คำอธิบายเดิม',
+        points: 10,
+        imagePath: 'rewards/old.jpg',
+        stock: 3,
+      }),
+    )
+    createdRewardIds.push(created.id)
+
+    const found = await updateReward(created.id, {
+      name: 'หลังแก้',
+      points: 25,
+      imagePath: 'rewards/new.jpg',
+      stock: null,
+    })
+    expect(found).toBe(true)
+
+    // description was not sent, so it must survive the edit.
+    const edited = await getRewardForAdmin(created.id)
+    expect(edited).toMatchObject({
+      name: 'หลังแก้',
+      description: 'คำอธิบายเดิม',
+      points: 25,
+      stock: null,
+    })
+    expect(edited?.image).toContain('rewards/new.jpg')
+  })
+
   it('reports a missing reward instead of silently succeeding', async () => {
-    expect(await setRewardActive(987654, false)).toBe(false)
+    expect(await updateReward(987654, { isActive: false })).toBe(false)
   })
 })
 

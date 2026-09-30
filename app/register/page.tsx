@@ -208,7 +208,7 @@ function RegisterPageContent() {
     occupation: '',
     houseNumber: '',
   })
-
+  console.log('pdpa', formData.pdpaConsent)
   useEffect(() => {
     if (profile?.userId) {
       const generatedUserId = generateUserIdFromLineId(profile.userId)

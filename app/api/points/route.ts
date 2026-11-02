@@ -107,7 +107,14 @@ async function writeToSupabase(request: NextRequest, action: string, userId: str
   switch (action) {
     case 'get_or_create_account':
     case 'resync_balance': {
-      const account = await getAccount(userId)
+      // Reads, despite living on POST — so the same gate as GET. `user_id` came
+      // from the body unverified, which handed any id's balance to anyone.
+      const access = await requireSelf(request, userId)
+      if (!access.ok) {
+        return NextResponse.json({ error: access.error }, { status: access.status })
+      }
+
+      const account = await getAccount(access.lineUserId)
       if (!account) {
         return NextResponse.json({ success: false, message: 'Account not found' })
       }

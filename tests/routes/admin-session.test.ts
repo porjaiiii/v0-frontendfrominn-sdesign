@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createAdminToken, verifyAdminToken } from '@/lib/auth/admin-session'
+import { hasActiveAdminKey } from '@/lib/supabase/reads'
 import { getServiceClient } from '@/lib/supabase/server'
 import { activateAdminKey, WriteError } from '@/lib/supabase/writes'
 
@@ -126,5 +127,24 @@ describe('activateAdminKey', () => {
       .eq('key', KEY)
       .single()
     expect([USER, OTHER]).toContain(data!.line_user_id)
+  })
+})
+
+describe('hasActiveAdminKey', () => {
+  it('is true once the key is activated', async () => {
+    await activateAdminKey(KEY, USER)
+    expect(await hasActiveAdminKey(USER)).toBe(true)
+  })
+
+  it('is false once the key is revoked', async () => {
+    await activateAdminKey(KEY, USER)
+    await db.from('admin_keys').update({ status: 'revoked' }).eq('key', KEY)
+
+    expect(await hasActiveAdminKey(USER)).toBe(false)
+  })
+
+  it('is false for someone who never held a key', async () => {
+    await activateAdminKey(KEY, USER)
+    expect(await hasActiveAdminKey(OTHER)).toBe(false)
   })
 })

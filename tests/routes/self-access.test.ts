@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { GET as adminPointsGet } from '@/app/api/admin/points/route'
 import { GET as adminProfileGet } from '@/app/api/admin/profile/[id]/route'
 import { GET as adminRecordsGet } from '@/app/api/admin/waste/records/route'
 import { GET as couponsGet } from '@/app/api/coupons/route'
-import { GET as pointsGet } from '@/app/api/points/route'
+import { GET as pointsGet, POST as pointsPost } from '@/app/api/points/route'
 import { GET as profileGet } from '@/app/api/profile/[id]/route'
 import { DELETE as wasteCancelDelete, POST as wasteCancelPost } from '@/app/api/waste/cancel/route'
 import { GET as recordsGet } from '@/app/api/waste/records/route'
@@ -201,6 +202,50 @@ describe('GET /api/points', () => {
   )
 })
 
+// The two legacy write actions that only ever READ the account. They took
+// user_id from the body with no token, so they answered for anyone.
+describe('POST /api/points account reads', () => {
+  const post = (body: object, token: string | null = 'a-valid-token') =>
+    new NextRequest(new URL('/api/points', 'http://localhost:3000'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(token === null ? {} : { authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(body),
+    })
+
+  it.each(['get_or_create_account', 'resync_balance'])(
+    '401s %s without a token, and never reads the account',
+    async (action) => {
+      const res = await pointsPost(post({ action, user_id: OWNER }, null))
+
+      expect(res.status).toBe(401)
+      expect(mocks.getAccount).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['get_or_create_account', 'resync_balance'])(
+    "403s %s for another user's account",
+    async (action) => {
+      const res = await pointsPost(post({ action, user_id: OTHER }))
+
+      expect(res.status).toBe(403)
+      expect(mocks.getAccount).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['get_or_create_account', 'resync_balance'])(
+    'returns your own account for %s',
+    async (action) => {
+      const res = await pointsPost(post({ action, user_id: OWNER }))
+
+      expect(res.status).toBe(200)
+      expect(mocks.getAccount).toHaveBeenCalledWith(OWNER)
+    },
+  )
+})
+
 describe('GET /api/admin/profile/[id]', () => {
   it('401s without an admin session, even holding a valid LINE token', async () => {
     const res = await adminProfileGet(req(`/api/admin/profile/${OTHER}`), params(OTHER))
@@ -225,6 +270,46 @@ describe('GET /api/admin/profile/[id]', () => {
     const res = await adminProfileGet(req(`/api/admin/profile/${OTHER}`), params(OTHER))
 
     expect(res.status).toBe(404)
+  })
+})
+
+// Staff read a scanned user's points here. /api/points serves only the
+// caller's own account, so this is the only way to see someone else's.
+describe('GET /api/admin/points', () => {
+  it('401s without an admin session, even holding a valid LINE token', async () => {
+    const res = await adminPointsGet(req(`/api/admin/points?user_id=${OTHER}`))
+
+    expect(res.status).toBe(401)
+    expect(mocks.getAccount).not.toHaveBeenCalled()
+  })
+
+  it("returns another user's account to an admin", async () => {
+    mocks.requireAdmin.mockResolvedValue({ lineUserId: 'Uadmin' })
+
+    const res = await adminPointsGet(req(`/api/admin/points?user_id=${OTHER}`))
+
+    expect(res.status).toBe(200)
+    expect(mocks.getAccount).toHaveBeenCalledWith(OTHER)
+    expect(await res.json()).toMatchObject({ success: true, account: { total_points: 120 } })
+  })
+
+  it('answers a user with no points yet with a null account, not an error', async () => {
+    mocks.requireAdmin.mockResolvedValue({ lineUserId: 'Uadmin' })
+    mocks.getAccount.mockResolvedValue(null)
+
+    const res = await adminPointsGet(req(`/api/admin/points?user_id=${OTHER}`))
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ success: true, account: null })
+  })
+
+  it('400s without a user_id', async () => {
+    mocks.requireAdmin.mockResolvedValue({ lineUserId: 'Uadmin' })
+
+    const res = await adminPointsGet(req('/api/admin/points'))
+
+    expect(res.status).toBe(400)
+    expect(mocks.getAccount).not.toHaveBeenCalled()
   })
 })
 

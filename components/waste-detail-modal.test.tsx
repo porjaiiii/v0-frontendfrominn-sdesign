@@ -16,7 +16,7 @@ vi.mock('@line/liff', () => ({
 }))
 
 const app = vi.hoisted(() => ({
-  wasteRates: null as Record<string, { carbonFactor: number; pointsPerKg: number }> | null,
+  wasteRates: null as Record<string, { carbonFactor?: number; pointsPerKg?: number }> | null,
 }))
 
 vi.mock('@/lib/app-context', () => ({
@@ -200,7 +200,9 @@ describe('WasteDetailModal delete', () => {
     })
 
     it('shows the real numbers once the rates are there', async () => {
-      app.wasteRates = { plastic: { carbonFactor: 1.031, pointsPerKg: 6 } }
+      // The shape lib/app-context.tsx builds: carbon per type, points per
+      // subtype (keyed by rateKey) — pendingRecord is plastic / pet.
+      app.wasteRates = { plastic: { carbonFactor: 1.031 }, 'plastic:pet': { pointsPerKg: 6 } }
       await render()
 
       await typeWeight('3')

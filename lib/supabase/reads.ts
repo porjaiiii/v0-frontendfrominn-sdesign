@@ -111,6 +111,24 @@ export async function isRegistered(lineUserId: string): Promise<boolean> {
   return data !== null
 }
 
+/**
+ * Whether this LINE user still holds an active admin key.
+ *
+ * The admin cookie (lib/auth/admin-session.ts) is stateless, so this is what
+ * makes setting a key's status to 'revoked' actually end the session.
+ */
+export async function hasActiveAdminKey(lineUserId: string): Promise<boolean> {
+  const { data, error } = await getServiceClient()
+    .from('admin_keys')
+    .select('key')
+    .eq('line_user_id', lineUserId)
+    .eq('status', 'active')
+    .limit(1)
+
+  if (error) throw error
+  return (data?.length ?? 0) > 0
+}
+
 // listRegisteredLineUserIds() lived here: it paged out EVERY registered LINE
 // user id for GAS #3's syncRegisteredUsersToMenuB(). Removed along with
 // GET /api/registered, because a LINE user id is the key the rest of this API

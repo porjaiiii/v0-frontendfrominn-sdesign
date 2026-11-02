@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { BottomNav } from '@/components/bottom-nav'
 import { PageHeader } from '@/components/page-header'
+import { AdminPointsCard } from '@/components/admin/admin-points-card'
 import { WasteCart } from '@/components/waste-cart'
 import { Award, TreePine, ChevronLeft, ChevronRight, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { useState, useEffect } from 'react'
@@ -42,6 +43,8 @@ export default function ProfileScannerPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0)
+  // Bumped whenever the cart changes, so the balance reflects a just-confirmed record.
+  const [pointsRefresh, setPointsRefresh] = useState(0)
   
   const { scanCode, isInClient, isReady } = useLiffContext()
 
@@ -316,6 +319,11 @@ export default function ProfileScannerPage() {
           </div>
         </div>
 
+        {/* Spendable points — read through the staff route */}
+        <div className="mb-4">
+          <AdminPointsCard userId={scannedLineId || ''} refreshKey={pointsRefresh} />
+        </div>
+
         {/* Badge Section with Navigation */}
         <div className="bg-white rounded-xl border border-[#e5e5e5] p-4 mb-4 shadow-sm">
           {/* Badge Icons Row with Navigation */}
@@ -379,7 +387,11 @@ export default function ProfileScannerPage() {
         {/* Waste Cart Section */}
         <div className="mt-6">
           {/* admin: reads the scanned user's records via the staff route. */}
-          <WasteCart userId={scannedLineId || ''} admin />
+          <WasteCart
+            userId={scannedLineId || ''}
+            onTotalWeightChange={() => setPointsRefresh((n) => n + 1)}
+            admin
+          />
         </div>
       </main>
 

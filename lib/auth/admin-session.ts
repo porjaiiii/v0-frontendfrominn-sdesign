@@ -2,6 +2,8 @@ import 'server-only'
 
 import { cookies } from 'next/headers'
 
+import { hasActiveAdminKey } from '@/lib/supabase/reads'
+
 import { signToken, verifyToken } from './signed-token'
 
 // Server-verified admin sessions.
@@ -80,14 +82,20 @@ export async function verifyAdminToken(token: string | undefined): Promise<Admin
 }
 
 /**
- * Reads the session from the request cookie. Null when absent, forged, expired —
- * or when ADMIN_SESSION_SECRET is missing, which must read as "not an admin"
- * rather than as a 500 that a caller might be tempted to treat as transient.
+ * Reads the session from the request cookie. Null when absent, forged, expired,
+ * when the admin's key is no longer active — or when ADMIN_SESSION_SECRET is
+ * missing or the key lookup fails, which must read as "not an admin" rather
+ * than as a 500 that a caller might be tempted to treat as transient.
+ *
+ * The key check is what makes revocation work: the signature alone would keep
+ * a revoked admin's cookie valid for the rest of its 30 days.
  */
 export async function getAdminSession(): Promise<AdminSession | null> {
   try {
     const store = await cookies()
-    return await verifyAdminToken(store.get(ADMIN_COOKIE)?.value)
+    const session = await verifyAdminToken(store.get(ADMIN_COOKIE)?.value)
+    if (!session) return null
+    return (await hasActiveAdminKey(session.sub)) ? session : null
   } catch (error) {
     console.error('[admin-session] verification failed, denying:', error)
     return null

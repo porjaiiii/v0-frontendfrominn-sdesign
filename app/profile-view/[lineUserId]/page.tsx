@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
+import { AdminPointsCard } from '@/components/admin/admin-points-card'
 import { PageHeader } from '@/components/page-header'
 import { WasteCart } from '@/components/waste-cart'
 import { AlertCircle } from 'lucide-react'
@@ -19,6 +20,8 @@ export default function ProfileViewPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [totalWeight, setTotalWeight] = useState(0)
+  // Bumped whenever the cart changes, so the balance reflects a just-confirmed record.
+  const [pointsRefresh, setPointsRefresh] = useState(0)
   const [sortMode, setSortMode] = useState<'date' | 'weight'>('date')
   console.log('1. isAdmin:', isAdmin)
 
@@ -87,7 +90,7 @@ export default function ProfileViewPage() {
         {/* Page Title */}
         <h1 className="text-3xl font-extrabold text-[#154212] text-balance">ข้อมูลการสแกน</h1>
 
-       
+        <AdminPointsCard userId={profile.lineUserId || lineUserId} refreshKey={pointsRefresh} />
 
         {/* Waste section banner */}
         <div className="bg-[#154212] rounded-lg px-4 py-3 flex items-center justify-between">
@@ -124,7 +127,10 @@ export default function ProfileViewPage() {
         {/* Waste Cart */}
         <WasteCart
           userId={profile.lineUserId || lineUserId}
-          onTotalWeightChange={setTotalWeight}
+          onTotalWeightChange={(weight) => {
+            setTotalWeight(weight)
+            setPointsRefresh((n) => n + 1)
+          }}
           sortMode={sortMode}
           // Someone else's records, so this reads through the staff route.
           admin

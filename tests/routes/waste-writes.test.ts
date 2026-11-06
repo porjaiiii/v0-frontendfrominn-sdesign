@@ -2,7 +2,8 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { submitWasteSchema, updateWasteSchema } from '@/lib/schemas/waste'
 import { getServiceClient } from '@/lib/supabase/server'
-import { confirmWaste, submitWaste, WriteError } from '@/lib/supabase/writes'
+import { getWasteRecords } from '@/lib/supabase/reads'
+import { cancelWaste, confirmWaste, submitWaste, WriteError } from '@/lib/supabase/writes'
 
 import { supabaseConfigured } from './fixtures'
 
@@ -302,5 +303,73 @@ describe('confirmWaste', () => {
     // threshold, so this asserts the tier is weight-based.
     expect(data!.tier).toBe('นักอนุรักษ์ระดับกลาง')
     expect(data!.lifetime_earned).toBe(960)
+  })
+})
+
+describe('cancelWaste', () => {
+  it('takes a pending record out of the cart without touching points', async () => {
+    const { record } = await submitWaste(USER, plastic(2.5).input, null)
+
+    await cancelWaste(USER, record.timestamp)
+
+    const { data } = await db
+      .from('waste_records')
+      .select('status')
+      .eq('line_user_id', USER)
+      .single()
+    expect(data?.status).toBe('cancelled')
+    expect(await spendable()).toBe(0)
+  })
+
+  it('hides the cancelled record from the list it was deleted from', async () => {
+    const { record } = await submitWaste(USER, plastic(2.5).input, null)
+    await cancelWaste(USER, record.timestamp)
+
+    const { records, stats } = await getWasteRecords(USER)
+
+    expect(records).toHaveLength(0)
+    expect(stats.total).toBe(0)
+  })
+
+  it('refuses to delete a record whose points are already awarded', async () => {
+    const { record } = await submitWaste(USER, plastic(2.5).input, null)
+    await confirmWaste(USER, updateWasteSchema.parse({ timestamp: record.timestamp }), null)
+
+    await expect(cancelWaste(USER, record.timestamp)).rejects.toMatchObject({
+      name: 'WriteError',
+      status: 409,
+    })
+
+    expect(await spendable()).toBe(15)
+  })
+
+  it('cannot be used to delete somebody else’s record', async () => {
+    const { record } = await submitWaste(OTHER_USER, plastic(1).input, null)
+
+    await expect(cancelWaste(USER, record.timestamp)).rejects.toMatchObject({
+      name: 'WriteError',
+      status: 404,
+    })
+
+    const { data } = await db
+      .from('waste_records')
+      .select('status')
+      .eq('line_user_id', OTHER_USER)
+      .single()
+    expect(data?.status).toBe('pending')
+  })
+
+  it('reports an unknown record rather than silently succeeding', async () => {
+    await expect(cancelWaste(USER, '2020-01-01T00:00:00.000Z')).rejects.toMatchObject({
+      name: 'WriteError',
+      status: 404,
+    })
+  })
+
+  it('is idempotent — deleting twice is not an error the user must see', async () => {
+    const { record } = await submitWaste(USER, plastic(2.5).input, null)
+
+    await cancelWaste(USER, record.timestamp)
+    await expect(cancelWaste(USER, record.timestamp)).resolves.toBeUndefined()
   })
 })

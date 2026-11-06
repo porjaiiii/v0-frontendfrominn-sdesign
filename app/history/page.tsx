@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useLiffContext } from '@/lib/liff-context'
+import { apiFetch } from '@/lib/api-client'
 import {
   wasteTypeName,
   wasteSubtypeName,
@@ -223,17 +224,19 @@ export default function HistoryPage() {
     const controller = new AbortController()
     const q = encodeURIComponent(userId)
 
-    fetch(`/api/points?action=get_spend_details&user_id=${q}`, { signal: controller.signal })
+    // All three routes now require the LINE ID token and answer only for the
+    // caller's own id, so these go through apiFetch rather than fetch.
+    apiFetch(`/api/points?action=get_spend_details&user_id=${q}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => setSpendDetails(data?.success ? (data.details as SpendDetailRow[]) : []))
       .catch(err => { if (err.name !== 'AbortError') setSpendDetails([]) })
 
-    fetch(`/api/waste/records?user_id=${q}`, { signal: controller.signal })
+    apiFetch(`/api/waste/records?user_id=${q}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => setWasteRecords((data?.records ?? []) as WasteRecord[]))
       .catch(err => { if (err.name !== 'AbortError') setWasteRecords([]) })
 
-    fetch(`/api/coupons?user_id=${q}`, { signal: controller.signal })
+    apiFetch(`/api/coupons?user_id=${q}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => setCoupons(data?.success ? (data.coupons as Coupon[]) : []))
       .catch(err => { if (err.name !== 'AbortError') setCoupons([]) })

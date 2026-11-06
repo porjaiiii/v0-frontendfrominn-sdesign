@@ -37,7 +37,7 @@ export function WasteCard({
   onEdit, 
   onSave, 
   isSaving = false,
-  isAnySaving = false
+  isAnySaving = false,
 }: WasteCardProps) {
   const wasteTypeThai = WASTE_TYPE_THAI[record.waste_type] || record.waste_type
 
@@ -47,9 +47,9 @@ export function WasteCard({
     record.image_urls.length > 0 && 
     record.image_urls.some(url => url && url.trim() !== '')
 
+  const hasValidWeight = record.weight_kg > 0
   // ปุ่มยืนยันจะกดไม่ได้ ถ้า: ไม่มีรูปภาพ OR กำลังบันทึกการทำงานอยู่
-  const isSubmitDisabled = !hasValidImages || isSaving || isAnySaving
-
+  const isSubmitDisabled = !hasValidImages || isSaving || isAnySaving || !hasValidWeight
  
   const handleSaveWithBonus = () => {
     const updatedRecord: WasteRecord = {
@@ -105,7 +105,7 @@ export function WasteCard({
         </div>
       </div>
 
-      {/* Action Buttons */}
+   {/* Action Buttons */}
       <div className="flex gap-2 px-3 pb-3">
         <button
           onClick={() => onEdit(record, true)}

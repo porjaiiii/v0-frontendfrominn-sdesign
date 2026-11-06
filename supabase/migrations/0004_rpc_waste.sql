@@ -129,8 +129,10 @@ as $$
 declare
   v_type      app.waste_types%rowtype;
   v_record    app.waste_records%rowtype;
+  v_subtype   app.waste_subtypes%rowtype;
   v_carbon    numeric(12,4) := 0;
   v_points    integer := 0;
+  v_points_per_kg numeric(10,4);
   v_duplicate boolean := false;
 begin
   select * into v_type
@@ -142,11 +144,18 @@ begin
       using errcode = 'foreign_key_violation';
   end if;
 
-  -- Rates come from app.waste_types, never from the request. This is what stops
-  -- a client pricing its own submission.
+  select * into v_subtype
+    from app.waste_subtypes
+   where waste_type_id = p_waste_type_id
+     and id = p_waste_subtype_id
+     and is_active;
+
+  v_points_per_kg := coalesce(v_subtype.points_per_kg, v_type.points_per_kg);
+  -- Rates come from the catalog, never from the request. This is what stops a
+  -- client pricing its own submission.
   if p_weight_kg is not null and p_weight_kg > 0 then
     v_carbon := round(p_weight_kg * v_type.carbon_factor, 4);
-    v_points := round(p_weight_kg * v_type.points_per_kg)::integer;
+    v_points := round(p_weight_kg * v_points_per_kg)::integer;
   end if;
 
   insert into app.waste_records (
@@ -160,7 +169,7 @@ begin
     nullif(greatest(coalesce(p_weight_kg, 0), 0), 0),
     coalesce(p_image_urls, '{}'),
     v_carbon, v_points, 'pending', p_notes,
-    v_type.carbon_factor, v_type.points_per_kg, p_idempotency_key,
+    v_type.carbon_factor, v_points_per_kg, p_idempotency_key,
     -- Millisecond precision, deliberately. `recorded_at` is the record's
     -- identity (waste_records_user_recorded_at_uniq) and every client
     -- round-trips it through a JS Date, which truncates to milliseconds — so
@@ -236,9 +245,11 @@ as $$
 declare
   v_record app.waste_records%rowtype;
   v_type   app.waste_types%rowtype;
+  v_subtype app.waste_subtypes%rowtype;
   v_weight numeric(10,3);
   v_carbon numeric(12,4);
   v_points integer;
+  v_points_per_kg numeric(10,4);
   v_period text;
   v_lot_id bigint;
   v_tx_id  text;
@@ -286,6 +297,14 @@ begin
       using errcode = 'foreign_key_violation';
   end if;
 
+  select * into v_subtype
+    from app.waste_subtypes
+   where waste_type_id = v_type.id
+     and id = coalesce(p_waste_subtype_id, v_record.waste_subtype_id)
+     and is_active;
+
+  v_points_per_kg := coalesce(v_subtype.points_per_kg, v_type.points_per_kg);
+
   v_weight := nullif(greatest(coalesce(p_weight_kg, v_record.weight_kg, 0), 0), 0);
 
   -- waste_records_done_needs_weight would reject this anyway; failing here says
@@ -296,7 +315,7 @@ begin
   end if;
 
   v_carbon := round(v_weight * v_type.carbon_factor, 4);
-  v_points := round(v_weight * v_type.points_per_kg)::integer;
+  v_points := round(v_weight * v_points_per_kg)::integer;
 
   update app.waste_records
      set waste_type_id    = v_type.id,
@@ -309,7 +328,7 @@ begin
          -- Re-snapshotted at confirmation: this is the moment the user earns,
          -- so this is the rate that applies.
          applied_carbon_factor = v_type.carbon_factor,
-         applied_points_per_kg = v_type.points_per_kg,
+         applied_points_per_kg = v_points_per_kg,
          status = 'done'
    where id = v_record.id
    returning * into v_record;

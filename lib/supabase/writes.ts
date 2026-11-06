@@ -2,9 +2,14 @@ import 'server-only'
 
 import type { CouponRecord } from '@/lib/coupon-config'
 import type { RegisterUserInput } from '@/lib/schemas/register'
-import type { CreateDonationCampaignInput, CreateRewardInput } from '@/lib/schemas/catalog'
+import type {
+  CreateDonationCampaignInput,
+  CreateRewardInput,
+  UpdateRewardInput,
+} from '@/lib/schemas/catalog'
 import type { DonatePointsInput, RedeemRewardsInput, UseCouponInput } from '@/lib/schemas/points'
 import type { SubmitWasteInput, UpdateWasteInput } from '@/lib/schemas/waste'
+import { nextRewardId } from '@/lib/rewards-catalog'
 import { generateUserIdFromLineId } from '@/lib/user-id-generator'
 import type { WasteRecord } from '@/lib/waste-records'
 
@@ -16,6 +21,7 @@ import {
 } from './reads'
 import { catalogImageUrl, signWastePhotoUrls, toStoragePath } from './storage'
 import { getServiceClient } from './server'
+import type { Database } from './types'
 
 // First Supabase write path in the migration. Follows the same identity rule
 // the read/write schemas already commit to (lib/schemas/common.ts):
@@ -197,7 +203,10 @@ export interface ConfirmWasteResult {
 }
 
 /**
- * PUT /api/waste/update — weigh a cart item, mark it done, award the points.
+ * PUT /api/admin/waste/update — weigh a cart item, mark it done, award the
+ * points to `lineUserId`, the record's owner. Staff-only: the owner route
+ * /api/waste/update is retired, since owners confirming their own records
+ * could award themselves points at any weight.
  *
  * Exactly-once: a second call for the same record awards nothing and returns
  * the same body. This is the duplicated-transaction bug that prompted the
@@ -242,6 +251,58 @@ export async function confirmWaste(
     alreadyConfirmed: payload.already_confirmed,
     txId: payload.tx_id,
   }
+}
+
+/**
+ * POST /api/admin/waste/cancel — delete a record that never reached `done`.
+ * Staff-only: the owner route /api/waste/cancel is retired.
+ *
+ * A plain UPDATE rather than an RPC, because nothing here moves points: a
+ * `pending` record has no point lot, no transaction and no ledger entry, so
+ * there is no multi-table invariant for a transaction to protect. The RPCs
+ * exist for the paths that do.
+ *
+ * `status = 'pending'` is part of the WHERE clause, not a check performed
+ * first: a confirm landing between the read and the write would otherwise
+ * cancel a record whose points had just been awarded, leaving points with no
+ * record behind them. A confirmed record simply matches no row, and the lookup
+ * afterwards turns that into a 409 the user can act on.
+ *
+ * Idempotent — cancelling an already-cancelled record returns quietly, so a
+ * double tap is not an error anyone has to explain.
+ */
+export async function cancelWaste(lineUserId: string, timestamp: string): Promise<void> {
+  const recordedAt = new Date(timestamp)
+  if (Number.isNaN(recordedAt.getTime())) {
+    throw new WriteError(`Unparseable record timestamp: ${timestamp}`, 400)
+  }
+
+  const db = getServiceClient()
+  const key = { line_user_id: lineUserId, recorded_at: recordedAt.toISOString() }
+
+  const { data, error } = await db
+    .from('waste_records')
+    .update({ status: 'cancelled' })
+    .match({ ...key, status: 'pending' })
+    .select('id')
+
+  if (error) throw asWriteError(error)
+  if (data && data.length > 0) return
+
+  // Nothing matched. Scoping this lookup to the caller as well is what makes
+  // someone else's record indistinguishable from one that does not exist —
+  // a 404 either way, rather than a 409 that would confirm it is theirs.
+  const { data: existing, error: lookupError } = await db
+    .from('waste_records')
+    .select('status')
+    .match(key)
+    .maybeSingle()
+
+  if (lookupError) throw asWriteError(lookupError)
+  if (!existing) throw new WriteError('ไม่พบรายการขยะที่ต้องการลบ', 404)
+  if (existing.status === 'cancelled') return
+
+  throw new WriteError('รายการนี้ได้รับคะแนนแล้ว ไม่สามารถลบได้', 409)
 }
 
 // ---------------------------------------------------------------------------
@@ -403,16 +464,14 @@ export async function activateAdminKey(key: string, lineUserId: string): Promise
 export async function createReward(input: CreateRewardInput): Promise<RewardCatalogEntry> {
   // `id` is a small integer PK seeded manually in 0003 (legacy REWARDS ids);
   // pick the next free one rather than requiring the admin to know the scheme.
+  // nextRewardId skips the cash-back ids (99/100) — see lib/rewards-catalog.ts.
   const db = getServiceClient()
-  const { data: maxRow, error: maxError } = await db
-    .from('rewards')
-    .select('id')
-    .order('id', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (maxError) throw maxError
+  const { data: rows, error: idsError } = await db.from('rewards').select('id, is_variable')
+  if (idsError) throw idsError
 
-  const nextId = (maxRow?.id ?? 0) + 1
+  const nextId = nextRewardId(
+    (rows ?? []).map((row) => ({ id: row.id, isVariable: row.is_variable })),
+  )
 
   const { data, error } = await db
     .from('rewards')
@@ -440,6 +499,36 @@ export async function createReward(input: CreateRewardInput): Promise<RewardCata
     minPoints: data.min_points,
     stock: data.stock,
   }
+}
+
+/**
+ * PATCH /api/catalog/rewards/[id] — the admin rewards page's on/off switch and
+ * the reward editor. Only the fields present in `input` are written.
+ *
+ * An inactive reward drops out of GET /api/catalog/rewards, and
+ * redeem_rewards already refuses it (0009), so `isActive` is the whole switch.
+ * A new `points` is what redeem_rewards charges from then on; coupons already
+ * issued keep the points_used they were issued with.
+ * Returns false when no reward has that id.
+ */
+export async function updateReward(id: number, input: UpdateRewardInput): Promise<boolean> {
+  const row: Database['app']['Tables']['rewards']['Update'] = {}
+  if (input.name !== undefined) row.name = input.name
+  if (input.description !== undefined) row.description = input.description
+  if (input.points !== undefined) row.points = input.points
+  if (input.imagePath !== undefined) row.image_path = input.imagePath
+  if (input.stock !== undefined) row.stock = input.stock
+  if (input.isActive !== undefined) row.is_active = input.isActive
+
+  const { data, error } = await getServiceClient()
+    .from('rewards')
+    .update(row)
+    .eq('id', id)
+    .select('id')
+    .maybeSingle()
+
+  if (error) throw asWriteError(error)
+  return data !== null
 }
 
 /** POST /api/catalog/donations — the write side of app/admin/donations/new/page.tsx. */

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { resolveWasteSubtypeId, resolveWasteTypeId } from '@/lib/waste-records'
+
 import { lineUserIdSchema } from './common'
 
 // Waste record contracts.
@@ -71,7 +73,47 @@ function normaliseWeight(input: unknown): unknown {
   return body
 }
 
-const fromLegacyClient = (input: unknown) => normaliseWeight(collectImageUrls(input))
+/**
+ * Thai labels back to catalog ids, and '' to absent.
+ *
+ * components/waste-detail-modal.tsx put `sub.name` in its subtype <option>
+ * values, so editing a record sent 'ขวดน้ำพลาสติกใส' where
+ * waste_records.waste_subtype_id expects 'pet'. Because
+ * waste_records_subtype_fk is composite — (waste_type_id, waste_subtype_id) —
+ * every save that touched the type or subtype dropdown came back as:
+ *
+ *   insert or update on table "waste_records" violates foreign key constraint
+ *   "waste_records_subtype_fk"
+ *
+ * The modal now submits ids. This stays because the fix does not reach the
+ * bundle already cached in a LINE webview, and because `''` — how a record with
+ * no subtype round-trips — failed `min(1)` and made such a record unsaveable.
+ */
+function normaliseCatalogIds(input: unknown): unknown {
+  if (!input || typeof input !== 'object') return input
+  const body = input as Record<string, unknown>
+  const out = { ...body }
+
+  if (typeof out.waste_type === 'string') {
+    const type = out.waste_type.trim()
+    if (type === '') delete out.waste_type
+    else out.waste_type = resolveWasteTypeId(type)
+  }
+
+  if (typeof out.waste_subtype === 'string') {
+    const subtype = out.waste_subtype.trim()
+    if (subtype === '') delete out.waste_subtype
+    else {
+      const type = typeof out.waste_type === 'string' ? out.waste_type : undefined
+      out.waste_subtype = resolveWasteSubtypeId(type, subtype)
+    }
+  }
+
+  return out
+}
+
+const fromLegacyClient = (input: unknown) =>
+  normaliseCatalogIds(normaliseWeight(collectImageUrls(input)))
 
 /**
  * Submitting a new record.
@@ -96,25 +138,26 @@ export const submitWasteSchema = z.preprocess(
 export type SubmitWasteInput = z.infer<typeof submitWasteSchema>
 
 /**
- * Confirming (or editing) a record already in the cart.
+ * Confirming (or editing) a record already in the cart — the fields
+ * confirmWaste() takes. Only staff confirm, through adminUpdateWasteSchema
+ * below; the owner route that parsed this directly is retired.
  *
  * `status` is accepted and ignored — the clients all send `'done'`, which is
  * the only transition this path performs. Naming it here documents that it
  * cannot be used to force a record back to `pending`.
  */
-export const updateWasteSchema = z.preprocess(
-  fromLegacyClient,
-  z.object({
-    /** Identifies the record: today's de-facto key is (line_user_id, recorded_at). */
-    timestamp: z.string().min(1),
-    waste_type: z.string().min(1).max(64).optional(),
-    waste_subtype: z.string().min(1).max(64).optional(),
-    weight_kg: z.number().positive().max(10_000).nullish(),
-    image_urls: imageUrlsSchema.optional(),
-    notes: z.string().max(2000).optional(),
-    status: z.enum(['pending', 'done', 'cancelled']).optional(),
-  }),
-)
+const updateWasteFields = z.object({
+  /** Identifies the record: today's de-facto key is (line_user_id, recorded_at). */
+  timestamp: z.string().min(1),
+  waste_type: z.string().min(1).max(64).optional(),
+  waste_subtype: z.string().min(1).max(64).optional(),
+  weight_kg: z.number().positive().max(10_000).nullish(),
+  image_urls: imageUrlsSchema.optional(),
+  notes: z.string().max(2000).optional(),
+  status: z.enum(['pending', 'done', 'cancelled']).optional(),
+})
+
+export const updateWasteSchema = z.preprocess(fromLegacyClient, updateWasteFields)
 
 export type UpdateWasteInput = z.infer<typeof updateWasteSchema>
 
@@ -137,3 +180,38 @@ export const adminSubmitWasteSchema = z.object({
 })
 
 export type AdminSubmitWasteInput = z.infer<typeof adminSubmitWasteSchema>
+
+/**
+ * PUT /api/admin/waste/update — staff confirm a record in somebody else's
+ * cart, so the owner is named in the body. The points go to that owner: the
+ * staff member's own LINE token is not consulted at all.
+ */
+export const adminUpdateWasteSchema = z.preprocess(
+  fromLegacyClient,
+  updateWasteFields.extend({ user_id: lineUserIdSchema }),
+)
+
+export type AdminUpdateWasteInput = z.infer<typeof adminUpdateWasteSchema>
+
+/**
+ * Deleting a record that never reached `done`.
+ *
+ * Only the timestamp, because there is nothing to change: the record is marked
+ * `cancelled` as it stands. Only staff delete, through adminCancelWasteSchema
+ * below; the owner route that parsed this directly is retired.
+ */
+export const cancelWasteSchema = z.object({
+  timestamp: z.string().min(1),
+})
+
+export type CancelWasteInput = z.infer<typeof cancelWasteSchema>
+
+/**
+ * POST /api/admin/waste/cancel — staff name the owner explicitly, because the
+ * owner cannot come from a LINE token that belongs to the staff member.
+ */
+export const adminCancelWasteSchema = cancelWasteSchema.extend({
+  user_id: lineUserIdSchema,
+})
+
+export type AdminCancelWasteInput = z.infer<typeof adminCancelWasteSchema>

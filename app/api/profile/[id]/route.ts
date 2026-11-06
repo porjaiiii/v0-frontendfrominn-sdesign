@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { requireSelf } from '@/lib/auth/require-self'
 import { getProfile } from '@/lib/supabase/reads'
+
+// GET /api/profile/[id] -> YOUR OWN profile. `id` must match the LINE ID token.
+//
+// This row is PDPA-regulated — full name, phone number, home address — and the
+// route used to return it for any id in the URL with no token at all. A LINE
+// user id is not a secret (it travels in QR codes, links and the GAS
+// integration), so knowing one was never authorisation to read the person
+// behind it.
+//
+// Staff who need someone else's profile use /api/admin/profile/[id], which
+// asks for an admin session instead. Keeping them apart is deliberate: see the
+// note there.
 
 // One query. The Apps Script path this replaced needed 60 s of retries to
 // survive a cold start.
@@ -31,7 +44,7 @@ async function respondFromSupabase(lineId: string) {
   return NextResponse.json(profile, { headers: NO_STORE })
 }
 
-export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id: lineId } = await context.params
 
@@ -39,7 +52,12 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
       return NextResponse.json({ error: 'LINE ID is required' }, { status: 400 })
     }
 
-    return await respondFromSupabase(lineId)
+    const access = await requireSelf(request, lineId)
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status, headers: NO_STORE })
+    }
+
+    return await respondFromSupabase(access.lineUserId)
   } catch (error) {
     console.error('[profile] error:', error)
     return NextResponse.json({ error: GENERIC_ERROR }, { status: 500 })

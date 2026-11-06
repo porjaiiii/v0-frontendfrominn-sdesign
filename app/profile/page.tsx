@@ -9,6 +9,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLiffContext } from '@/lib/liff-context'
+import { apiFetch } from '@/lib/api-client'
 import { useApp } from '@/lib/app-context'
 import { usePoints } from '@/lib/points-context'
 import { MOCK_USER } from '@/lib/mock-user'
@@ -99,7 +100,7 @@ export default function ProfilePage() {
       
       try {
         setProfileLoading(true)
-        const response = await fetch(`/api/profile/${encodeURIComponent(liffProfile.userId)}`, {
+        const response = await apiFetch(`/api/profile/${encodeURIComponent(liffProfile.userId)}`, {
           cache: 'no-store',
         })
         
@@ -128,7 +129,7 @@ export default function ProfilePage() {
       return
     }
     const controller = new AbortController()
-    fetch(`/api/points?action=get_co2_collection&user_id=${encodeURIComponent(userId)}`, {
+    apiFetch(`/api/points?action=get_co2_collection&user_id=${encodeURIComponent(userId)}`, {
       signal: controller.signal,
       cache: 'no-store',
     })

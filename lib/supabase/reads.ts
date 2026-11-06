@@ -111,6 +111,14 @@ export async function isRegistered(lineUserId: string): Promise<boolean> {
   return data !== null
 }
 
+// listRegisteredLineUserIds() lived here: it paged out EVERY registered LINE
+// user id for GAS #3's syncRegisteredUsersToMenuB(). Removed along with
+// GET /api/registered, because a LINE user id is the key the rest of this API
+// is addressed by, and a bulk source of them is worth more to an attacker than
+// the repair tool it served was worth to us — that tool has not worked since
+// the Supabase migration anyway. The per-user check, isRegistered() above,
+// stays: GAS #3 calls it on every follow to pick the right rich menu.
+
 // ---------------------------------------------------------------------------
 // Waste records
 // ---------------------------------------------------------------------------
@@ -134,6 +142,10 @@ export async function getWasteRecords(lineUserId: string): Promise<WasteRecordsR
     // and a concatenated expression degrades to GenericStringError.
     .select('line_user_id, waste_type_id, waste_subtype_id, weight_kg, image_urls, carbon_reduction_kg, points_earned, status, notes, recorded_at')
     .eq('line_user_id', lineUserId)
+    // A cancelled record is one the user deleted. The row is kept so the
+    // deletion is auditable and confirm_waste can still refuse it, but it must
+    // not come back to the cart it was deleted from, or count in `stats`.
+    .neq('status', 'cancelled')
     .order('recorded_at', { ascending: false })
 
   if (error) throw error
@@ -372,8 +384,15 @@ export async function getCo2Collection(lineUserId: string): Promise<Co2EntryResp
 // Leaderboard
 // ---------------------------------------------------------------------------
 
+/**
+ * Server-internal row: a wire entry plus the LINE id it is keyed on. The id
+ * backs the caller lookup and must be stripped before the rows reach a
+ * browser — see app/api/points/ranking/route.ts.
+ */
+export type LeaderboardRow = RankingEntry & { lineUserId: string }
+
 export interface LeaderboardResult {
-  ranking: RankingEntry[]
+  ranking: LeaderboardRow[]
   byUser: Record<string, { location: string; isTourist: boolean }>
 }
 
@@ -394,7 +413,7 @@ export async function getLeaderboard(limit = 200): Promise<LeaderboardResult> {
   if (error) throw error
 
   const byUser: LeaderboardResult['byUser'] = {}
-  const ranking: RankingEntry[] = (data ?? []).map((row, index) => {
+  const ranking: LeaderboardRow[] = (data ?? []).map((row, index) => {
     const lineUserId = str(row.line_user_id)
     byUser[lineUserId] = {
       location: str(row.subdistrict),
@@ -409,6 +428,8 @@ export async function getLeaderboard(limit = 200): Promise<LeaderboardResult> {
       avatar: FALLBACK_AVATAR,
       location: str(row.subdistrict),
       isTourist: row.is_tourist ?? false,
+      // Set per viewer in the route; the cached rows are viewer-independent.
+      isYou: false,
     }
   })
 
@@ -424,15 +445,19 @@ export interface WasteTypeCatalogEntry {
   name: string
   icon: string
   carbonFactor: number
-  pointsPerKg: number
+  subtypes: {
+    id: string
+    pointsPerKg: number
+  }[]
 }
 
 /** GET /api/catalog/waste-types — replaces the hardcoded rate tables. */
 export async function getWasteTypes(): Promise<WasteTypeCatalogEntry[]> {
   const { data, error } = await getServiceClient()
     .from('waste_types')
-    .select('id, name_th, icon_path, carbon_factor, points_per_kg')
+    .select('id, name_th, icon_path, carbon_factor, waste_subtypes!inner(id, points_per_kg)')
     .eq('is_active', true)
+    .eq('waste_subtypes.is_active', true)
     .order('sort_order')
 
   if (error) throw error
@@ -442,7 +467,10 @@ export async function getWasteTypes(): Promise<WasteTypeCatalogEntry[]> {
     name: row.name_th,
     icon: row.icon_path ?? '',
     carbonFactor: num(row.carbon_factor),
-    pointsPerKg: num(row.points_per_kg),
+    subtypes: (row.waste_subtypes ?? []).map((subtype) => ({
+      id: subtype.id,
+      pointsPerKg: num(subtype.points_per_kg),
+    })),
   }))
 }
 
@@ -478,6 +506,68 @@ export async function getRewardsCatalog(): Promise<RewardCatalogEntry[]> {
     minPoints: row.min_points,
     stock: row.stock,
   }))
+}
+
+export interface AdminRewardEntry extends RewardCatalogEntry {
+  isActive: boolean
+}
+
+const ADMIN_REWARD_COLUMNS =
+  'id, name, description, points, image_path, is_variable, min_points, stock, is_active'
+
+function toAdminRewardEntry(row: {
+  id: number
+  name: string
+  description: string | null
+  points: number
+  image_path: string | null
+  is_variable: boolean
+  min_points: number | null
+  stock: number | null
+  is_active: boolean
+}): AdminRewardEntry {
+  return {
+    id: row.id,
+    name: row.name,
+    description: str(row.description),
+    points: row.points,
+    image: catalogImageUrl(row.image_path ?? ''),
+    isVariable: row.is_variable,
+    minPoints: row.min_points,
+    stock: row.stock,
+    isActive: row.is_active,
+  }
+}
+
+/**
+ * GET /api/catalog/rewards?includeInactive=1 (admin only) — the whole table,
+ * so app/admin/rewards/page.tsx can show a switched-off reward and switch it
+ * back on. getRewardsCatalog above hides those from users.
+ */
+export async function getAllRewardsForAdmin(): Promise<AdminRewardEntry[]> {
+  const { data, error } = await getServiceClient()
+    .from('rewards')
+    .select(ADMIN_REWARD_COLUMNS)
+    .order('sort_order')
+
+  if (error) throw error
+
+  return (data ?? []).map(toAdminRewardEntry)
+}
+
+/**
+ * GET /api/catalog/rewards/[id] (admin only) — one row for the reward editor,
+ * active or not. null when no reward has that id.
+ */
+export async function getRewardForAdmin(id: number): Promise<AdminRewardEntry | null> {
+  const { data, error } = await getServiceClient()
+    .from('rewards')
+    .select(ADMIN_REWARD_COLUMNS)
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) throw error
+  return data ? toAdminRewardEntry(data) : null
 }
 
 export interface DonationCampaignEntry {

@@ -7,9 +7,10 @@ import { registerUserSchema } from '@/lib/schemas/register'
 import { registerUser, updateUser } from '@/lib/supabase/writes'
 
 /**
- * Both verbs — identity comes from the verified LINE ID token, never the
- * request body. Apps Script trusted whatever `lineUserId` the caller sent,
- * which is what let one account write another's profile.
+ * Both verbs — identity comes from getLineIdentity() (a verified LINE ID
+ * token or the session cookie it issued), never the request body. Apps Script
+ * trusted whatever `lineUserId` the caller sent, which is what let one
+ * account write another's profile.
  */
 async function respondFromSupabase(
   request: NextRequest,

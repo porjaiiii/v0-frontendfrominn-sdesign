@@ -74,3 +74,42 @@ export function wasteSubtypeName(typeId: string, subId: string): string {
   const name = list?.find((s) => s.id === subId)?.name
   return (name ?? subId).replace(/\s*\n\s*/g, ' ')
 }
+
+// ---------------------------------------------------------------------------
+// The inverse direction — label back to id.
+//
+// app.waste_records stores ids, and waste_records_subtype_fk is a COMPOSITE key
+// on (waste_type_id, waste_subtype_id), so a Thai label in either column is a
+// 400 rather than a cosmetic problem. The edit modal's <select> submitted
+// `sub.name`, which is exactly how production hit it.
+//
+// An unmatched value passes through untouched: app.waste_types is the real
+// catalog and may hold rows this bundle predates, so guessing is worse than
+// forwarding and letting the FK rule on it.
+// ---------------------------------------------------------------------------
+
+/** Both spellings of a multi-line label ('a\nb' and 'a b') compare equal. */
+function labelKey(value: string): string {
+  return value.trim().replace(/\s+/g, ' ')
+}
+
+export function resolveWasteTypeId(value: string): string {
+  const key = labelKey(value)
+  if (WASTE_TYPES.some((t) => t.id === key)) return key
+  return WASTE_TYPES.find((t) => labelKey(t.name) === key)?.id ?? key
+}
+
+/**
+ * `typeId` scopes the lookup, because subtype ids are only unique within a
+ * type. When it is missing or unknown — an update payload need not restate the
+ * type — every type is searched instead, which is still unambiguous for the
+ * labels in the catalog.
+ */
+export function resolveWasteSubtypeId(typeId: string | undefined, value: string): string {
+  const key = labelKey(value)
+  const scoped = typeId ? WASTE_SUBTYPES[resolveWasteTypeId(typeId) as WasteType] : undefined
+  const candidates = scoped ?? Object.values(WASTE_SUBTYPES).flat()
+
+  if (candidates.some((s) => s.id === key)) return key
+  return candidates.find((s) => labelKey(s.name) === key)?.id ?? key
+}

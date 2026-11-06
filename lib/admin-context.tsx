@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import liff from '@line/liff'
 
 import { apiFetch } from './api-client'
 
@@ -13,7 +14,10 @@ import { apiFetch } from './api-client'
 
 export type AdminLoginResult =
   | { success: true }
-  | { success: false; reason: 'KEY_INVALID' | 'KEY_TAKEN' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR' }
+  | {
+      success: false
+      reason: 'KEY_INVALID' | 'KEY_TAKEN' | 'FRESH_LOGIN_REQUIRED' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR'
+    }
 
 interface AdminContextType {
   isAdmin: boolean
@@ -68,6 +72,18 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       if (errorCode === 'KEY_TAKEN') return { success: false, reason: 'KEY_TAKEN' }
       if (errorCode === 'KEY_INVALID') return { success: false, reason: 'KEY_INVALID' }
+      if (errorCode === 'FRESH_LOGIN_REQUIRED') {
+        // The key itself may be fine — the server just would not accept the ID
+        // token in hand (expired, or none). Send the caller through LINE and
+        // back to this same page; adminLogin is not retried automatically
+        // because it navigates away.
+        try {
+          liff.login({ redirectUri: window.location.href })
+        } catch {
+          // Nothing more to do client-side; the caller sees FRESH_LOGIN_REQUIRED.
+        }
+        return { success: false, reason: 'FRESH_LOGIN_REQUIRED' }
+      }
       return { success: false, reason: 'UNKNOWN_ERROR' }
     } catch {
       return { success: false, reason: 'NETWORK_ERROR' }

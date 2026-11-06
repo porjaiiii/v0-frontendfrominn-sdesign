@@ -1,11 +1,18 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { getServiceClient } from '@/lib/supabase/server'
-import { getDonationCampaigns, getRewardsCatalog, getWasteTypes } from '@/lib/supabase/reads'
+import {
+  getAllRewardsForAdmin,
+  getDonationCampaigns,
+  getRewardForAdmin,
+  getRewardsCatalog,
+  getWasteTypes,
+} from '@/lib/supabase/reads'
 import {
   createDonationCampaign,
   createReward,
   redeemRewards,
+  updateReward,
   WriteError,
 } from '@/lib/supabase/writes'
 import { createRewardSchema, createDonationCampaignSchema } from '@/lib/schemas/catalog'
@@ -60,7 +67,9 @@ describe('getWasteTypes', () => {
 
     const plastic = types.find((t) => t.id === 'plastic')!
     expect(plastic.carbonFactor).toBeCloseTo(1.031, 4)
-    expect(plastic.pointsPerKg).toBe(6)
+    expect(plastic.subtypes).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'pet', pointsPerKg: 6 })]),
+    )
   })
 })
 
@@ -96,12 +105,61 @@ describe('getRewardsCatalog / createReward', () => {
     expect(rewards.some((r) => r.id === created.id)).toBe(true)
   })
 
-  it('assigns ids above the current maximum, never colliding with a seeded row', async () => {
+  it('continues the ordinary id sequence, never landing on a cash-back id', async () => {
     const input = createRewardSchema.parse({ name: 'ของรางวัลที่สอง', points: 10 })
     const created = await createReward(input)
     createdRewardIds.push(created.id)
 
-    expect(created.id).toBeGreaterThan(99) // 99 is the highest seeded id (cash-back)
+    // 1–7 are seeded; 99/100 are the cash-back rows and don't push this up.
+    expect(created.id).toBe(8)
+  })
+
+  it('switches a reward off and back on', async () => {
+    const created = await createReward(createRewardSchema.parse({ name: 'ปิดได้', points: 10 }))
+    createdRewardIds.push(created.id)
+
+    expect(await updateReward(created.id, { isActive: false })).toBe(true)
+    expect((await getRewardsCatalog()).some((r) => r.id === created.id)).toBe(false)
+    const hidden = (await getAllRewardsForAdmin()).find((r) => r.id === created.id)
+    expect(hidden?.isActive).toBe(false)
+
+    expect(await updateReward(created.id, { isActive: true })).toBe(true)
+    expect((await getRewardsCatalog()).some((r) => r.id === created.id)).toBe(true)
+  })
+
+  it('edits only the fields it is given', async () => {
+    const created = await createReward(
+      createRewardSchema.parse({
+        name: 'ก่อนแก้',
+        description: 'คำอธิบายเดิม',
+        points: 10,
+        imagePath: 'rewards/old.jpg',
+        stock: 3,
+      }),
+    )
+    createdRewardIds.push(created.id)
+
+    const found = await updateReward(created.id, {
+      name: 'หลังแก้',
+      points: 25,
+      imagePath: 'rewards/new.jpg',
+      stock: null,
+    })
+    expect(found).toBe(true)
+
+    // description was not sent, so it must survive the edit.
+    const edited = await getRewardForAdmin(created.id)
+    expect(edited).toMatchObject({
+      name: 'หลังแก้',
+      description: 'คำอธิบายเดิม',
+      points: 25,
+      stock: null,
+    })
+    expect(edited?.image).toContain('rewards/new.jpg')
+  })
+
+  it('reports a missing reward instead of silently succeeding', async () => {
+    expect(await updateReward(987654, { isActive: false })).toBe(false)
   })
 })
 

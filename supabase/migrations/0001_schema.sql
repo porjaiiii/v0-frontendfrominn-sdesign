@@ -108,6 +108,7 @@ create table app.waste_subtypes (
   description_th text,
   image_path     text,
   sort_order     integer not null default 0,
+  points_per_kg  numeric(10,4) check (points_per_kg >= 0),
   is_active      boolean not null default true,
   primary key (waste_type_id, id)
 );

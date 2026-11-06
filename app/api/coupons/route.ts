@@ -1,38 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getCouponById, getCouponsByUser } from '@/lib/supabase/reads'
+import { requireSelf } from '@/lib/auth/require-self'
+import { getCouponsByUser } from '@/lib/supabase/reads'
 
-// GET /api/coupons?coupon_id=...   — single coupon, for the scanner
-// GET /api/coupons?user_id=...     — a user's coupons, optionally ?status=
+// GET /api/coupons?user_id=...  — the caller's own coupons, optionally ?status=
 //
-// NOTE: this route is unauthenticated, as it is today. Phase 3 locks the
-// coupon_id lookup down to verified staff — a coupon id is the QR payload, so
-// anyone able to guess one can currently read its full record.
-
+// `user_id` must match the LINE ID token, so this lists your coupons and only
+// yours.
+//
+// The ?coupon_id= lookup that used to live here is gone rather than gated: it
+// answered for ANY coupon id with no token at all, and a coupon id is the QR
+// payload, so holding one was enough to read the record — and the account —
+// behind it. /api/coupons/[id] already serves that lookup under the rule it
+// actually needs: the owner, or an admin. Nothing in the app called this
+// branch; only a test did.
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('user_id')
-    const couponId = searchParams.get('coupon_id')
     const status = searchParams.get('status')
 
-    // Case 1: the scanner has read a QR code.
-    if (couponId) {
-      const coupon = await getCouponById(couponId)
-      return coupon
-        ? NextResponse.json({ success: true, coupon })
-        : NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
-
-    // Case 2: every coupon belonging to a user.
-    if (!userId) {
-      return NextResponse.json({ error: 'Missing user_id or coupon_id' }, { status: 400 })
+    const access = await requireSelf(request, searchParams.get('user_id'))
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
     }
 
     // Filtered in the query rather than after the fact, so unwanted rows never
     // cross the wire. Apps Script returned every status regardless of the
     // request and left the filtering to this route.
-    const coupons = await getCouponsByUser(userId, status)
+    const coupons = await getCouponsByUser(access.lineUserId, status)
     return NextResponse.json({ success: true, coupons, total: coupons.length })
   } catch (error) {
     console.error('[coupons] GET unexpected error:', error)

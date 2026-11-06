@@ -2,6 +2,8 @@ import 'server-only'
 
 import { cookies } from 'next/headers'
 
+import { signToken, verifyToken } from './signed-token'
+
 // Server-verified admin sessions.
 //
 // The admin gate used to be `localStorage.admin_session_persistent === 'true'`
@@ -50,57 +52,31 @@ function secret(): string {
   return value
 }
 
-const encoder = new TextEncoder()
-
-function b64url(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString('base64url')
-}
-
-async function sign(payload: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret()),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  )
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payload))
-  return b64url(new Uint8Array(signature))
-}
-
-/** Length-independent compare, so a wrong signature leaks nothing by timing. */
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let diff = 0
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  return diff === 0
-}
-
 export async function createAdminToken(lineUserId: string): Promise<string> {
   const session: AdminSession = {
     sub: lineUserId,
     exp: Math.floor(Date.now() / 1000) + MAX_AGE_SECONDS,
   }
-  const payload = b64url(encoder.encode(JSON.stringify(session)))
-  return `v1.${payload}.${await sign(payload)}`
+  return signToken(secret(), session)
 }
 
+/**
+ * The session in an admin token, or null if it is missing, forged or expired.
+ *
+ * Throws when ADMIN_SESSION_SECRET is unusable — any non-empty token then has
+ * nothing to be checked against. getAdminSession() is the caller that turns
+ * that into "not an admin"; call it rather than this from a route.
+ */
 export async function verifyAdminToken(token: string | undefined): Promise<AdminSession | null> {
   if (!token) return null
 
-  const [version, payload, signature] = token.split('.')
-  if (version !== 'v1' || !payload || !signature) return null
+  const claims = await verifyToken(secret(), token)
+  if (!claims) return null
 
-  if (!safeEqual(signature, await sign(payload))) return null
-
-  try {
-    const session = JSON.parse(Buffer.from(payload, 'base64url').toString()) as AdminSession
-    if (!session.sub || typeof session.exp !== 'number') return null
-    if (session.exp * 1000 <= Date.now()) return null
-    return session
-  } catch {
-    return null
-  }
+  const { sub, exp } = claims
+  if (typeof sub !== 'string' || !sub || typeof exp !== 'number') return null
+  if (exp * 1000 <= Date.now()) return null
+  return { sub, exp }
 }
 
 /**

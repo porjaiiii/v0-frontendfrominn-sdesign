@@ -1,46 +1,47 @@
-// The single copy of waste pricing that replaces five duplicated
-// CARBON_FACTORS/POINTS_PER_KG tables — app/home/page.tsx,
-// app/api/waste/submit/route.ts, app/api/waste/update/route.ts,
-// components/waste-detail-modal.tsx and lib/app-context.tsx each had their own.
+// Waste pricing types and lookups.
 //
-// This is the OFFLINE fallback: the numbers below match app.waste_types
-// (supabase/migrations/0003_seed_catalog.sql) exactly, but are never fetched —
-// they're what renders before GET /api/catalog/waste-types resolves, and what
-// stays on screen if that fetch fails. lib/app-context.tsx is what fetches the
-// live values and caches them for the session; this module has no I/O.
+// This module used to hold a second copy of the catalog rates, kept in sync by
+// hand and used whenever the live values had not arrived. That copy is gone.
 //
-// The Supabase write path (app.submit_waste / app.confirm_waste RPCs) never
-// reads this file — it prices server-side, directly from app.waste_types. This
-// is purely the client-side estimate shown before a submission is confirmed.
+// The live rates come from GET /api/catalog/waste-types, cached for the session
+// by lib/app-context.tsx. Until they arrive — or if that fetch fails — the
+// lookups below return null and the screens render "—". A missing number is
+// honest; a stale one is not.
+//
+// None of this touches what the user is actually awarded. app.submit_waste and
+// app.confirm_waste price server-side from the catalog and have never read
+// this file.
 
 export type WasteType = 'plastic' | 'paper' | 'glass' | 'aluminum' | 'oil'
 
 export interface WasteRate {
   /** kg CO2e saved per kg of this material. */
-  carbonFactor: number
-  pointsPerKg: number
+  carbonFactor?: number
+  pointsPerKg?: number
 }
 
-export const WASTE_RATES: Record<WasteType, WasteRate> = {
-  plastic:  { carbonFactor: 1.0310, pointsPerKg: 6 },
-  paper:    { carbonFactor: 3.5460, pointsPerKg: 4 },
-  glass:    { carbonFactor: 0.2760, pointsPerKg: 4 },
-  aluminum: { carbonFactor: 9.1270, pointsPerKg: 25 },
-  // Seeded in app.waste_types but is_active = false — absent from
-  // lib/waste-data.ts's WASTE_TYPES, so no UI flow can select it. Kept so this
-  // table stays a faithful mirror of app.waste_types.
-  oil:      { carbonFactor: 3.0,    pointsPerKg: 3 },
+/** The session's live rates, or null while they are still loading. */
+export type WasteRates = Record<string, WasteRate> | null
+
+/** kg CO2e per kg, or null if that cannot be known right now. */
+export function carbonFactorFor(wasteType: string, rates: WasteRates): number | null {
+  return usable(rates?.[wasteType]?.carbonFactor)
 }
 
-function isWasteType(value: string): value is WasteType {
-  return value in WASTE_RATES
+/** Points per kg for a subtype, or null if that cannot be known right now. */
+export function pointsPerKgFor(
+  wasteType: string,
+  wasteSubtype: string,
+  rates: WasteRates,
+): number | null {
+  return usable(rates?.[rateKey(wasteType, wasteSubtype)]?.pointsPerKg)
 }
 
-/** Falls back to the plastic-ish default the legacy script used for an unrecognised type. */
-export function carbonFactorFor(wasteType: string, rates: Record<string, WasteRate> = WASTE_RATES): number {
-  return (isWasteType(wasteType) ? rates[wasteType]?.carbonFactor : undefined) ?? 1.0
+/** NaN and Infinity reach here from a malformed row; neither is a rate. */
+function usable(value: number | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-export function pointsPerKgFor(wasteType: string, rates: Record<string, WasteRate> = WASTE_RATES): number {
-  return (isWasteType(wasteType) ? rates[wasteType]?.pointsPerKg : undefined) ?? 3
+export function rateKey(wasteType: string, wasteSubtype: string): string {
+  return `${wasteType}:${wasteSubtype}`
 }

@@ -136,11 +136,19 @@ export default function HomePage() {
   )
 
   // ── derived ──────────────────────────────────────────────────────────────
-  const pointsFor = (item: LineItem) =>
-    Math.round(parseWeight(item.weight) * pointsPerKgFor(item.typeId, wasteRates))
+  // Points are priced per SUBTYPE from the live catalog (GET /api/catalog/waste-types).
+  // null = the rate is not known yet, shown as "—" rather than a guess. This is
+  // only an estimate; the server prices the real award when the row is saved.
+  const pointsFor = (item: LineItem): number | null => {
+    const rate = pointsPerKgFor(item.typeId, item.subTypeId, wasteRates)
+    return rate === null ? null : Math.round(parseWeight(item.weight) * rate)
+  }
 
   const totalWeight = items.reduce((sum, it) => sum + parseWeight(it.weight), 0)
-  const totalPoints = items.reduce((sum, it) => sum + pointsFor(it), 0)
+  const itemPoints = items.map(pointsFor)
+  const totalPoints = itemPoints.some((p) => p === null)
+    ? null
+    : itemPoints.reduce<number>((sum, p) => sum + (p ?? 0), 0)
   const isUploading = items.some((it) => it.photos.some((p) => p.state === 'uploading'))
   const allWeighed = items.length > 0 && items.every((it) => parseWeight(it.weight) > 0)
   const canSave = Boolean(target) && allWeighed && !isUploading && !isSaving
@@ -619,7 +627,7 @@ export default function HomePage() {
                       className="w-full rounded border border-[#888888] px-1 py-1 text-center text-sm focus:border-[#154212] focus:outline-none disabled:bg-[#f5f5f5]"
                     />
 
-                    <span className="text-[#154212] tabular-nums">{pointsFor(item)}</span>
+                    <span className="text-[#154212] tabular-nums">{pointsFor(item) ?? '—'}</span>
 
                     <button
                       type="button"
@@ -687,7 +695,7 @@ export default function HomePage() {
               <div className="flex justify-between">
                 <span>{items.length} รายการ</span>
                 <span className="tabular-nums">
-                  {totalPoints} <span className="ml-1">คะแนน</span>
+                  {totalPoints ?? '—'} <span className="ml-1">คะแนน</span>
                 </span>
               </div>
             </div>

@@ -10,9 +10,24 @@ interface WasteCartProps {
   userId: string
   onTotalWeightChange?: (weight: number) => void
   sortMode?: 'date' | 'weight'
+  /**
+   * Staff viewing SOMEBODY ELSE's records (profile-view, profile-scanner).
+   *
+   * Reads through /api/admin/waste/records, which asks for an admin session;
+   * the default route serves only the caller's own id and would answer 403.
+   * Writes are staff-only whatever this says: confirming and deleting always
+   * go through /api/admin/waste/{update,cancel}, because users cannot change
+   * their own records once submitted.
+   */
+  admin?: boolean
 }
 
-export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: WasteCartProps) {
+export function WasteCart({
+  userId,
+  onTotalWeightChange,
+  sortMode = 'date',
+  admin = false,
+}: WasteCartProps) {
   const [records, setRecords] = useState<WasteRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -28,7 +43,8 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
     const fetchRecords = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/waste/records?user_id=${userId}`)
+        const endpoint = admin ? '/api/admin/waste/records' : '/api/waste/records'
+        const response = await apiFetch(`${endpoint}?user_id=${encodeURIComponent(userId)}`)
         
         if (!response.ok) {
           throw new Error('Failed to fetch waste records')
@@ -61,7 +77,7 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
     if (userId) {
       fetchRecords()
     }
-  }, [userId])
+  }, [userId, admin])
 
   const handleConfirmRecord = async (record: WasteRecord) => {
     try {
@@ -102,8 +118,11 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
     try {
       const recordId = `${record.timestamp}-${record.user_id}`
       setSavingRecordId(recordId)
-      
-      const response = await apiFetch('/api/waste/update', {
+
+      // Staff-only: users cannot confirm their own records, so there is no
+      // owner route (/api/waste/update answers 403). The points go to the
+      // owner named in the body (record.user_id), never to the staff member.
+      const response = await apiFetch('/api/admin/waste/update', {
         method: 'PUT',
         idempotencyKey: saveKey.current(),
         body: JSON.stringify(record),
@@ -147,6 +166,24 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
     setIsModalOpen(true)
   }
 
+  /**
+   * The record is already cancelled server-side by the time this runs, so the
+   * list is rebuilt locally rather than refetched — the same reason the confirm
+   * path does not refetch either. The pending total has to move with it, since
+   * that number is what the page above prints as "waiting to be weighed".
+   */
+  const handleRecordDeleted = (deleted: WasteRecord) => {
+    const remaining = records.filter((r) => r.timestamp !== deleted.timestamp)
+    setRecords(remaining)
+
+    const total = remaining
+      .filter((r) => r.status === 'pending' && r.weight_kg !== -1)
+      .reduce((sum, r) => sum + r.weight_kg, 0)
+
+    setTotalWeight(total)
+    onTotalWeightChange?.(total)
+  }
+
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setSelectedRecord(null)
@@ -185,6 +222,8 @@ export function WasteCart({ userId, onTotalWeightChange, sortMode = 'date' }: Wa
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onConfirm={handleConfirmRecord}
+        // Staff delete through /api/admin/waste/cancel.
+        onDeleted={handleRecordDeleted}
         isConfirming={isConfirming}
         isEditing={isEditingMode}
       />

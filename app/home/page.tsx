@@ -34,6 +34,8 @@ interface ScannedUser {
   userType: string
   subdistrict: string
   pictureUrl?: string
+  /** Only set for phone-search results, to tell similar people apart. */
+  phoneLast4?: string
 }
 
 interface Photo {
@@ -111,12 +113,17 @@ function parseWeight(raw: string): number {
 export default function HomePage() {
   const { isAdmin, isInitializing } = useAdmin()
   const { wasteRates } = useApp()
-  const { scanCode, isReady, isInClient } = useLiffContext()
+  const { scanCode, isReady } = useLiffContext()
 
   const [target, setTarget] = useState<ScannedUser | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
   const [isScanning, setIsScanning] = useState(false)
-  const [manualId, setManualId] = useState('')
+  // The search box takes a phone number, a LINE ID or a pasted QR link.
+  const [query, setQuery] = useState('')
+  // Several people can share a number (family, a re-registration): staff pick.
+  const [candidates, setCandidates] = useState<ScannedUser[]>([])
+  // Picker open on top of an already-selected user ("เปลี่ยนผู้ใช้").
+  const [changing, setChanging] = useState(false)
 
   const [openType, setOpenType] = useState<WasteType | null>('plastic')
   const [items, setItems] = useState<LineItem[]>([])
@@ -154,8 +161,57 @@ export default function HomePage() {
   const canSave = Boolean(target) && allWeighed && !isUploading && !isSaving
   const missingPhotos = items.filter((it) => !it.photos.some((p) => p.state === 'done')).length
 
-  // ── scanning ─────────────────────────────────────────────────────────────
-  const loadUser = useCallback(async (raw: string) => {
+  // ── choosing the user ────────────────────────────────────────────────────
+  const clearItems = useCallback(() => {
+    setItems((prev) => {
+      prev.forEach((it) => it.photos.forEach((p) => URL.revokeObjectURL(p.preview)))
+      return []
+    })
+    setSaveError(null)
+  }, [])
+
+  /**
+   * The one place a user becomes the target, whether scanned, searched or picked
+   * from a list. Switching to a DIFFERENT person throws away the unsaved rows —
+   * they were typed for someone else and must never be saved to the new user — so
+   * that is confirmed first.
+   */
+  const selectUser = (next: ScannedUser) => {
+    if (target && target.lineUserId !== next.lineUserId) {
+      if (
+        items.length > 0 &&
+        !window.confirm('การเปลี่ยนผู้ใช้จะล้างรายการที่ยังไม่บันทึก ต้องการดำเนินการต่อหรือไม่?')
+      ) {
+        return
+      }
+      clearItems()
+    }
+    setTarget(next)
+    setChanging(false)
+    setCandidates([])
+    setQuery('')
+    setScanError(null)
+  }
+
+  const toScannedUser = (data: Record<string, string | undefined>, fallbackId = ''): ScannedUser => ({
+    lineUserId: data.lineUserId || fallbackId,
+    userId: data.userId ?? '',
+    fullName: data.fullName ?? '',
+    nickname: data.nickname ?? '',
+    userType: data.userType ?? '',
+    subdistrict: data.subdistrict ?? '',
+  })
+
+  /** Reason a lookup failed, or null when it is fine to go on. */
+  const lookupError = (status: number): string | null => {
+    if (status === 401) return 'สิทธิ์แอดมินหมดอายุ กรุณาเข้าสู่ระบบแอดมินอีกครั้ง'
+    if (status === 404) return 'ไม่พบผู้ใช้นี้ในระบบ (ผู้ใช้ต้องลงทะเบียนก่อน)'
+    if (status >= 400) return 'ดึงข้อมูลผู้ใช้ไม่สำเร็จ โปรดลองใหม่อีกครั้ง'
+    return null
+  }
+
+  // By LINE user id — what the QR (or a pasted link) carries.
+  const loadUserById = async (raw: string) => {
     const lineUserId = extractLineUserId(raw)
     if (!lineUserId) {
       setScanError('ไม่สามารถอ่าน QR Code ได้ โปรดลองใหม่อีกครั้ง')
@@ -167,43 +223,44 @@ export default function HomePage() {
     const res = await fetch(`/api/admin/profile/${encodeURIComponent(lineUserId)}`, {
       cache: 'no-store',
     })
-    if (res.status === 401) {
-      setScanError('สิทธิ์แอดมินหมดอายุ กรุณาเข้าสู่ระบบแอดมินอีกครั้ง')
+    const failure = lookupError(res.status)
+    if (failure) {
+      setScanError(failure)
       return
     }
-    if (res.status === 404) {
-      setScanError('ไม่พบผู้ใช้นี้ในระบบ (ผู้ใช้ต้องลงทะเบียนก่อน)')
+    selectUser(toScannedUser(await res.json(), lineUserId))
+  }
+
+  // By phone number.
+  const loadUsersByPhone = async (digits: string) => {
+    const res = await fetch(`/api/admin/profile/search?phone=${digits}`, { cache: 'no-store' })
+    if (res.status === 400) {
+      setScanError('รูปแบบเบอร์โทรไม่ถูกต้อง')
       return
     }
-    if (!res.ok) {
-      setScanError('ดึงข้อมูลผู้ใช้ไม่สำเร็จ โปรดลองใหม่อีกครั้ง')
+    const failure = lookupError(res.status)
+    if (failure) {
+      setScanError(failure)
       return
     }
 
-    const data = await res.json()
-    setTarget({
-      lineUserId: data.lineUserId || lineUserId,
-      userId: data.userId,
-      fullName: data.fullName,
-      nickname: data.nickname,
-      userType: data.userType,
-      subdistrict: data.subdistrict,
-    })
-    setScanError(null)
-  }, [])
-
-  const clearItems = useCallback(() => {
-    setItems((prev) => {
-      prev.forEach((it) => it.photos.forEach((p) => URL.revokeObjectURL(p.preview)))
-      return []
-    })
-    setSaveError(null)
-  }, [])
+    const users: ScannedUser[] = ((await res.json()).users ?? []).map(
+      (u: Record<string, string | undefined>) => ({
+        ...toScannedUser(u),
+        phoneLast4: u.phoneLast4,
+      }),
+    )
+    if (users.length === 0) {
+      setScanError('ไม่พบผู้ใช้ที่ใช้เบอร์นี้')
+    } else if (users.length === 1) {
+      selectUser(users[0])
+    } else {
+      setScanError(null)
+      setCandidates(users)
+    }
+  }
 
   const startScan = async () => {
-    if (items.length > 0 && !window.confirm('การเปลี่ยนผู้ใช้จะล้างรายการที่ยังไม่บันทึก ต้องการดำเนินการต่อหรือไม่?')) {
-      return
-    }
     if (!isReady) {
       setScanError('LIFF ยังไม่พร้อม โปรดรอสักครู่...')
       return
@@ -211,14 +268,12 @@ export default function HomePage() {
 
     setIsScanning(true)
     setScanError(null)
+    setCandidates([])
     try {
       const result = await scanCode()
-      if (!result.value) {
-        setScanError('ไม่สามารถอ่าน QR Code ได้ โปรดลองใหม่อีกครั้ง')
-        return
-      }
-      clearItems()
-      await loadUser(result.value)
+      // No value = the scanner was closed without reading anything. Not an error:
+      // the search box is right there as the other way in.
+      if (result.value) await loadUserById(result.value)
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'ไม่สามารถเปิดกล้องสแกน QR Code ได้')
     } finally {
@@ -226,16 +281,35 @@ export default function HomePage() {
     }
   }
 
-  // Outside the LINE app there is no camera scanner; this keeps the page
-  // testable from a desktop browser.
-  const submitManual = async () => {
-    if (!manualId.trim()) return
+  // "เปลี่ยนผู้ใช้": open the picker and the camera together, with the search box
+  // underneath for when the QR is not to hand.
+  const startChange = () => {
+    setChanging(true)
+    void startScan()
+  }
+
+  const submitSearch = async () => {
+    const text = query.trim()
+    if (!text) return
+
     setIsScanning(true)
     setScanError(null)
+    setCandidates([])
     try {
-      clearItems()
-      await loadUser(manualId)
-      setManualId('')
+      // Phone-shaped input (digits, spaces, dashes, a leading +) is a phone
+      // search; anything else is a LINE id or a pasted QR link.
+      if (/^[\d\s\-+()]+$/.test(text)) {
+        const digits = text.replace(/\D/g, '')
+        if (digits.length < 7) {
+          setScanError('กรอกเบอร์โทรอย่างน้อย 7 หลัก')
+          return
+        }
+        // +66 8x… → 08x…
+        const local = digits.startsWith('66') && digits.length === 11 ? `0${digits.slice(2)}` : digits
+        await loadUsersByPhone(local)
+      } else {
+        await loadUserById(text)
+      }
     } catch {
       setScanError('ดึงข้อมูลผู้ใช้ไม่สำเร็จ โปรดลองใหม่อีกครั้ง')
     } finally {
@@ -431,7 +505,7 @@ export default function HomePage() {
 
       <main className="max-w-md mx-auto px-4 py-4 space-y-4">
         {/* 1) ผู้ใช้ที่กำลังกรอกให้ */}
-        <section className="rounded-2xl bg-[#f0f4ee] p-4">
+        <section className="rounded-2xl bg-[#f0f4ee] p-4 space-y-3">
           {target ? (
             <div className="flex items-center gap-4">
               <div className="relative w-16 h-16 shrink-0 rounded-full bg-[#c9d6c5] overflow-hidden flex items-center justify-center text-2xl font-semibold text-[#154212]">
@@ -452,26 +526,34 @@ export default function HomePage() {
                     .join(' · ')}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={startScan}
-                disabled={isScanning || isSaving}
-                className="shrink-0 rounded-full border border-[#154212] px-3 py-1.5 text-xs font-semibold text-[#154212] disabled:opacity-50"
-              >
-                {isScanning ? 'กำลังสแกน...' : 'เปลี่ยนผู้ใช้'}
-              </button>
+              {!changing && (
+                <button
+                  type="button"
+                  onClick={startChange}
+                  disabled={isScanning || isSaving}
+                  className="shrink-0 rounded-full border border-[#154212] px-3 py-1.5 text-xs font-semibold text-[#154212] disabled:opacity-50"
+                >
+                  เปลี่ยนผู้ใช้
+                </button>
+              )}
             </div>
           ) : (
-            <div className="space-y-3">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 shrink-0 rounded-full bg-[#c9d6c5] flex items-center justify-center">
-                  <QrCode className="w-7 h-7 text-[#154212]" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-lg font-semibold text-[#154212]">ข้อมูล user</p>
-                  <p className="text-xs text-[#555555]">สแกน QR Code ของผู้ใช้ก่อนเริ่มบันทึก</p>
-                </div>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 shrink-0 rounded-full bg-[#c9d6c5] flex items-center justify-center">
+                <QrCode className="w-7 h-7 text-[#154212]" />
               </div>
+              <div className="flex-1">
+                <p className="text-lg font-semibold text-[#154212]">ข้อมูล user</p>
+                <p className="text-xs text-[#555555]">สแกน QR Code หรือค้นหาด้วยเบอร์โทรก่อนเริ่มบันทึก</p>
+              </div>
+            </div>
+          )}
+
+          {/* ตัวเลือกผู้ใช้: กล้อง + ช่องค้นหา (เปิดทั้งตอนเริ่มและตอนกดเปลี่ยน) */}
+          {(!target || changing) && (
+            <div className={cn('space-y-3', target && 'border-t border-[#c9d6c5] pt-3')}>
+              {target && <p className="text-xs font-semibold text-[#154212]">เลือกผู้ใช้คนถัดไป</p>}
+
               <button
                 type="button"
                 onClick={startScan}
@@ -479,30 +561,79 @@ export default function HomePage() {
                 className="w-full rounded-full bg-[#154212] py-3 text-sm font-semibold text-white disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                {isScanning ? 'กำลังสแกน...' : 'เปิดกล้องสแกน QR'}
+                {isScanning ? 'กำลังค้นหา...' : 'เปิดกล้องสแกน QR'}
               </button>
 
-              {!isInClient && (
-                <div className="flex gap-2">
-                  <input
-                    value={manualId}
-                    onChange={(e) => setManualId(e.target.value)}
-                    placeholder="เปิดนอก LINE: วางลิงก์ QR หรือ LINE ID"
-                    className="min-w-0 flex-1 rounded-full border border-[#c9d6c5] bg-white px-4 py-2 text-xs focus:border-[#154212] focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={submitManual}
-                    disabled={isScanning || !manualId.trim()}
-                    className="shrink-0 rounded-full border border-[#154212] px-4 py-2 text-xs font-semibold text-[#154212] disabled:opacity-50"
-                  >
-                    ค้นหา
-                  </button>
+              <form
+                className="flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void submitSearch()
+                }}
+              >
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  inputMode="search"
+                  placeholder="ค้นหาด้วยเบอร์โทร (หรือวาง LINE ID / ลิงก์ QR)"
+                  aria-label="ค้นหาผู้ใช้"
+                  className="min-w-0 flex-1 rounded-full border border-[#c9d6c5] bg-white px-4 py-2 text-xs focus:border-[#154212] focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={isScanning || !query.trim()}
+                  className="shrink-0 rounded-full border border-[#154212] px-4 py-2 text-xs font-semibold text-[#154212] disabled:opacity-50"
+                >
+                  ค้นหา
+                </button>
+              </form>
+
+              {candidates.length > 0 && (
+                <div className="rounded-xl bg-white divide-y divide-[#eeeeee] overflow-hidden">
+                  <p className="px-3 py-2 text-xs text-[#666666]">พบ {candidates.length} คน เลือกคนที่ต้องการ</p>
+                  {candidates.map((c) => (
+                    <button
+                      key={c.lineUserId}
+                      type="button"
+                      onClick={() => selectUser(c)}
+                      className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#f0f4ee]"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#c9d6c5] text-sm font-semibold text-[#154212]">
+                        {(c.fullName || c.nickname || '?').slice(0, 1)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-[#154212]">
+                          {c.fullName || c.nickname || '-'}
+                        </p>
+                        <p className="truncate text-[11px] text-[#666666]">
+                          {[c.userId, c.subdistrict, c.phoneLast4 && `เบอร์ลงท้าย ${c.phoneLast4}`]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
+              )}
+
+              {target && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChanging(false)
+                    setCandidates([])
+                    setQuery('')
+                    setScanError(null)
+                  }}
+                  className="w-full text-center text-xs font-semibold text-[#154212] underline-offset-2 hover:underline"
+                >
+                  ยกเลิก (ใช้คนเดิมต่อ)
+                </button>
               )}
             </div>
           )}
-          {scanError && <p className="mt-3 text-xs font-medium text-red-600">{scanError}</p>}
+
+          {scanError && <p className="text-xs font-medium text-red-600">{scanError}</p>}
         </section>
 
         {/* 2) เลือกประเภทขยะ */}

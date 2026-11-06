@@ -598,3 +598,29 @@ export async function getDonationCampaigns(): Promise<DonationCampaignEntry[]> {
     closesAt: row.closes_at,
   }))
 }
+
+/**
+ * Staff lookup by phone number — GET /api/admin/profile/search.
+ *
+ * Phone numbers are stored as typed: new registrations are 10 plain digits, but
+ * rows migrated from the sheets can carry dashes or spaces. The pattern
+ * therefore puts a wildcard between every digit, so `0812345678` also finds
+ * `081-234-5678`. `digits` MUST be digits only — the caller validates it, which
+ * is also what keeps `%` and `_` out of the LIKE pattern.
+ */
+export async function searchProfilesByPhone(
+  digits: string,
+  limit = 10,
+): Promise<ProfileResponse[]> {
+  const pattern = `%${digits.split('').join('%')}%`
+
+  const { data, error } = await getServiceClient()
+    .from('users')
+    .select('*')
+    .ilike('phone_number', pattern)
+    .order('registered_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return (data ?? []).map((row) => mapProfileRow(row))
+}

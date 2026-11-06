@@ -104,11 +104,27 @@ export async function verifyAdminToken(token: string | undefined): Promise<Admin
 }
 
 /**
+ * TEST-ONLY: treat every visitor as an admin.
+ *
+ * Requires BOTH `PREVIEW_ADMIN_BYPASS=1` AND `VERCEL_ENV === 'preview'`, so it
+ * is inert on production (and locally) even if the variable leaks there or this
+ * branch is merged. Set it only on the Vercel Preview environment of a test
+ * branch that points at the Dev_env database, and remove it afterwards.
+ */
+function previewAdminBypass(): boolean {
+  return process.env.PREVIEW_ADMIN_BYPASS === '1' && process.env.VERCEL_ENV === 'preview'
+}
+
+/**
  * Reads the session from the request cookie. Null when absent, forged, expired —
  * or when ADMIN_SESSION_SECRET is missing, which must read as "not an admin"
  * rather than as a 500 that a caller might be tempted to treat as transient.
  */
 export async function getAdminSession(): Promise<AdminSession | null> {
+  if (previewAdminBypass()) {
+    return { sub: 'preview-test-admin', exp: Math.floor(Date.now() / 1000) + 3600 }
+  }
+
   try {
     const store = await cookies()
     return await verifyAdminToken(store.get(ADMIN_COOKIE)?.value)

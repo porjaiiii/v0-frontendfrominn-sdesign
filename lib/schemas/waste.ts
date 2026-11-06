@@ -117,3 +117,23 @@ export const updateWasteSchema = z.preprocess(
 )
 
 export type UpdateWasteInput = z.infer<typeof updateWasteSchema>
+
+/**
+ * Staff recording a drop-off on behalf of a user they have just scanned.
+ *
+ * Unlike every other write schema this one DOES carry a user id — but only
+ * because the caller is a server-verified admin session (requireAdmin), never a
+ * plain LINE token. The weight is required: staff weigh on the spot, so the
+ * record is submitted and confirmed in one step and there is no "not yet
+ * weighed" state to represent.
+ */
+export const adminSubmitWasteSchema = z.object({
+  target_user_id: lineUserIdSchema,
+  waste_type: z.string().min(1).max(64),
+  waste_subtype: z.string().min(1).max(64),
+  weight_kg: z.number().positive().max(10_000),
+  image_urls: imageUrlsSchema,
+  notes: z.string().max(2000).optional(),
+})
+
+export type AdminSubmitWasteInput = z.infer<typeof adminSubmitWasteSchema>

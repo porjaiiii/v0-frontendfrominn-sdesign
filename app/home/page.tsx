@@ -105,6 +105,20 @@ function extractLineUserId(scanned: string): string {
   return value
 }
 
+/**
+ * The local digits of a phone-shaped input (digits, spaces, dashes, a leading
+ * +, brackets), or null when the text is something else — a LINE id or a pasted
+ * link. `+66 81…` becomes `081…`.
+ */
+function phoneDigits(text: string): string | null {
+  if (!/^[\d\s\-+()]+$/.test(text.trim())) return null
+  const digits = text.replace(/\D/g, '')
+  return digits.startsWith('66') && digits.length === 11 ? `0${digits.slice(2)}` : digits
+}
+
+const AUTOCOMPLETE_MIN_DIGITS = 4
+const AUTOCOMPLETE_DELAY_MS = 300
+
 function parseWeight(raw: string): number {
   const n = parseFloat(raw)
   return Number.isFinite(n) && n > 0 ? n : 0
@@ -296,17 +310,15 @@ export default function HomePage() {
     setScanError(null)
     setCandidates([])
     try {
-      // Phone-shaped input (digits, spaces, dashes, a leading +) is a phone
-      // search; anything else is a LINE id or a pasted QR link.
-      if (/^[\d\s\-+()]+$/.test(text)) {
-        const digits = text.replace(/\D/g, '')
-        if (digits.length < 7) {
-          setScanError('กรอกเบอร์โทรอย่างน้อย 7 หลัก')
+      // Phone-shaped input is a phone search; anything else is a LINE id or a
+      // pasted QR link.
+      const digits = phoneDigits(text)
+      if (digits !== null) {
+        if (digits.length < AUTOCOMPLETE_MIN_DIGITS) {
+          setScanError(`กรอกเบอร์โทรอย่างน้อย ${AUTOCOMPLETE_MIN_DIGITS} หลัก`)
           return
         }
-        // +66 8x… → 08x…
-        const local = digits.startsWith('66') && digits.length === 11 ? `0${digits.slice(2)}` : digits
-        await loadUsersByPhone(local)
+        await loadUsersByPhone(digits)
       } else {
         await loadUserById(text)
       }
@@ -316,6 +328,47 @@ export default function HomePage() {
       setIsScanning(false)
     }
   }
+
+  // Autocomplete: as staff type a phone number, list the people it could be.
+  // Debounced, and a stale response (the user kept typing) is dropped.
+  const suggestSeq = useRef(0)
+  const pickerOpen = !target || changing
+  useEffect(() => {
+    const digits = pickerOpen ? phoneDigits(query) : null
+    const seq = ++suggestSeq.current
+
+    if (digits === null || digits.length < AUTOCOMPLETE_MIN_DIGITS) {
+      setCandidates([])
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/profile/search?phone=${digits}`, { cache: 'no-store' })
+        if (seq !== suggestSeq.current) return
+        if (res.status === 401) {
+          setScanError('สิทธิ์แอดมินหมดอายุ กรุณาเข้าสู่ระบบแอดมินอีกครั้ง')
+          return
+        }
+        if (!res.ok) return
+        const body = await res.json()
+        if (seq !== suggestSeq.current) return
+        setScanError(null)
+        setCandidates(
+          (body.users ?? []).map((u: Record<string, string | undefined>) => ({
+            ...toScannedUser(u),
+            phoneLast4: u.phoneLast4,
+          })),
+        )
+      } catch {
+        // Autocomplete is a convenience; the search button still works.
+      }
+    }, AUTOCOMPLETE_DELAY_MS)
+
+    return () => clearTimeout(timer)
+    // toScannedUser is a pure helper recreated each render; it is deliberately not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, pickerOpen])
 
   // ── list editing ─────────────────────────────────────────────────────────
   const addItem = (typeId: WasteType, subTypeId: string, name: string) => {
@@ -575,7 +628,7 @@ export default function HomePage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   inputMode="search"
-                  placeholder="ค้นหาด้วยเบอร์โทร (หรือวาง LINE ID / ลิงก์ QR)"
+                  placeholder="พิมพ์เบอร์โทร 4 หลักขึ้นไป (หรือวาง LINE ID / ลิงก์ QR)"
                   aria-label="ค้นหาผู้ใช้"
                   className="min-w-0 flex-1 rounded-full border border-[#c9d6c5] bg-white px-4 py-2 text-xs focus:border-[#154212] focus:outline-none"
                 />
@@ -590,7 +643,7 @@ export default function HomePage() {
 
               {candidates.length > 0 && (
                 <div className="rounded-xl bg-white divide-y divide-[#eeeeee] overflow-hidden">
-                  <p className="px-3 py-2 text-xs text-[#666666]">พบ {candidates.length} คน เลือกคนที่ต้องการ</p>
+                  <p className="px-3 py-2 text-xs text-[#666666]">{candidates.length} คนที่ตรงกับเบอร์ — แตะเพื่อเลือก</p>
                   {candidates.map((c) => (
                     <button
                       key={c.lineUserId}

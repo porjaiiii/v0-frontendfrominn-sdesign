@@ -10,8 +10,10 @@ import { searchProfilesByPhone } from '@/lib/supabase/reads'
 // "can sign in to the app" must not be enough to look people up by it.
 //
 // Deliberately narrow, since this is a lookup over personal data:
-//   - at least 7 digits, so it cannot be used to list the table by typing "0";
-//   - at most 10 results;
+//   - at least 4 digits, so it cannot be used to list the table by typing "0";
+//     4-6 digits match from the START of the number (autocomplete as staff
+//     type), 7 or more match anywhere in it (a full number, or its tail);
+//   - at most 8 results;
 //   - only what staff need to pick the right person. The phone itself and the
 //     address are not returned — just the last four digits, to tell two people
 //     with similar names apart.
@@ -19,7 +21,9 @@ export const dynamic = 'force-dynamic'
 
 const NO_STORE = { 'Cache-Control': 'no-store' } as const
 
-const MIN_DIGITS = 7
+const MIN_DIGITS = 4
+/** From here a number is complete enough to match anywhere, not just the start. */
+const FULL_NUMBER_DIGITS = 7
 const MAX_DIGITS = 15
 
 export async function GET(request: Request) {
@@ -36,7 +40,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const profiles = await searchProfilesByPhone(raw)
+    const profiles = await searchProfilesByPhone(raw, { prefix: raw.length < FULL_NUMBER_DIGITS })
 
     return NextResponse.json(
       {

@@ -605,14 +605,21 @@ export async function getDonationCampaigns(): Promise<DonationCampaignEntry[]> {
  * Phone numbers are stored as typed: new registrations are 10 plain digits, but
  * rows migrated from the sheets can carry dashes or spaces. The pattern
  * therefore puts a wildcard between every digit, so `0812345678` also finds
- * `081-234-5678`. `digits` MUST be digits only — the caller validates it, which
- * is also what keeps `%` and `_` out of the LIKE pattern.
+ * `081-234-5678`.
+ *
+ * `prefix` anchors the match at the START of the number, which is what typing a
+ * number from its first digit (autocomplete) means. Unanchored, it matches the
+ * digits anywhere — the right thing for a full number or its tail.
+ *
+ * `digits` MUST be digits only — the caller validates it, which is also what
+ * keeps `%` and `_` out of the LIKE pattern.
  */
 export async function searchProfilesByPhone(
   digits: string,
-  limit = 10,
+  { prefix = false, limit = 8 }: { prefix?: boolean; limit?: number } = {},
 ): Promise<ProfileResponse[]> {
-  const pattern = `%${digits.split('').join('%')}%`
+  const body = digits.split('').join('%')
+  const pattern = prefix ? `${body}%` : `%${body}%`
 
   const { data, error } = await getServiceClient()
     .from('users')

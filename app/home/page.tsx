@@ -162,7 +162,15 @@ export default function HomePage() {
       return
     }
 
-    const res = await fetch(`/api/profile/${encodeURIComponent(lineUserId)}`, { cache: 'no-store' })
+    // Staff read somebody else's profile through the admin route, which checks the
+    // admin session cookie. /api/profile/[id] is now self-only.
+    const res = await fetch(`/api/admin/profile/${encodeURIComponent(lineUserId)}`, {
+      cache: 'no-store',
+    })
+    if (res.status === 401) {
+      setScanError('สิทธิ์แอดมินหมดอายุ กรุณาเข้าสู่ระบบแอดมินอีกครั้ง')
+      return
+    }
     if (res.status === 404) {
       setScanError('ไม่พบผู้ใช้นี้ในระบบ (ผู้ใช้ต้องลงทะเบียนก่อน)')
       return
